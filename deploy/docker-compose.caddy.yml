@@ -1,0 +1,18 @@
+# SPDX-License-Identifier: MIT
+# Caddy in front of the node, on the node VM. host networking so it can reach 127.0.0.1:3381.
+# Kept in its own directory (/opt/snapchain-client), separate from ~/snapchain which the
+# official snapchain.sh owns and overwrites on upgrade.
+services:
+  caddy:
+    image: caddy:2.11
+    restart: unless-stopped
+    network_mode: host
+    environment:
+      SITE_ADDRESS: "${SITE_ADDRESS:?set SITE_ADDRESS (DNS name of this VM)}"
+      NODE_UPSTREAM: "127.0.0.1:3381"
+      CLIENT_ROOT: "/srv/client"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - ./dist:/srv/client:ro
+      - ./caddy-data:/data
+      - ./caddy-config:/config

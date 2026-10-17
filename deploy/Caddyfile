@@ -1,0 +1,37 @@
+# SPDX-License-Identifier: MIT
+#
+# Same-origin HTTPS for the web client (solves mixed content AND CORS):
+#   https://SITE_ADDRESS/        -> static client (client/dist)
+#   https://SITE_ADDRESS/v1/*    -> reverse proxy to the node's HTTP API on 127.0.0.1:3381
+# The browser only ever talks to one HTTPS origin. Snapchain's HTTP server has no OPTIONS route,
+# so a cross-origin POST /v1/submitMessage (application/octet-stream => CORS preflight) would
+# fail; same-origin requests need no preflight.
+# Caddy obtains and renews a Let's Encrypt certificate automatically (needs ports 80+443 open
+# and a DNS name pointing at the VM).
+
+{$SITE_ADDRESS} {
+	encode zstd gzip
+
+	@admin path /v1/mesh /v1/mesh/*
+	respond @admin 404
+
+	handle /v1/* {
+		reverse_proxy {$NODE_UPSTREAM:127.0.0.1:3381}
+	}
+
+	handle {
+		root * {$CLIENT_ROOT:/srv/client}
+		try_files {path} /index.html
+		file_server
+	}
+
+	header {
+		# connect-src 'self': the page can only talk to this origin (the proxied node).
+		Content-Security-Policy "default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'"
+		Referrer-Policy "no-referrer"
+		X-Content-Type-Options "nosniff"
+		Strict-Transport-Security "max-age=31536000"
+		Permissions-Policy "camera=(), microphone=(), geolocation=(), clipboard-read=()"
+		-Server
+	}
+}

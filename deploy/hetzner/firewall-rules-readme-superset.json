@@ -1,0 +1,5 @@
+[
+  {"direction": "in", "protocol": "udp", "port": "3381", "source_ips": ["0.0.0.0/0", "::/0"], "description": "README says 3381-3383 TCP and UDP; compose does not publish 3381/udp"},
+  {"direction": "in", "protocol": "tcp", "port": "3382", "source_ips": ["0.0.0.0/0", "::/0"], "description": "README says TCP and UDP; AWS guide opens 3382/tcp; compose does not publish 3382/tcp"},
+  {"direction": "in", "protocol": "udp", "port": "3383", "source_ips": ["0.0.0.0/0", "::/0"], "description": "README says TCP and UDP; compose does not publish 3383/udp"}
+]

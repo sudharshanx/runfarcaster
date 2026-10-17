@@ -1,0 +1,12 @@
+{
+  "dbStats": {
+    "numMessages": 914092103,
+    "numFidRegistrations": 3354008,
+    "approxSize": 548529692074
+  },
+  "numShards": 2,
+  "shardInfos": [],
+  "version": "0.14.2",
+  "peer_id": "12D3KooWCjFRfnj2yrWyADcW3adS45YigbUPwEyGZ6fB9rbxDW2T",
+  "nextEngineVersionTimestamp": 0
+}

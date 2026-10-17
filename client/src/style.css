@@ -1,0 +1,35 @@
+/* SPDX-License-Identifier: MIT */
+:root { font-family: system-ui, sans-serif; color-scheme: light dark; }
+body { max-width: 760px; margin: 0 auto; padding: 1rem; }
+section { border: 1px solid #8884; border-radius: 8px; padding: .75rem 1rem; margin: .75rem 0; }
+h1 { font-size: 1.3rem; } h2 { font-size: 1.05rem; margin: .2rem 0 .5rem; }
+textarea, input { width: 100%; box-sizing: border-box; font: inherit; padding: .4rem; }
+button { font: inherit; padding: .3rem .7rem; margin: .25rem .25rem 0 0; cursor: pointer; }
+.row { display: flex; gap: .5rem; align-items: center; } .row > input { flex: 1; }
+.warn { background: #f5a62322; border-left: 4px solid #f5a623; padding: .5rem .75rem; }
+.muted { opacity: .7; font-size: .9em; }
+.chip { display: inline-block; border: 1px solid #8886; border-radius: 99px; padding: 0 .5rem; margin: .15rem; }
+.cast { border-top: 1px solid #8883; padding: .5rem 0; white-space: pre-wrap; overflow-wrap: anywhere; }
+.status-sending, .status-relayed, .status-retrying { color: #b07d00; }
+.status-confirmed { color: #2a8a2a; } .status-failed { color: #c0392b; font-weight: 600; }
+
+/* Responsive: one fluid column; comfortable touch targets; no horizontal scroll on phones. */
+*, *::before, *::after { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+img, svg { max-width: 100%; }
+.row { flex-wrap: wrap; }
+.row > input { min-width: 10rem; }
+/* 16px inputs stop iOS Safari zooming on focus. */
+textarea, input, select { font-size: 16px; max-width: 100%; }
+@media (pointer: coarse) {
+  button, select, input { min-height: 44px; }
+  button { padding: .5rem .9rem; }
+}
+@media (max-width: 480px) {
+  body { padding: .5rem; }
+  section { padding: .6rem .7rem; margin: .5rem 0; }
+  .row > button { flex: 1 1 auto; }
+}
+@media (min-width: 1100px) {
+  body { max-width: 860px; }
+}
