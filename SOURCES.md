@@ -153,3 +153,29 @@ Values from the read-only API calls on 2026-10-18 (currency USD, VAT 0; gross va
   - https://docs.farcaster.xyz/developers/guides/basics/hello-world
   - https://snapchain.farcaster.xyz/guides/running-a-node
   - https://docs.neynar.com/snapchain/httpapi/httpapi.md
+
+## Parallel re-verification (2026-10-18, 01:45-01:50 IST)
+
+Tool: `parallel-cli` 0.9.3 (`uv tool install "parallel-web-tools[cli]"`, the method listed at
+https://docs.parallel.ai/integrations/cli), authenticated via the `PARALLEL_API_KEY` env var. Basic mode only,
+no deep research. Extracts used `--full-content`, and the first batch used `--max-age-seconds 600` to force a
+live fetch. Raw JSON responses are kept outside the repo in `/workspace/parallel-audit-2026-10-18/`.
+Usage reported by the API: 4 search requests, 65 extract URLs. The dollar balance is not visible with
+env-key auth (`parallel-cli balance get` requires `parallel-cli login`).
+
+| Call | ID | What |
+|---|---|---|
+| extract | `extract_929b833cc94c8e645418148b4ccdc56e` | the 11 pages behind entries 1-11 (snapchain running-a-node, getting-started, httpapi, onchain, writing-messages, node-types, managing-a-node; docs.farcaster.xyz hello-world, architecture overview; snapchain README; Neynar httpapi mirror) |
+| extract | `extract_49871a59639b0c45fe888789df0288c9` | https://snapchain.farcaster.xyz/llms.txt (page list for the sweep) |
+| search | `search_7e1628e772bca9f85143d1bcedce0932`, `search_9074a678acfef5681d049d6bcdf2ee61`, `search_196b191424355ae6f5ca2cc6d3c3e3d1` | docs.farcaster.xyz key/signer, hub/FID/storage, and snapchain page discovery |
+| extract | `extract_bb6ebcc4077fb31f8ba013e6201fa666` | docs.farcaster.xyz create-account-key, create-account, accounts, apps, messages, signer-requests, submit-messages, writing/messages, fetch-casts, reference, developers, learn, key-gateway, architecture/contracts (404: /hubble/hubble, /learn/architecture/hubs) |
+| extract | `extract_412692fb5873babe471fcf20e77bd8f3` | snapchain index, migrating, syncing-to-db, http/grpc message, events, storagelimits, info, grpcapi, validators, datatypes; Neynar getting-started, running-a-node, writing-messages; hub-monorepo README, core, hub-web, hub-nodejs README, hello-world example |
+| extract | `extract_eb70c191e561d30236a5b6f56ddb34bc` | existence checks (404: hub-monorepo apps/replicator, apps/hubble; docs.farcaster.xyz/reference/hubble/httpapi/*; thehubble.xyz) + core CHANGELOG, hub-nodejs docs, hello-world index.ts |
+| extract | `extract_88416ff0abfc5f65595a46e32b3fcfb4`, `extract_1d403ca4fdfe3ff97a39a6a2c0e05220` | hub-nodejs Builders.md, ViemLocalEip712Signer.md; `packages/core/src/builders.ts` (export list) |
+| extract | `extract_35b3c586d92deacc59aea40884162771` | raw `main`: docker-compose.mainnet.yml, snapchain-bootstrap.sh, snapchain.sh, src/storage/db/snapshot.rs, hub-monorepo packages/core/package.json |
+| extract | `extract_54452c3a0a9e159bda83993880c4d9c9` | raw `site/docs/pages/index.mdx` |
+| search | `search_6c77daa4d13c007ae62d26e7edea7874` | storage unit limits (found protocol discussion #229, caststorage.com) |
+
+The `main` files above were fetched by branch, not by SHA. They matched the facts recorded earlier for
+`fc87f26` on every line checked (compose ports, bootstrap `< /dev/tty`, snapchain.sh l.400/441, snapshot.rs
+l.361/428).
