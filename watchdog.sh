@@ -9,7 +9,7 @@
 #   * at MAX_WALL_SECS wall-clock, whatever happens.
 # Start it BEFORE provision.sh so billing time is never under-counted.
 #
-# Env: HCLOUD_TOKEN (required, never printed), NAME=snapchain-read-node, MAX_USD=5,
+# Env: HCLOUD_TOKEN (required, never printed), NAME=snapchain-read-node, MAX_USD=5, WATCHDOG_T0=<epoch>,
 #      POLL_SECS=60, HANG_SECS=7200, MAX_WALL_SECS=86400, TEARDOWN_RESERVE_SECS=900,
 #      SSH_KEY_FILE (for progress probes), SSH_KEY_NAME (Hetzner ssh-key to delete after teardown),
 #      FALLBACK_RATE=0.35 (USD/h used if pricing cannot be read), RUN_LOG (markdown log to append to).
@@ -44,7 +44,7 @@ api() {  # GET from the Hetzner API without putting the token in argv
   printf 'Authorization: Bearer %s\n' "$HCLOUD_TOKEN" | curl -fsS -m 30 -H @- "https://api.hetzner.cloud/v1/$1"
 }
 
-T0="$(date +%s)"
+T0="${WATCHDOG_T0:-$(date +%s)}"   # set WATCHDOG_T0 (epoch) when restarting a watchdog mid-run
 RATE="$FALLBACK_RATE"
 LAST_RATE_AT=0
 LAST_PROGRESS_AT="$T0"
@@ -60,17 +60,21 @@ update_rate() {
     ($s.servers[0] // null) as $srv
     | if $srv == null then 0 else
         ($p.pricing.server_types[] | select(.name == $srv.server_type.name) | .prices[]
-           | select(.location == $srv.datacenter.location.name)) as $sp
+           | select(.location == ($srv.location.name // $srv.datacenter.location.name))) as $sp
         | ($sp.price_hourly.gross|tonumber) as $sh
         | ($sp.price_monthly.gross|tonumber) as $sm
         | ($p.pricing.primary_ips[] | select(.type=="ipv4") | .prices[]
-           | select(.location == $srv.datacenter.location.name) | .price_hourly.gross|tonumber) as $ip
+           | select(.location == ($srv.location.name // $srv.datacenter.location.name)) | .price_hourly.gross|tonumber) as $ip
         | ([$v.volumes[] | select(.server == $srv.id or .name == ($name+"-data")) | .size] | add // 0) as $gb
         | ($p.pricing.volume.price_per_gb_month.gross|tonumber) as $vgb
         | $sh + $ip + ($gb * $vgb) / ($sm / $sh)
       end')" || return 1
   # Before the server exists, keep the conservative fallback rate.
-  if [[ "$(jq -n "$r > 0")" == true ]]; then RATE="$r"; fi
+  if [[ -z "$r" ]]; then log "could not compute rate from pricing (keeping $RATE)"; return 1; fi
+  if [[ "$(jq -n "$r > 0")" == true ]]; then
+    [[ "$r" != "$RATE" ]] && log "live hourly rate: $r USD/h"
+    RATE="$r"
+  fi
   LAST_RATE_AT="$(date +%s)"
 }
 
