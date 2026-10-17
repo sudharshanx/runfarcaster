@@ -83,7 +83,7 @@ server_ip() { api "servers?name=$NAME" | jq -r '.servers[0].public_net.ipv4.ip /
 probe() {  # prints a progress fingerprint, empty if unreachable
   local ip="$1"
   [[ -n "$SSH_KEY_FILE" && -n "$ip" ]] || return 0
-  ssh -4 -i "$SSH_KEY_FILE" -o BatchMode=yes -o ConnectTimeout=15 -o StrictHostKeyChecking=accept-new \
+  timeout 90 ssh -4 -i "$SSH_KEY_FILE" -o BatchMode=yes -o ConnectTimeout=15 -o ServerAliveInterval=15 -o ServerAliveCountMax=3 -o StrictHostKeyChecking=accept-new \
     -o UserKnownHostsFile="$STATE_DIR/known_hosts" "root@$ip" \
     'du -sb /root/snapchain 2>/dev/null | cut -f1; curl -s -m 5 127.0.0.1:3381/v1/info 2>/dev/null | jq -c "[.shardInfos[]?.maxHeight]" 2>/dev/null; test -f /root/snapchain-DISK-FULL && echo DISKFULL' 2>/dev/null | tr '\n' ' ' || true
 }
