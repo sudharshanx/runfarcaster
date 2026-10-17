@@ -196,7 +196,11 @@ ensure_volume() {
     log "volume $VOLUME_NAME exists; reusing it"
   else
     hc volume create --name "$VOLUME_NAME" --size "$VOLUME_SIZE_GB" --location "$LOCATION" \
-      --format ext4 --label "$LABEL_KEY=$LABEL_VAL" >/dev/null
+      --format ext4 --label "$LABEL_KEY=$LABEL_VAL" >/dev/null \
+      || die "volume create failed. If the error was 'volumes size limit exceeded (resource_limit_exceeded)',
+your ACCOUNT's total volume quota (https://console.hetzner.cloud/limits, shared by all projects) is
+below ${VOLUME_SIZE_GB} GB. Request a limit increase there (reviewed manually by Hetzner), then re-run;
+the firewall created so far is reused. No server was created."
   fi
   if [[ "$DRY_RUN" == "1" ]]; then VOLUME_DEVICE="/dev/disk/by-id/scsi-0HC_Volume_DRYRUN"; return 0; fi
   VOLUME_DEVICE="$(hcloud volume describe "$VOLUME_NAME" -o json | jq -r '.linux_device')"

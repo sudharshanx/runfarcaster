@@ -1,0 +1,7 @@
+- 2026-10-18 01:20:10 IST: preflight: Hetzner project empty (0 servers/volumes/firewalls/ssh-keys/primary IPs). cx43 still available:false in fsn1/nbg1/hel1, so cax31. arm64 manifests present for farcasterxyz/snapchain:latest, graphiteapp/graphite-statsd:1.1.10-5, grafana/grafana:10.0.3 (Docker Hub registry API).
+- 2026-10-18 01:20:10 IST **watchdog**: started (pid 13298), MAX_USD=5, hang=7200s, wall cap=86400s, fallback rate=0.35/h
+- 2026-10-18 01:21:05 IST: uploaded public SSH key snapchain-run-key (free; private key only on the box at ~/.ssh, deleted after teardown)
+- 2026-10-18 01:21:05 IST: provision.sh start (cax31, fsn1, 2000 GB volume, MAX_USD=5, EXPECTED_HOURS=16)
+- 2026-10-18 01:21:10 IST: provision.sh exit 1 after 5s, IP 
+- 2026-10-18 01:22:13 IST **watchdog**: disarmed by /workspace/snapchain-tutorial/.provision-state/watchdog.disarm (no teardown)
+- 2026-10-18 01:23:13 IST: **BLOCKED**: `volumes size limit exceeded (resource_limit_exceeded)` creating the 2000 GB volume. This is an account-wide Hetzner quota (console.hetzner.cloud/limits). No server and no volume exist; nothing billable. Left in place (free): firewall snapchain-read-node-fw (id <FIREWALL_ID>), ssh-key snapchain-run-key. Watchdog disarmed, since there is nothing billable to guard. Waiting for a decision.

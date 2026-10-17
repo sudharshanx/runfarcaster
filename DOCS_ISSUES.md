@@ -116,3 +116,9 @@ against a live node, because none was run in this phase.
 ## 15. `@farcaster/core` needs a `Buffer` polyfill in browsers
 - **True:** `makeLinkAdd` → `validateLinkType` uses the global `Buffer`, so a follow fails in a browser without a polyfill. Core 0.20.0 also ships `@faker-js/faker` as a runtime dependency, affected by GHSA-qxc2-j82w-r537, and calls it at import time. This client never calls `helpers.fake`.
 - **Verified:** unit test `no-buffer.test.ts`; `npm audit`; a stub test that broke page load.
+
+## 16. Hetzner default account limits block the documented 2 TB disk (found in the live run)
+- **Context:** Getting Started says 2 TB of free storage. On Hetzner Cloud that means a volume, because no ≥16 GB shared type has more than 320 GB of local disk.
+- **What happened (2026-10-18 01:21 IST):** `hcloud volume create --size 2000` failed with `volumes size limit exceeded (resource_limit_exceeded)` on a project that had no volumes at all.
+- **True:** Hetzner enforces an *account-wide* total volume size limit (console → Limits, shared across projects). Fresh accounts sit below 2 TB, and raising it is a manual request. None of the Snapchain docs mention provider quotas.
+- **In this repo:** provision.sh now stops with this explanation. The tutorial README should tell readers to check the limit before step 1.
