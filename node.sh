@@ -250,10 +250,18 @@ run_bootstrap() {
     sleep 5; elapsed=$(( elapsed + 5 ))
   done
   # Stop the trailing `docker compose logs -f` (the node itself is detached and keeps running).
-  kill -TERM "$pid" 2>/dev/null || true
+  # `script` starts its child in a new session, so killing $pid alone leaves `docker compose logs -f`
+  # orphaned (seen on the first live run): kill the whole process tree, leaves first.
+  kill_tree "$pid"
   wait "$pid" 2>/dev/null || true
   rm -f "$tmp"
   node_running || die "bootstrap finished but the snapchain container is not running"
+}
+
+kill_tree() {
+  local p="$1" c
+  for c in $(pgrep -P "$p" 2>/dev/null || true); do kill_tree "$c"; done
+  kill -TERM "$p" 2>/dev/null || true
 }
 
 # Reads /v1/info JSON on stdin, prints one status line, exits 0 iff synced.

@@ -122,3 +122,15 @@ against a live node, because none was run in this phase.
 - **What happened (2026-10-18 01:21 IST):** `hcloud volume create --size 2000` failed with `volumes size limit exceeded (resource_limit_exceeded)` on a project that had no volumes at all.
 - **True:** Hetzner enforces an *account-wide* total volume size limit (console → Limits, shared across projects). Fresh accounts sit below 2 TB, and raising it is a manual request. None of the Snapchain docs mention provider quotas.
 - **In this repo:** provision.sh now stops with this explanation. The tutorial README should tell readers to check the limit before step 1.
+
+## 17. Snapshot restore needs far more temporary disk than the docs suggest
+- **Pages:** Getting Started ("The snapshot is several hundred gigabytes") and the README (1.5 TB free storage).
+- **True:** `download_snapshots` in `src/storage/db/snapshot.rs` (fc87f26, l.265-430) handles each shard in three steps, and nothing is deleted until all shards are done:
+  1. Downloads all gzipped chunks.
+  2. Gunzips all of them into one *uncompressed* `shard_N_snapshot.tar`.
+  3. Unpacks that into `.rocks`.
+
+  `remove_dir_all(snapshot_dir)` only runs after the last shard. Peak usage is therefore about compressed chunks + uncompressed tars + database for all shards together. On 2026-10-18 mainnet that was 5689 chunks of about 91 MB (≈520 GB compressed), so the peak is well above 1 TB. That likely explains the 1.5-2 TB figure, but no doc says so.
+  - Also: a chunk download is retried only 5 times, 10 s apart, before the whole restore fails (l.361).
+- **Workaround in this repo:** `snapshot-space-saver.sh` frees consumed chunks, hole-punches the already-read part of the tar and deletes finished tars. With it, a ~1 TB volume should be enough, but that has not been measured yet; see MEASUREMENTS.md.
+- **Verified:** read the source; watched the restore logs on the live VM.
