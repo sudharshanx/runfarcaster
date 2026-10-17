@@ -19,3 +19,7 @@
 - 2026-10-18 01:46:51 IST: FIX: the watchdog never picked up the live price (the API now returns .location and datacenter is null), so it sat on the conservative $0.35/h fallback. Fixed; restarted as pid 23663 with WATCHDOG_T0=01:26:33 IST so elapsed time stays continuous. Live rate $0.1638/h. The old watchdog (16045) stopped with no teardown.
 - 2026-10-18 01:48:18 IST progress: du=17G df=2% mem_used=787MiB Progress: 218/5689 chunks (3%) (ETA: 4h29m) info=none disk_full=no
 - 2026-10-18 02:02:13 IST **watchdog**: started (pid 29229), MAX_USD=5, hang=7200s, wall cap=86400s, fallback rate=0.35/h
+- 2026-10-18 02:02:18 IST: FIX: the watchdog's SSH probe had no overall timeout, so a hung probe could block the budget check. Added timeout 90 and keepalives. Restarted as pid 29229 (same T0). OBSERVED: box background processes stalled for about 4-5 min around 01:56-02:00 IST while the agent was idle (status file stuck at 01:56:14). The box-side watchdog may not run while the box is paused.
+- 2026-10-18 02:02:36 IST progress: du=40G df=5% mem_used=791MiB Progress: 508/5689 chunks (8%) (ETA: 4h14m) info=none disk_full=no
+- 2026-10-18 02:12:37 IST progress: du=55G df=6% mem_used=803MiB Progress: 686/5689 chunks (12%) (ETA: 4h15m) info=none disk_full=no
+- 2026-10-18 02:22:39 IST progress: du=68G df=8% mem_used=808MiB Progress: 855/5689 chunks (15%) (ETA: 4h14m) info=none disk_full=no
