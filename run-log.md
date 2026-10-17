@@ -5,3 +5,11 @@
 - 2026-10-18 01:21:10 IST: provision.sh exit 1 after 5s, IP 
 - 2026-10-18 01:22:13 IST **watchdog**: disarmed by /workspace/snapchain-tutorial/.provision-state/watchdog.disarm (no teardown)
 - 2026-10-18 01:23:13 IST: **BLOCKED**: `volumes size limit exceeded (resource_limit_exceeded)` creating the 2000 GB volume. This is an account-wide Hetzner quota (console.hetzner.cloud/limits). No server and no volume exist; nothing billable. Left in place (free): firewall snapchain-read-node-fw (id <FIREWALL_ID>), ssh-key snapchain-run-key. Watchdog disarmed, since there is nothing billable to guard. Waiting for a decision.
+- 2026-10-18 01:26:33 IST: revised run approved 01:25 IST: cax31 + 1000 GB volume (account volume quota 1024 GB), reuse firewall + ssh key, MAX_USD=5, EXPECTED_HOURS=16. Added disk-guard.sh (VM: stop node at 90%) and VOLUME_GB.
+- 2026-10-18 01:26:33 IST **watchdog**: started (pid 16045), MAX_USD=5, hang=7200s, wall cap=86400s, fallback rate=0.35/h
+- 2026-10-18 01:26:49 IST: provision.sh start
+- 2026-10-18 01:27:24 IST: provision.sh exit 0 after 35s; IP <SERVER_IP>
+- 2026-10-18 01:35:50 IST: SSH from the box egresses via a rotating AWS IP pool (44.219.149.85, 3.218.13.145, 52.6.169.241, 54.156.203.46 seen) and outbound HTTP via 140.248.50.0/24, so the /24 SSH rule blocked SSH. Opened 22/tcp to 0.0.0.0/0 on the firewall; sshd allows key-only auth (verified via sshd -T).
+- 2026-10-18 01:36:03 IST: disk-guard installed on VM (systemd timer, every 60s, LIMIT_PCT=90, marker /root/snapchain-DISK-FULL). sshd PasswordAuthentication set to no.
+- 2026-10-18 01:38:17 IST progress: du=1.1G df=1% mem_used=862MiB Progress: 14/5689 chunks (0%) (ETA: 4h50m) info=none disk_full=no
+- 2026-10-18 01:38:23 IST: **MILESTONE 1**: server snapchain-read-node (id <SERVER_ID>, cax31 aarch64, fsn1, Ubuntu 24.04.4) IP <SERVER_IP>. 1000 GB volume (id <VOLUME_ID>) mounted at /root/snapchain (984G ext4). Bootstrap sha256 fe700921…a43d matches the research copy. Image farcasterxyz/snapchain:latest runs as arm64 (digest sha256:15c19fb8…ee82). Snapshot download started 01:37:4x IST: 5689 chunks of ~91 MB (≈520 GB zipped), node ETA 4h57m. Watchdog pid 16045; disk-guard timer active; progress logger every 10 min.

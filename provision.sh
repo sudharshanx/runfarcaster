@@ -27,7 +27,12 @@
 #   IMAGE=ubuntu-24.04
 #   REQUIRED_DISK_GB=2000      Disk the node needs (docs site: 2 TB; repo README: 1.5 TB).
 #                              A volume is added only if the server type's local disk is smaller.
-#   VOLUME_SIZE_GB=$REQUIRED_DISK_GB   Hetzner volumes: 10 GB .. 10 TB.
+#   VOLUME_GB=$REQUIRED_DISK_GB   Volume size (alias: VOLUME_SIZE_GB). Hetzner volumes: 10 GB .. 10 TB,
+#                              BUT new Hetzner accounts have an account-wide volume quota of 1024 GB
+#                              (console.hetzner.cloud/limits) and may not be allowed to raise it yet.
+#                              VOLUME_GB=1000 fits that quota; it is below the documented 1.5-2 TB, an
+#                              experiment (a synced DB example in the docs showed ~549 GB). Pair it with
+#                              disk-guard.sh, which stops the node at 90% full.
 #   MIN_RAM_GB=16
 #   SSH_SOURCE_CIDRS=0.0.0.0/0,::/0    Comma list allowed to reach port 22. Narrow this to your IP.
 #   PORT_PROFILE=docs          "docs": 3381/tcp, 3382/udp, 3383/tcp (+22, 80, 443).
@@ -46,7 +51,7 @@ SERVER_TYPE_CANDIDATES="${SERVER_TYPE_CANDIDATES:-cx43 cax31 cpx42 ccx23}"
 LOCATION="${LOCATION:-fsn1}"
 IMAGE="${IMAGE:-ubuntu-24.04}"
 REQUIRED_DISK_GB="${REQUIRED_DISK_GB:-2000}"
-VOLUME_SIZE_GB="${VOLUME_SIZE_GB:-$REQUIRED_DISK_GB}"
+VOLUME_SIZE_GB="${VOLUME_GB:-${VOLUME_SIZE_GB:-$REQUIRED_DISK_GB}}"
 MIN_RAM_GB="${MIN_RAM_GB:-16}"
 SSH_SOURCE_CIDRS="${SSH_SOURCE_CIDRS:-0.0.0.0/0,::/0}"
 PORT_PROFILE="${PORT_PROFILE:-docs}"

@@ -81,7 +81,7 @@ probe() {  # prints a progress fingerprint, empty if unreachable
   [[ -n "$SSH_KEY_FILE" && -n "$ip" ]] || return 0
   ssh -4 -i "$SSH_KEY_FILE" -o BatchMode=yes -o ConnectTimeout=15 -o StrictHostKeyChecking=accept-new \
     -o UserKnownHostsFile="$STATE_DIR/known_hosts" "root@$ip" \
-    'du -sb /root/snapchain 2>/dev/null | cut -f1; curl -s -m 5 127.0.0.1:3381/v1/info 2>/dev/null | jq -c "[.shardInfos[]?.maxHeight]" 2>/dev/null; cat /root/snapchain-node.progress 2>/dev/null | tail -1' 2>/dev/null | tr '\n' ' ' || true
+    'du -sb /root/snapchain 2>/dev/null | cut -f1; curl -s -m 5 127.0.0.1:3381/v1/info 2>/dev/null | jq -c "[.shardInfos[]?.maxHeight]" 2>/dev/null; test -f /root/snapchain-DISK-FULL && echo DISKFULL' 2>/dev/null | tr '\n' ' ' || true
 }
 
 do_teardown() {
@@ -121,6 +121,10 @@ while :; do
   if [[ -n "$ip" ]]; then
     fp="$(probe "$ip")"
     if [[ -n "${fp// /}" && "$fp" != "$LAST_PROBE" ]]; then LAST_PROGRESS_AT="$now"; LAST_PROBE="$fp"; fi
+    if [[ "$fp" == *DISKFULL* ]]; then
+      [[ -f "$STATE_DIR/disk-full" ]] || { ist >"$STATE_DIR/disk-full"; runlog "DISK-FULL: disk-guard stopped the node (>=90% used). No auto-teardown; waiting for a decision (budget cap still enforced)."; }
+      LAST_PROGRESS_AT="$now"
+    fi
     (( now - LAST_PROGRESS_AT >= HANG_SECS )) && do_teardown "hang: no progress (or SSH unreachable) for $((now - LAST_PROGRESS_AT))s; last probe: ${LAST_PROBE:-none}"
   else
     LAST_PROGRESS_AT="$now"  # nothing to hang yet
