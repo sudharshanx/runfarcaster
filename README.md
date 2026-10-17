@@ -25,6 +25,8 @@ Then remove everything with `CONFIRM=snapchain-read-node ./teardown.sh`. It dele
 and the firewall, then lists what is left to show it is gone.
 
 Tips:
+- **Check your Hetzner volume quota before step 1.** It is set per account at https://console.hetzner.cloud/limits and shared by all your projects. New accounts get **1024 GB** in total and may not be allowed to request more yet. If the volume needs more than that, `provision.sh` stops with `volumes size limit exceeded (resource_limit_exceeded)`. To fit the quota, run `VOLUME_GB=1000 ./provision.sh`. The docs call for 1.5–2 TB, so 1 TB is an experiment (one synced-DB example in the docs showed about 549 GB). Install `disk-guard.sh` on the VM: it stops the node cleanly at 90% full (`scp disk-guard.sh root@$IP: && ssh root@$IP ./disk-guard.sh install`). `MIN_FREE_GB=900` lets `node.sh` accept the smaller disk.
+- `watchdog.sh` runs on your own machine. It tears everything down before the projected bill reaches `MAX_USD`, if the node stops making progress, or at a wall-clock cap. Start it before `provision.sh`.
 - Sync takes hours. Run step 2 inside `tmux` on the VM, or run `ssh root@$IP 'bash -s wait' < node.sh` later.
 - `SNAPCHAIN_AGREE_NO_REWARDS=yes` records the official "running a node earns no rewards" agreement for you. Read it first: https://snapchain.farcaster.xyz/getting-started
 - To preview the cost without creating anything, run `ESTIMATE_ONLY=1 ./provision.sh`.
@@ -79,6 +81,8 @@ node URL can be changed in the client UI. An empty value means same origin.
 |---|---|
 | `provision.sh` / `teardown.sh` | Hetzner via the `hcloud` CLI, with a cost guard. The token is read from env and never printed. |
 | `node.sh` | Read-node installer, sync wait and health check. Idempotent, `DRY_RUN=1` supported. |
+| `watchdog.sh` | Runs on your machine. Budget, hang and wall-clock guard that runs `teardown.sh` automatically. |
+| `disk-guard.sh` | Runs on the VM (systemd timer). Stops the node cleanly at 90% disk use. |
 | `deploy-client.sh`, `deploy/` | Caddy, compose and firewall rules |
 | `client/` | Vite + TypeScript client |
 | `test/` | node.sh tests with fake docker and a mock node |

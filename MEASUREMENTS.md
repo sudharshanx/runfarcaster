@@ -15,6 +15,14 @@ No node has been run yet. Every value below is **NOT YET MEASURED**. Fill them i
 
 Test account for a future live run: FID <TEST_FID> (@<TEST_USERNAME>), custody <TEST_CUSTODY_ADDRESS>. Checked onchain with a read-only call, see `e2e/test-account.example.env`.
 
+## Disk choice for the first live run (2026-10-18)
+
+- **Quota:** the Hetzner account's volume quota is **1024 GB in total**, the default for new accounts, which cannot ask for an increase yet. A 2000 GB create failed with `volumes size limit exceeded`.
+- **What we used:** the run uses **cax31 + a 1000 GB volume** (`VOLUME_GB=1000`). That is below the documented 1.5 TB (README) and 2 TB (docs site), so it is an **experiment**. The supporting evidence is one synced-DB example in the docs at about 549 GB, and a snapshot of 5689 chunks of about 91 MB (≈520 GB compressed) according to the node's own log.
+- **Safety net:** `disk-guard.sh` stops the node at 90% full rather than letting RocksDB hit ENOSPC.
+- **Cost:** estimated 0.040 + 0.001 + 1000 × 0.0767 / 624.7 ≈ **$0.164/h**, about $2.62 for 16 h. This is an estimate from the price list.
+- Measured results go in the table above when the run finishes.
+
 ## ESTIMATE (from the price list, not a measurement)
 
 Source: read-only `GET https://api.hetzner.cloud/v1/pricing` and `/v1/server_types`, 2026-10-18, gross USD, VAT 0.
