@@ -1,6 +1,6 @@
 ---
 title: "Proof: what we ran"
-description: Logs, numbers and screenshots from our one mainnet run, the test results and what we have not tried. Read it to check the claims on the other pages.
+description: Logs, numbers and screenshots from our mainnet run and our first mainnet cast, the test results and what we have not tried. Read it to check the claims on the other pages.
 ---
 
 import TestedTable from "../../components/TestedTable.astro";
@@ -11,6 +11,19 @@ import mobile375 from "../../assets/client-mobile-375.png";
 import desktop from "../../assets/client-desktop.png";
 
 We ran the 3 steps once, on mainnet, on 2026-10-18. Times are IST (UTC+5:30). The server was a Hetzner cax31 (ARM64, 8 vCPU, 16 GB RAM) in fsn1 with a 1000 GB volume and Ubuntu 24.04. The node ran Snapchain v0.14.3. The full notes are in <RepoLink path="MEASUREMENTS.md" /> and <RepoLink path="run-log.md" />. We replaced the server's IP, its Hetzner IDs and our test account with placeholders before publishing them.
+
+## Posted to mainnet
+
+On 2026-10-18 we added an app key to our own Farcaster account and posted a cast through our node.
+
+| What | Time (IST) |
+|---|---|
+| Gasless `KEY_ADD` accepted: signer source `OFFCHAIN`, scopes `CAST_ADD`, `REACTION_ADD` and `LINK_ADD`, 1-day expiry, nonce 1 | 20:53:29 |
+| Cast confirmed by the node | 20:53:47 |
+
+The cast says "My first cast on a local node". Hash `0x4b4eb31bb28cf0d6d0583c7fc022a60f0af50ec2`. [See the cast](https://farcaster.xyz/nashrad/0x4b4eb31b).
+
+That is 18 seconds from the key to the cast. The app ran on `localhost` on our own computer (client commit `7f2b71f`), with `SNAPCHAIN_NODE_URL` pointing at our node through Caddy. We typed the recovery phrase into that browser tab. It never left the browser: only the signed `KEY_ADD` and the cast went to the node. We have not sent a like, recast or follow on mainnet.
 
 ## The sync, from the log
 

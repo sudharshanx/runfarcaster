@@ -5,14 +5,14 @@ description: How to add an app key with your recovery phrase and post through yo
 
 import RepoLink from "../../components/RepoLink.astro";
 
-:::caution[Not yet tested on mainnet]
-Only unit tests and a local mock node have run this part. Adding a key and posting a cast on mainnet with it have not been tested. If you try it, use a test account and report what happened ([Vouches](../proof/#vouches)).
+:::note[What has been tested]
+Adding an app key and posting a cast have been tested on mainnet. Likes, recasts and follows have been tested against a mock node only. The mainnet test is on [Proof](../proof/#posted-to-mainnet). If you try it, report what happened ([Vouches](../proof/#vouches)).
 :::
 
 You need:
 - A **test** Farcaster account and its recovery phrase. Read [What the app does with your recovery phrase](#what-the-app-does-with-your-recovery-phrase) first.
 - Node.js 22.12 or later (22.x, 24.x or 26+) and this repo on your computer.
-- Your node from the [Quickstart](../quickstart/).
+- Your node from the [Quickstart](../quickstart/), and the HTTPS address that `deploy-client.sh` printed.
 
 :::note[If you started the watchdog]
 If you started the watchdog in step 1 ([Only trying it?](../quickstart/#try-it)), it deletes the server, the volume and the firewall 24 hours after it started, even if the node is healthy. To keep the node: `touch .provision-state/watchdog.disarm`. Within a minute, `tail -n 1 .provision-state/watchdog.log` should show `disarmed by …`.
@@ -26,7 +26,7 @@ Never paste a recovery phrase into an AI assistant or a chat.
 
 Your recovery phrase can do anything with your account. The address `deploy-client.sh` prints is usually `<ip-with-dashes>.sslip.io`. sslip.io is a DNS service someone else runs. Whoever controls that DNS, or the server, could serve a changed page that sends your phrase elsewhere. A page served from `localhost` comes from files on your own disk, built from code you can read.
 
-So for adding the key, run the app locally and reach the node through an SSH tunnel. Port 3381 stays closed to the internet. The add-key steps show a **Check the address** warning whenever the app is not on `localhost`.
+So for adding the key, run the app on your own computer at `localhost`. Its dev server passes `/v1` requests on to your node's HTTPS address, so you need no SSH tunnel, and ports 3381 and 3383 stay closed. Only signed messages travel to the node. The phrase never leaves your browser tab. The add-key steps show a **Check the address** warning whenever the app is not on `localhost`.
 
 ## What the app does with your recovery phrase
 
@@ -52,30 +52,25 @@ JavaScript cannot promise that the browser has wiped the phrase from memory. Tha
 | Post casts (`CAST_ADD`) | Move money or sign transactions |
 | Like and recast (`REACTION_ADD`) | Delete casts, unfollow or edit your profile; the app does not ask for those scopes |
 | Follow (`LINK_ADD`) | Approve or cancel other keys (`KEY_ADD` and `KEY_REMOVE` are never scopes) |
-| Work until it expires: 7 days by default, 90 at most, renewed each time it is used | Keep working after your custody address cancels it |
+| Work until it expires: 7 days by default (pick 1 day for a test), 90 at most, renewed each time it is used | Keep working after your custody address cancels it |
 
 <RepoLink path="SECURITY.md" /> has the full list.
 
 ## 1. Run the app locally
 
-In one terminal, open the tunnel and leave it running:
+From the repo folder, start the app. Put your node's HTTPS address in `SNAPCHAIN_NODE_URL`:
 
-```bash title="your computer, terminal 1"
-IP=$(hcloud server ip snapchain-read-node)
-ssh -N -L 3381:127.0.0.1:3381 root@$IP
-```
-
-In a second terminal, start the app. Its dev server passes `/v1` to `http://127.0.0.1:3381`, which is the tunnel:
-
-```bash title="your computer, terminal 2"
+```bash title="your computer"
 cd client
 npm ci --ignore-scripts
-npm run dev
+SNAPCHAIN_NODE_URL=https://<your node> npm run dev
 ```
+
+Leave it running. You should see `ready` and `Local: http://localhost:5317/`. Ctrl-C stops it.
 
 `npm ci` installs the exact versions in `package-lock.json`. `--ignore-scripts` stops packages from running their own install scripts; the app builds and its tests pass without them.
 
-Open http://localhost:5317. The status at the top should say **Connected to your node**; **Details** shows the version and how far behind each shard is.
+Open http://localhost:5317. The status at the top should say **Connected to your node**; **Details** shows the version and how far behind each shard is. To see your feed, type your FID or username under **Enter your FID to see your feed** and press **Show my feed**.
 
 The app uses port 5317, not Vite's usual 5173. A browser keeps one `localStorage` per address and port, and other Vite projects use 5173. If 5317 is taken, `npm run dev` stops with an error instead of moving to another port.
 
@@ -83,17 +78,23 @@ The page carries a Content-Security-Policy: it can only connect to its own addre
 
 ## 2. Add an app key
 
-Press **Add app key**. A dialog walks you through 4 steps: **About**, **Before you start**, **Sign** and **Done**.
+Before you type the phrase, check that the address bar shows exactly `localhost:5317`, close other tabs, and turn off clipboard history and screen sharing.
 
-1. **About** and **Before you start** explain what an app key can do and what happens to the phrase. Press **I understand, continue**.
-2. On **Sign**, type the test account's recovery phrase (12 to 24 words). If you paste it instead, clear your clipboard afterwards: clipboard history and sync tools can keep a copy, and the app cannot clear it. Under **Key expires after**, pick 1, 7, 30 or 90 days. The default is 7. Press **Add app key**.
-3. The app empties the phrase field. From the phrase it works out your custody address, asks the node which FID that address owns, and reads `currentUserNonce`. Then it signs one gasless `KEY_ADD` and submits it.
-4. **Done** says the node accepted the key. In **Settings**, the **App key** card shows **Waiting for your node**, then **Active** when `GET /v1/signer` returns the key.
+In the post box at the top (**To post, add an app key first.**), press **Add app key**. A dialog walks you through 4 steps:
+
+1. **What an app key is**: press **Next**.
+2. **Before you start**: read it. There must be no yellow **Check the address.** box; if there is, you are not on `localhost`, so stop. Press **I understand, continue**.
+3. **Sign and send**: type the test account's recovery phrase (12 to 24 words) under **Recovery phrase**. If you paste it instead, clear your clipboard afterwards: clipboard history and sync tools can keep a copy, and the app cannot clear it. Under **Key expires after**, pick **1 day** for a test (the default is 7 days). Press **Add app key**. You see **Signed for FID** with your FID, then **Sending to your node**. If it shows another FID, the phrase belongs to another account.
+4. **App key added**: the phrase field is gone. Press **Close** or **Write a cast**.
+
+From the phrase, the app works out your custody address, asks the node which FID that address owns, and reads `currentUserNonce`. Then it signs one gasless `KEY_ADD` and submits it.
+
+The **App key** card shows **Waiting for your node**, then **Active** when `GET /v1/signer` returns the key. The app checks every 4 seconds. Post only after it says **Active**; a cast sent earlier is rejected and marked **Failed**.
 
 Check it from the terminal:
 
 ```bash
-curl -s "http://127.0.0.1:3381/v1/signersByFid?fid=<your-fid>" | jq '.currentUserNonce, [.signers[] | .source]'
+curl -s "https://<your node>/v1/signersByFid?fid=<your-fid>" | jq '.currentUserNonce, [.signers[] | .source]'
 ```
 
 `currentUserNonce` should be one higher than before, with one more signer in the list.
@@ -104,11 +105,11 @@ The app key is saved in the browser for `localhost:5317` only. The copy of the a
 
 | Action | Where | Message type |
 |---|---|---|
-| Cast | Type in the box at the top of the feed, press **Post** (a standard cast, up to 320 bytes) | `CAST_ADD` |
+| Cast | Type in the post box at the top (**New cast as FID** …), press **Post** (a standard cast, up to 320 bytes) | `CAST_ADD` |
 | Follow | In **Settings**, **Follow someone**: type an FID in **FID to follow**, press **Follow** | `LINK_ADD` (type `follow`) |
 | Like, recast | The heart and repeat buttons under each cast | `REACTION_ADD` |
 
-Each one shows up under **Settings**, **Sent** with a state:
+A cast appears at the top of the feed with a state badge. Every message also shows up in the **Sent** panel (right column, or the **Settings** tab on a narrow window) with the same state:
 
 | State | Meaning |
 |---|---|
@@ -127,7 +128,7 @@ The app can only add. It has no button to delete a cast, unfollow or unlike.
 Open your profile in any other Farcaster app. The app does not show hashes; ask your node:
 
 ```bash
-curl -s "http://127.0.0.1:3381/v1/castsByFid?fid=<your-fid>&pageSize=1&reverse=true" \
+curl -s "https://<your node>/v1/castsByFid?fid=<your-fid>&pageSize=1&reverse=true" \
   | jq '.messages[0] | {hash, text: .data.castAddBody.text}'
 ```
 
@@ -137,6 +138,6 @@ curl -s "http://127.0.0.1:3381/v1/castsByFid?fid=<your-fid>&pageSize=1&reverse=t
 
 - **Remove from this browser** (Settings, App key) deletes the key from this browser. The network still accepts it until it expires.
 - A key you stop using expires when its lifetime runs out.
-- To cancel it now, send a `KEY_REMOVE` from your custody wallet, or use the app you manage keys with. The RunFarcaster app cannot do this.
+- This app cannot revoke keys yet. A gasless key is cancelled with a `KEY_REMOVE` message signed by your custody address; removing a key through the KeyRegistry contract does not apply to it. A 1-day expiry keeps a test key short-lived.
 
-When you are done on `localhost`, press **Remove from this browser**, so no other page on `localhost:5317` can read the key later. Then stop the tunnel and the dev server with Ctrl-C.
+When you are done on `localhost`, press **Remove from this browser**, so no other page on `localhost:5317` can read the key later. Then stop the dev server with Ctrl-C.

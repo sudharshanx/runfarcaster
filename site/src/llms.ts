@@ -31,9 +31,10 @@ const TESTED = `| What | Status |
 | node.sh installing those helpers by itself (new) | Unit tests only; not yet used in a live sync |
 | watchdog.sh | Ran live (old version); new progress check unit-tested |
 | provision.sh starting the watchdog by itself (new) | Unit tests only |
-| Gasless KEY_ADD on mainnet | Not tried (unit tests and a local mock node only) |
-| Cast, like, recast, follow on mainnet | Not tried (unit tests and a local mock node only) |
-| Time from sending a message to seeing it | Not measured |
+| Gasless KEY_ADD on mainnet | Ran live once (2026-10-18, 1-day key, signed in the browser on localhost) |
+| Cast on mainnet | Ran live once; confirmed 18 s after the key was added |
+| Like, recast, follow on mainnet | Not tried (unit tests and a local mock node only) |
+| Time from sending a message to seeing it | Not measured precisely (one cast: key added to cast confirmed in 18 s) |
 | teardown.sh against real servers | Not tried (DRY_RUN and a fake hcloud in tests) |
 | 2 TB volume, x86 cx43 | Not tried |
 | Inbound 3382/udp closed | 2-minute test only |`;

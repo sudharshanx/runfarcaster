@@ -149,7 +149,7 @@ const right = `<svg aria-hidden="true" width="12" height="12" viewBox="0 0 12 12
         <p class="hero-term-note">You need a Hetzner token and an SSH key first. <a href={u("quickstart/")}>The Quickstart</a> has the full setup.</p>
         <p class="hero-note">
           <svg aria-hidden="true" width="14" height="14" viewBox="0 0 14 14"><circle cx="7" cy="7" r="6" fill="none" stroke="currentColor" stroke-width="1.2"/><path d="M4.3 7.2 6.2 9l3.5-4" fill="none" stroke="currentColor" stroke-width="1.3"/></svg>
-          We ran a node on Farcaster mainnet on 18 Oct 2026.
+          We ran a node on Farcaster mainnet and posted from it on 18 Oct 2026.
         </p>
         {/* AUTHOR: your intro line, one or two sentences in your own words: who you are and why you wanted your own node. */}
       </section>
@@ -223,8 +223,8 @@ const right = `<svg aria-hidden="true" width="12" height="12" viewBox="0 0 12 12
           <p>It can&rsquo;t move money, edit your profile or approve other keys.</p>
           <h3 class="h-sm">Adding the key costs no gas.</h3>
           <p>Your browser signs one message for your node. You make no crypto transaction.</p>
-          <h3 class="h-sm">What we have not tested yet</h3>
-          <p>We have not added a key or posted on mainnet. So far only unit tests and a mock node have run this part.</p>
+          <h3 class="h-sm">Tested on mainnet.</h3>
+          <p>We added a key and posted a cast on 18 Oct 2026. Likes, recasts and follows have only run against a mock node.</p>
         </div>
       </section>
 
@@ -254,6 +254,17 @@ const right = `<svg aria-hidden="true" width="12" height="12" viewBox="0 0 12 12
         <div>
           <p class="eyebrow">Proof of work</p>
           <h2 id="proof-title" class="h-md">We ran it ourselves.</h2>
+          <div class="proof-cast">
+            <p class="eyebrow">Mainnet</p>
+            <h3 class="h-sm">Posted to mainnet from our own node.</h3>
+            <dl class="pc-times">
+              <div><dt>Key added</dt><dd>20:53:29 IST</dd></div>
+              <div><dt>Cast confirmed</dt><dd>20:53:47 IST</dd></div>
+            </dl>
+            <blockquote class="pc-text">My first cast on a local node</blockquote>
+            <p class="pc-note">18 Oct 2026, from our own account. The phrase was typed into the app on localhost and never left the browser.</p>
+            <a class="textlink" href="https://farcaster.xyz/nashrad/0x4b4eb31b">See the cast<Fragment set:html={right} /></a>
+          </div>
           <p>We synced our own node on 18 Oct 2026. It took 14 hours. When it finished, it held 914M messages.</p>
           <p>The proof page has our logs, screenshots and every number we measured.</p>
           <a class="textlink" href={u("proof/")}>See the proof<Fragment set:html={right} /></a>

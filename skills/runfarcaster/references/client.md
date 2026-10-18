@@ -22,41 +22,35 @@ For a specific SSH key: `SSH_OPTS="-i <keyfile>" ./deploy-client.sh "$IP"`.
 
 If the user started the watchdog in step 1, remind them that it deletes the node 24 h after step 1. To keep it: `touch .provision-state/watchdog.disarm`.
 
-## Posting: add an app key (not tested on mainnet)
+## Posting: add an app key
 
-Adding an app key and casting have run only in unit tests and against a local mock node. Say so. Suggest a test account.
+Adding an app key and posting a cast have been tested on mainnet once. Likes, recasts and follows have been tested against a mock node only. Say so. Suggest a test account and a 1-day key.
 
-The user adds the key in a copy of the app on their own computer, not on the HTTPS address. A page from `localhost` comes from files on their own disk. The sslip.io address depends on a DNS service someone else runs.
-
-Terminal 1, the tunnel (leave it running):
-
-```bash
-IP=$(hcloud server ip snapchain-read-node)
-ssh -N -L 3381:127.0.0.1:3381 root@$IP
-```
-
-Terminal 2, the app:
+The user adds the key in a copy of the app on their own computer, not on the HTTPS address. A page from `localhost` comes from files on their own disk. The sslip.io address depends on a DNS service someone else runs. The dev server passes `/v1` on to the node's HTTPS address, so no SSH tunnel is needed:
 
 ```bash
 cd client
 npm ci --ignore-scripts
-npm run dev
+SNAPCHAIN_NODE_URL=https://<name> npm run dev
 ```
 
-The user opens http://localhost:5317. The status at the top should say **Connected to your node**.
+`<name>` is the address `deploy-client.sh` printed. The user opens http://localhost:5317. The status at the top should say **Connected to your node**. The address bar must show exactly `localhost:5317`, and the dialog must not show a **Check the address.** box.
 
 Then the user, not you:
 
-1. Presses **Add app key**. A dialog has 4 steps: About, Before you start, Sign, Done.
-2. On **Sign**, types the test account's recovery phrase into that page, picks **Key expires after** (1, 7, 30 or 90 days) and presses **Add app key**.
-3. Sees **Done**. In **Settings**, the **App key** card shows **Waiting for your node**, then **Active**.
+1. Presses **Add app key**. The dialog has 4 steps: **What an app key is** (Next), **Before you start** (I understand, continue), **Sign and send**, **App key added**.
+2. On **Sign and send**, types the test account's recovery phrase under **Recovery phrase**, picks **1 day** under **Key expires after** and presses **Add app key**. It shows **Signed for FID** with their FID.
+3. Waits until the **App key** card shows **Active** (it shows **Waiting for your node** first). A cast sent before that fails.
+4. Posts from the post box with **Post**. The cast shows **Sending**, **Waiting for a block**, then **Confirmed**.
+
+This app cannot revoke keys. A gasless key is cancelled with a `KEY_REMOVE` signed by the custody address; KeyRegistry remove does not apply.
 
 Never ask for the phrase, and never offer to type or paste it for them.
 
 Check it from the terminal:
 
 ```bash
-curl -s "http://127.0.0.1:3381/v1/signersByFid?fid=<your-fid>" | jq '.currentUserNonce, [.signers[] | .source]'
+curl -s "https://<name>/v1/signersByFid?fid=<your-fid>" | jq '.currentUserNonce, [.signers[] | .source]'
 ```
 
 `currentUserNonce` should be one higher than before, with one more signer in the list.
@@ -75,4 +69,4 @@ Post from the local app. Each message shows a state under **Settings**, **Sent**
 
 The app can only add. It cannot delete a cast, unfollow or unlike.
 
-When done, the user presses **Remove from this browser**, then stops the tunnel and the dev server with Ctrl-C.
+When done, the user presses **Remove from this browser**, then stops the dev server with Ctrl-C.

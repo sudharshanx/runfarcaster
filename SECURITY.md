@@ -6,8 +6,8 @@ This is a guide for developers. A recovery phrase deserves the care you give `rm
 
 - It controls the whole Farcaster account and anything else in that wallet. Use a test account for this guide.
 - Only type it into code you have read, on your own computer. For the key step, run the app on `localhost`
-  (`ssh -N -L 3381:127.0.0.1:3381 root@$IP`, then `cd client && npm ci --ignore-scripts && npm run dev`, then
-  http://localhost:5317). A page served from `<ip>.sslip.io` depends on DNS that someone else runs; the app shows
+  (`cd client && npm ci --ignore-scripts`, then `SNAPCHAIN_NODE_URL=https://<name> npm run dev`, then
+  http://localhost:5317; the dev server passes `/v1` on to the node, so no SSH tunnel is needed). A page served from `<ip>.sslip.io` depends on DNS that someone else runs; the app shows
   a warning there.
 - Type it rather than paste it. If you paste, clear the clipboard afterwards: clipboard history and sync tools can
   keep a copy, and the app cannot clear it.

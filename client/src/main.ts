@@ -62,7 +62,7 @@ function originNote() {
   return h("div", { class: "notice notice-warn", id: "address-check" },
     h("p", {}, h("strong", {}, "Check the address. "),
       "This page is on ", h("span", { class: "host" }, location.hostname),
-      `. Before you paste your recovery phrase, open the app on your own computer at http://localhost:5317 instead (see "Your first cast" in the guide). Then a domain name you don't control can't swap the page.`));
+      `. Before you paste your recovery phrase, open the app on your own computer at http://localhost:5317 instead (see "Post with an app key" in the guide). Then a domain name you don't control can't swap the page.`));
 }
 
 // A short message that appears at the bottom of the screen (errors and confirmations).

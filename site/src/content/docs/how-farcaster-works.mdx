@@ -8,7 +8,7 @@ tableOfContents:
 import CopyPrompt from "../../components/CopyPrompt.astro";
 import RepoLink from "../../components/RepoLink.astro";
 
-<p class="byline">Updated on 18 October 2026<br />Tested on Hetzner cax31 (ARM64), Ubuntu 24.04, Snapchain v0.14.3, mainnet. Sending a real message to mainnet has not been tested yet; see <a href="../proof/#test-status">test status</a>.</p>
+<p class="byline">Updated on 18 October 2026<br />Tested on Hetzner cax31 (ARM64), Ubuntu 24.04, Snapchain v0.14.3, mainnet. Adding an app key and posting a cast have been tested on mainnet; likes, recasts and follows against a mock node only. See <a href="../proof/#test-status">test status</a>.</p>
 
 {/* AUTHOR: two or three sentences on what confused you most when you started, and what this page will make clear. */}
 
@@ -91,7 +91,7 @@ Send a signed message to `POST /v1/submitMessage` on your read node. The node va
 
 An HTTP `200` therefore means the node found the message valid and sent it on. It does not mean a validator has put it in a block. To find out, ask for the message back. `/v1/info` on a read node shows `mempoolSize: 4294967295` for shards 1 and 2, a placeholder value.
 
-This optional check sends 64 random bytes. It is the only write tested on mainnet so far:
+This optional check sends 64 random bytes, so the node rejects it and nothing is posted:
 
 ```bash title="Optional"
 head -c 64 /dev/urandom | curl -s -X POST "$NODE/v1/submitMessage" \

@@ -8,8 +8,8 @@ likes and follows through it. You need no API keys.
 
 Status: the 3 steps have been tested end to end once on mainnet (2026-10-18), on a Hetzner cax31 with a 1000 GB
 volume. On that hardware, expect about 14 hours from renting the server to a synced node, about $2.31 by the price
-list. The app was served over HTTPS from the node and tested read-only. Sending a real message to mainnet has not
-been tested. Numbers: `MEASUREMENTS.md`. Log:
+list. The app was served over HTTPS from the node. Adding an app key and posting a cast have been tested on mainnet;
+likes, recasts and follows have been tested against a mock node only. Numbers: `MEASUREMENTS.md`. Log:
 `run-log.md` (server details replaced with placeholders).
 
 Guide website: `site/`. Vouching: `VOUCHER.md`. Key handling: `SECURITY.md`.
@@ -98,9 +98,13 @@ Notes:
 For the one step that needs the phrase (adding an app key), run the app locally, not from the sslip.io address:
 
 ```bash
-ssh -N -L 3381:127.0.0.1:3381 root@$IP     # terminal 1: tunnel to the node
-cd client && npm ci --ignore-scripts && npm run dev   # terminal 2: open http://localhost:5317
+cd client && npm ci --ignore-scripts
+SNAPCHAIN_NODE_URL=https://<name> npm run dev   # <name>: the address deploy-client.sh printed; open http://localhost:5317
 ```
+
+The dev server passes `/v1` on to your node's HTTPS address, so no SSH tunnel is needed. Pick a 1-day key expiry
+for a test. The app cannot revoke keys yet: a gasless key is cancelled with a `KEY_REMOVE` message from the custody
+address.
 
 Port 5317 is fixed (`strictPort`), so the app's `localStorage` is not shared with other Vite projects on 5173.
 The page has a Content-Security-Policy that only lets it connect to its own address. Type the phrase, or clear
