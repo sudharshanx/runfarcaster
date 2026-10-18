@@ -139,15 +139,21 @@ Values from the read-only API calls on 2026-10-18 (currency USD, VAT 0; gross va
 
 ## Bounty-relevant citations
 
-- Gasless app keys: https://snapchain.farcaster.xyz/guides/writing-messages, introduced by
-  https://github.com/farcasterxyz/snapchain/pull/989 (merged 2026-07-30, merge commit
+- Gasless app keys: live on mainnet since engine version V16, `active_at: 1778173200` (2026-05-07 17:00 UTC,
+  22:30 IST) in `ENGINE_VERSION_SCHEDULE_MAINNET`, with `ProtocolFeature::GaslessSigners => self >= V16`
+  (https://github.com/farcasterxyz/snapchain/blob/fc87f2686472598143062a00e1c2b2633b2d87ab/src/version/version.rs,
+  checked 2026-10-18). Guide: https://snapchain.farcaster.xyz/guides/writing-messages, updated by the docs-only
+  https://github.com/farcasterxyz/snapchain/pull/989 ("docs: use gasless signers in the writing-messages guide", 1 file; merged 2026-07-30, merge commit
   `fa4ce09cd38934650ad5c7c7b3ffd3ebe96796f2`). The PR says gasless signers have been live on mainnet since V16
   (2026-05-07 22:30 IST). Its listed follow-ups are still open at `fc87f26`: the hello-world example is
   still onchain, and the HTTP reference has no `/v1/signer` or `/v1/signersByFid` page.
 - Read nodes accept writes and relay them to validators:
-  https://snapchain.farcaster.xyz/node-types#message-submission-and-the-mempool, added by
-  https://github.com/farcasterxyz/snapchain/pull/1034 (merged 2026-10-10 04:01 IST, merge commit
-  `cd3805a15e9b1a498a46dc373e10160e89d682f0`, shipped in v0.14.3 via #1039).
+  https://snapchain.farcaster.xyz/node-types#message-submission-and-the-mempool, documented by the docs-only
+  https://github.com/farcasterxyz/snapchain/pull/1034 ("docs: Document snapchain.sh and validator vs. read node differences"; merged 2026-10-10 04:01 IST, merge commit
+  `cd3805a15e9b1a498a46dc373e10160e89d682f0`, shipped in v0.14.3 via #1039). Code: `submit_message_internal` in
+  `src/network/server.rs` and `ReadNodeMempool` in `src/mempool/mempool.rs`.
+- Read nodes get onchain events inside blocks: `src/main.rs` at `fc87f26` starts
+  `connectors::onchain_events::Subscriber` only in the validator branch (`if app_config.read_node { ... } else { ... }`).
 - Older references the bounty wants improved, all fetched 2026-10-18 and checked in DOCS_ISSUES.md:
   - https://docs.farcaster.xyz/learn/architecture/overview
   - https://docs.farcaster.xyz/developers/guides/basics/hello-world

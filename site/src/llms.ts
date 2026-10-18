@@ -13,7 +13,7 @@ const GLANCE = `| | |
 | Steps | 3, plus teardown.sh at the end |
 | Sync time | 14 h 06 m from renting the server to fully synced (one run) |
 | Cost to sync | About $2.31 at $0.164 an hour (Hetzner price list; invoice not seen) |
-| Left running | About $120 a month |
+| Left running | About $102 a month (each item stops at its monthly price) |
 | Server | Hetzner cax31 (ARM64, 8 vCPU, 16 GB RAM) and a 1000 GB volume, Ubuntu 24.04 |
 | Disk | 557.86 GB database; the volume peaked at 75% full while the snapshot loaded |
 | Memory | About 2.5 GB in use once synced |

@@ -14,15 +14,19 @@ New words are explained in the [Glossary](../glossary/).
 - It downloads a snapshot of the network, then fetches each new block from the validators.
 - It keeps a full copy of every Farcaster message, and answers questions about them over HTTP.
 - It passes signed messages you send it on to the validators. See [Tutorial step 2](../tutorial/#step-2-your-node-passes-messages-on).
-- Validators make the blocks. A read node never does, and it earns no rewards. The official bootstrap asks you to accept that; `SNAPCHAIN_AGREE_NO_REWARDS=yes` gives that answer for you. Read it first at [Getting Started](https://snapchain.farcaster.xyz/getting-started).
+- Validators make the blocks. A read node never does, and it earns no rewards. The official bootstrap asks you to accept that; `SNAPCHAIN_AGREE_NO_REWARDS=yes` answers yes for you. Read the no-rewards terms first at [Getting Started](https://snapchain.farcaster.xyz/getting-started).
 
 ## What you need
 
-- A Hetzner Cloud account with an empty project, an API token for it with Read & Write access, and your SSH key uploaded to it. [Do it on Hetzner](../hetzner/) covers each one.
+- A Hetzner Cloud account with an empty project.
+- An API token for that project, Read & Write.
+- Your SSH key uploaded to that project.
 - On your computer: [`hcloud`](https://github.com/hetznercloud/cli), `jq`, `ssh`, `curl`, and Node.js 22.12 or later with npm.
 - A Hetzner volume limit of at least 1000 GB. Check it at [console.hetzner.cloud/limits](https://console.hetzner.cloud/limits).
 - About 14 hours during which the server can run without you.
 - Only to post: a Farcaster account. Use a test account. Reading needs no account.
+
+[Do it on Hetzner](../hetzner/) covers the Hetzner items.
 
 ```bash title="Check the tools"
 hcloud version && jq --version && node --version
@@ -46,16 +50,16 @@ Reading the feed needs no account. Posting needs an FID with storage, plus its r
 | Limit | What you see | What to do |
 |---|---|---|
 | New accounts may rent at most 1024 GB of volumes in total, across all projects. The official docs ask for 1.5 to 2 TB. | `volumes size limit exceeded (resource_limit_exceeded)` | Use `VOLUME_GB=1000`, as in the [Quickstart](../quickstart/). `node.sh` then adds two disk helpers so the snapshot fits. |
-| The x86 16 GB type `cx43` showed `available: false` in fsn1, nbg1 and hel1 on 2026-10-18. | `provision.sh` refuses the type | Use `SERVER_TYPE=cax31` (ARM64). The Snapchain, statsd and Grafana images all have ARM64 builds. `SERVER_TYPE=` with no value picks the cheapest type for sale. |
+| The x86 16 GB type `cx43` showed `available: false` in fsn1, nbg1 and hel1 on 2026-10-18. | `provision.sh` refuses the type | Use `SERVER_TYPE=cax31` (ARM64). The Snapchain, statsd and Grafana images all have ARM64 builds. `SERVER_TYPE=` with no value picks the cheapest available type from `SERVER_TYPE_CANDIDATES` (`cx43 cax31 cpx42 ccx23`). |
 
 ## What it costs
 
 | Item | Price (Hetzner list, 2026-10-18, USD) |
 |---|---|
-| cax31 (ARM64, 8 vCPU, 16 GB RAM, 160 GB disk) | $0.040 an hour |
-| Public IPv4 | $0.001 an hour |
-| 1000 GB volume | $0.0767 per GB per month, about $0.123 an hour |
-| Total | About $0.164 an hour. About $120 a month if you leave it on. |
+| cax31 (ARM64, 8 vCPU, 16 GB RAM, 160 GB disk) | $0.040 an hour, at most $24.99 a month |
+| Public IPv4 | $0.001 an hour, at most $0.60 a month |
+| 1000 GB volume | $76.70 a month ($0.0767 per GB). Hetzner bills it by the hour; we estimate about $0.123 an hour (monthly price ÷ 625 hours, the ratio of the server's own monthly and hourly prices) |
+| Total | About $0.164 an hour. About $102 a month if you leave it on, because Hetzner stops charging each item at its monthly price. |
 
 Our run cost about $2.31 from renting the server to a synced node, 14 h 06 m. We calculated that from the price list; we have not seen the invoice.
 

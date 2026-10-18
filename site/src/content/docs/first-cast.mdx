@@ -56,17 +56,27 @@ curl -s "http://127.0.0.1:3381/v1/signersByFid?fid=<your-fid>" | jq '.currentUse
 
 `currentUserNonce` should be one higher than before, with one more signer in the list.
 
-The app key is saved in the browser for `localhost:5173` only. The copy of the app at your HTTPS address does not have it. Post from the local app, or add a second key there later, without the phrase leaving your computer.
+The app key is saved in the browser for `localhost:5173` only. The copy of the app at your HTTPS address has no key. Post from the local app. To post from the HTTPS copy, you would have to type the phrase into a page served through sslip.io, which [Why run the app on your own computer](#why-run-the-app-on-your-own-computer) advises against.
 
 ## 3. Cast, follow, like
 
 | Action | Where | Message type |
 |---|---|---|
-| Cast | Type in **Post**, press **Cast** (up to 320 bytes) | `CAST_ADD` |
+| Cast | Type in **Post**, press **Cast** (a standard cast, up to 320 bytes) | `CAST_ADD` |
 | Follow | Type an FID in **FID to follow**, press **Follow** | `LINK_ADD` (type `follow`) |
 | Like, recast | Buttons under each cast in **Feed** | `REACTION_ADD` |
 
-Each one shows up in **Outgoing messages** with its state: `[sending]`, `[relayed]` (the node accepted it and sent it on), `[retrying]`, `[confirmed]` (the node returns it) or `[failed]`, with the reason and a **Retry** button. [Tutorial step 2](../tutorial/#step-2-your-node-passes-messages-on) explains these states.
+Each one shows up in **Outgoing messages** with a state:
+
+| State | Meaning |
+|---|---|
+| `[sending]` | The app is sending it to your node |
+| `[relayed]` | The node accepted it and sent it on |
+| `[retrying]` | Not seen yet, so the app sent it again |
+| `[confirmed]` | The node returns it |
+| `[failed]` | Still missing after 4 sends, or the node rejected it |
+
+A failed message shows the reason and a **Retry** button. [Tutorial step 2](../tutorial/#step-2-your-node-passes-messages-on) explains these states.
 
 The app can only add. It has no button to delete a cast, unfollow or unlike.
 

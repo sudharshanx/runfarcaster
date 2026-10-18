@@ -8,18 +8,18 @@ description: The Farcaster and Snapchain words used on this site, one line each.
 | FID | Your Farcaster account number. It is registered on OP Mainnet. |
 | Custody address | The Ethereum address that owns an FID. It approves and cancels app keys, and can move the FID to another address. |
 | App key (signer) | An ed25519 key an app uses to post for an FID, only for its scopes and until it expires. It cannot move money. |
-| KEY_ADD | A message that approves a new app key, signed by the custody address with EIP-712. Sending it costs no gas. |
+| KEY_ADD | A message that approves a new app key. The custody address signs two EIP-712 payloads inside it, and the new app key signs the message. Sending it costs no gas. |
 | KEY_REMOVE | A message that cancels an app key. Our app does not send it. |
 | Scope | One kind of message an app key may sign, for example `CAST_ADD`, `REACTION_ADD` or `LINK_ADD`. |
 | TTL | How long an app key lasts without use: 1 second to 90 days. Each use starts the clock again. |
-| Nonce | A counter per FID. Each `KEY_ADD` must use a number above `currentUserNonce`. |
+| Nonce | A counter per FID, shared by `KEY_ADD` and custody-signed `KEY_REMOVE`. Each one must use a number above `currentUserNonce`. |
 | Message | One signed piece of Farcaster data: a cast, like, recast, follow, profile field, verification, or key change. |
-| Cast | A post, up to 320 bytes of text. |
+| Cast | A post. A standard cast holds up to 320 bytes of text. Long casts allow up to 1,024 bytes, and Pro accounts up to 10,000. Our app sends standard casts. |
 | Storage | Space paid for onchain. It sets how many messages of each kind an FID keeps; past that, the oldest go. |
 | Snapchain | The network that puts Farcaster messages in order and stores them, split into shards. |
-| Shard | One part of Snapchain's data. Shard 0 holds network-wide data. Shards 1 and 2 split the accounts. |
+| Shard | One part of Snapchain's data. Shard 0 holds network-wide data, including gasless `KEY_ADD` messages. Shards 1 and 2 split the accounts. |
 | Validator | A Snapchain node that makes blocks and votes on them. |
-| Read node | A Snapchain node that copies blocks from validators, answers the API and sends on messages it receives. It has no mempool and earns nothing. |
+| Read node | A Snapchain node that copies finished blocks from its peers (in our run, 5 mainnet validators), answers the API and sends on messages it receives. It has no mempool and earns nothing. |
 | Hub | The older name for a Farcaster node. Some docs and libraries still say hub where they mean a Snapchain node. |
 | Mempool | Where a validator holds messages until they go in a block. Read nodes do not have one. |
 | blockDelay | How many seconds a shard's newest block is behind the clock. Single digits on every shard means synced. |

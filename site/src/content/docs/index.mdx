@@ -1,9 +1,9 @@
 ---
-title: Run a Farcaster Snapchain read node and client in 3 steps
+title: Run your own Farcaster node in 3 simple steps
 description: Rent a server, run the Snapchain read node on it, and open a small Farcaster app served by that node. Time and cost measured on one mainnet run.
 template: splash
 hero:
-  title: '<span class="eyebrow" aria-hidden="true">No API keys · MIT · ~$2.31 to sync</span>Run your own Farcaster node in 3 simple steps.'
+  title: '<span class="eyebrow" aria-hidden="true">No API keys · MIT · About $2.31 to sync</span>Run your own Farcaster node in 3 simple steps.'
   tagline: 'Rent a server. Start the node. Open the app.'
   actions:
     - text: Start the quickstart
@@ -27,11 +27,13 @@ import desktop from "../../assets/client-desktop.png";
 Run these on your own computer, from the repo folder. [Do it on Hetzner](hetzner/) covers the account, token and SSH key you need first.
 
 ```bash title="1. Rent a server"
+MY_IP=$(curl -4 -s https://ifconfig.me)
 IP=$(SSH_KEY=my-key \
   SERVER_TYPE=cax31 \
   VOLUME_GB=1000 \
   MAX_USD=5 \
   EXPECTED_HOURS=16 \
+  SSH_SOURCE_CIDRS="$MY_IP/32" \
   ./provision.sh)
 ```
 
@@ -61,7 +63,7 @@ The [Quickstart](quickstart/) has the same commands with what each one prints an
   <section>
     <p class="label">03 / SIGNER</p>
     <p class="claim">Adding a key costs no gas.</p>
-    <p>Since <a href="https://github.com/farcasterxyz/snapchain/pull/989">snapchain #989</a> a new app key is one signed <code>KEY_ADD</code> message. Since <a href="https://github.com/farcasterxyz/snapchain/pull/1034">#1034</a> a read node passes it on to the validators. We have not tried this on mainnet yet.</p>
+    <p>A new app key is one signed <code>KEY_ADD</code> message. Mainnet has accepted these since engine version V16 on 2026-05-07 (<a href="https://snapchain.farcaster.xyz/guides/writing-messages">writing-messages</a>). A read node passes it on to the validators (<a href="https://snapchain.farcaster.xyz/node-types#message-submission-and-the-mempool">node-types</a>). We have not tried this on mainnet yet.</p>
   </section>
 </div>
 
@@ -95,7 +97,13 @@ We took these during our browser test against the synced node. One field that he
 
 We ran a full mainnet sync, the HTTPS app and a read-only browser test (16 of 16 checks passed). We sent one deliberately broken message, and the node rejected it.
 
-We have not yet sent a real `KEY_ADD`, cast, like or follow on mainnet, run `teardown.sh` against real servers, or used the automatic disk helpers in `node.sh` during a live sync. The [full table](proof/#test-status) has the details.
+Not tried yet:
+
+- A real `KEY_ADD`, cast, like or follow on mainnet.
+- `teardown.sh` on real servers.
+- `node.sh` installing the disk helpers during a live sync.
+
+The [full table](proof/#test-status) has the details.
 
 中文: a person will write the Chinese version. We will not publish a machine translation.
 

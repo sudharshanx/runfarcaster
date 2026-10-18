@@ -26,14 +26,14 @@ import CopyPrompt from "../../components/CopyPrompt.astro";
 | What you see | Why | What to do |
 |---|---|---|
 | `volumes size limit exceeded (resource_limit_exceeded)` | New Hetzner accounts may rent at most 1024 GB of volumes in total | `VOLUME_GB=1000`, as in the [Quickstart](../quickstart/). Or ask Hetzner for a higher limit at console.hetzner.cloud/limits |
-| `provision.sh` refuses `cx43` | cx43 showed `available: false` in fsn1, nbg1 and hel1 | `SERVER_TYPE=cax31`, or `SERVER_TYPE=` to pick the cheapest type for sale |
+| `provision.sh` refuses `cx43` | cx43 showed `available: false` in fsn1, nbg1 and hel1 | `SERVER_TYPE=cax31`, or `SERVER_TYPE=` to pick the cheapest available type from `SERVER_TYPE_CANDIDATES` |
 | `projected cost exceeds MAX_USD=2. Nothing was created.` | The default is $2 for `EXPECTED_HOURS=6`; our sync took about 14 h | `MAX_USD=5 EXPECTED_HOURS=16`, as we ran. Check first with `ESTIMATE_ONLY=1` |
 | `node.sh` stops with `only N GB free ... need >= 1500 GB` | A 1000 GB volume shows about 984 GB | Add `MIN_FREE_GB=900` |
 | The disk fills fast while the snapshot loads | The official restore keeps the chunks, an unpacked tar and the database until the end | On disks under 1500 GB, `node.sh` installs `snapshot-space-saver.sh` for this. Our peak with it was 699 GB (75%) of 984 GB. Check with `ssh root@$IP systemctl status snapchain-space-saver` |
 | The node stopped and `/root/snapchain-DISK-FULL` exists | `disk-guard.sh` saw the disk at 90% | Do not start it again on the same disk. Use a bigger volume, or run `teardown.sh` |
 | `HTTP API not answering yet` for hours | Normal while the snapshot loads; that took us 8 h 34 m | Wait. `df -h /root/snapchain` on the server should keep growing |
 | `not in sync after 86400s` | 24 hours passed without sync | `ssh root@$IP 'bash -s wait' < node.sh` to keep waiting; check `blockDelay` is falling |
-| About 18 `InsufficientPeers` warnings a minute mentioning `read-node-peers` | None of the connected validators listen on that topic | Ignore. Sync works. Watch the peer count and `blockDelay` instead |
+| About 18 `InsufficientPeers` warnings a minute mentioning `read-node-peers` | None of the connected validators listen on that topic | Ignore it while `blockDelay` stays in single digits. If `blockDelay` keeps growing, the validators may have stopped making blocks; the Snapchain docs say read nodes log this warning nonstop during such a halt ([node-types](https://snapchain.farcaster.xyz/node-types)) |
 | `HandshakeTimedOut` to two bootstrap peers every 30 s | Those peers do not answer | Ignore while `blockDelay` keeps falling |
 | `/v1/info` shows `mempoolSize: 4294967295` | Read nodes have no mempool; this is a placeholder | Nothing |
 | `.provision-state/watchdog.log` says `WARNING: progress probe cannot reach the VM over SSH` | It cannot reach the server, usually because your IP changed | It keeps the server and only warns. Fix SSH access as above |
@@ -48,7 +48,7 @@ import CopyPrompt from "../../components/CopyPrompt.astro";
 | `deploy-client.sh` ends with `not reachable yet` | Let's Encrypt needs ports 80 and 443 and a name that points at the server | On the server, `cd /opt/snapchain-client && docker compose logs caddy` |
 | `/v1/mesh` answers 200 through Caddy | An older Caddyfile; a bare `respond` loses to `handle` in Caddy's order. We found and fixed this during our run | Use the current `deploy/Caddyfile` |
 | The app says `Node not reachable` | A node URL is saved in the app, or the CSP blocks it | Empty the node URL field (same address) and press Save |
-| A cast stays `[relayed]`, then shows `[failed]` | The message got lost on its way to the validators; read nodes keep no copy | Press **Retry** in Outgoing messages. It sends the identical message again |
+| A cast stays `[relayed]`, then shows `[failed]` | No validator put it in a block. Usually it was lost in gossip. A read node keeps no copy to resend | Press **Retry** in Outgoing messages. It sends the identical message again |
 | Bootstrap fails with `/dev/tty: No such device or address` | The official bootstrap needs a terminal | Run it through `node.sh`, which gives it one with `script` |
 
 {/* AUTHOR: add any problem you hit that is not in these tables, in your own words. */}

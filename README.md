@@ -81,7 +81,8 @@ What the app does with the phrase (`client/src/signer.ts`):
    from `/v1/signersByFid`.
 3. Signs one gasless `KEY_ADD` with `makeKeyAddBody` (EIP-712, custody address), with nonce
    `currentUserNonce + 1`, scopes `CAST_ADD`, `REACTION_ADD` and `LINK_ADD`, and a lifetime of 7 days by default
-   (90 at most; each use renews it). No ETH is needed. Source: https://snapchain.farcaster.xyz/guides/writing-messages, snapchain PR #989.
+   (90 at most; each use renews it). No ETH is needed. Mainnet has accepted gasless keys since engine version V16 on 2026-05-07
+   (snapchain `src/version/version.rs`). Guide: https://snapchain.farcaster.xyz/guides/writing-messages.
 4. Drops the phrase. Nothing stores, logs or sends it; only the signed `KEY_ADD` goes to the node. JavaScript
    cannot promise the browser wiped it from memory.
 5. Saves the app key in that page's `localStorage`. "Forget app key" deletes it there. The network accepts the key
@@ -91,7 +92,7 @@ What the app does with the phrase (`client/src/signer.ts`):
 
 `POST /v1/submitMessage` on a read node checks the message and publishes it to the validators over gossip. The
 node keeps no mempool. Sources: https://snapchain.farcaster.xyz/node-types#message-submission-and-the-mempool,
-snapchain PR #1034.
+and in the code `submit_message_internal` (`src/network/server.rs`) and `ReadNodeMempool` (`src/mempool/mempool.rs`).
 
 So HTTP 200 means "sent on", not "in a block". The app shows each cast, like or follow at once, then asks the node
 for it by hash every 4 seconds. If it has not appeared 30 seconds after the last send, the app sends the

@@ -8,9 +8,16 @@ import { Tabs, TabItem } from "@astrojs/starlight/components";
 import CopyPrompt from "../../components/CopyPrompt.astro";
 import RepoLink from "../../components/RepoLink.astro";
 
-You will rent a Linux server at Hetzner, run a Snapchain read node on it, and put a small web app in front of the node. The node first loads a snapshot of the network, which took us about 8.5 hours, then catches up block by block. The app runs in your browser and reads from your node alone.
+You rent a Linux server at Hetzner and run a Snapchain read node on it. A small web app sits in front of the node. The node first loads a snapshot of the network, which took us 8 h 34 m, then catches up block by block. The app runs in your browser and reads from your node alone.
 
-Before you begin you need a Hetzner API token in `HCLOUD_TOKEN`, an SSH key uploaded to Hetzner, and these tools: `hcloud`, `jq`, `ssh`, `curl` and Node.js 22.12 or later. [Do it on Hetzner](../hetzner/) walks through each one. [Before you start](../before-you-start/) explains costs and safety, and the [Glossary](../glossary/) explains the terms. To let a coding assistant drive, see [Do it with your AI assistant](../ai-assistant/).
+You need:
+
+- A Hetzner API token in `HCLOUD_TOKEN`.
+- An SSH key uploaded to Hetzner.
+- `hcloud`, `jq`, `ssh` and `curl`.
+- Node.js 22.12 or later.
+
+[Do it on Hetzner](../hetzner/) walks through each one. [Before you start](../before-you-start/) explains costs and safety, and the [Glossary](../glossary/) explains the terms. To let a coding assistant drive, see [Do it with your AI assistant](../ai-assistant/).
 
 <AtAGlance />
 
@@ -129,9 +136,10 @@ What it does:
 - Checks Ubuntu 22.04 or 24.04, RAM and free disk. `MIN_FREE_GB=900` lets it accept the 1000 GB volume, which shows 984 GB.
 - Installs Docker from Docker's own apt repository.
 - Writes the two answers the bootstrap would ask for into `~/snapchain/.env`: that you get no rewards, and `SKIP_CRONTAB=true` unless you set `OPERATOR_FID`.
-- On a disk under 1500 GB, installs two systemd units: `disk-guard.sh` stops the node cleanly at 90% full, and `snapshot-space-saver.sh` deletes snapshot files the node has finished reading. The official restore keeps every compressed chunk, an unpacked tar per shard and the database until the very end, which does not fit on 1 TB.
+- On a disk under 1500 GB, installs two helpers. `disk-guard.sh` stops the node at 90% full. `snapshot-space-saver.sh` deletes snapshot files the node has already read.
+- The helpers are needed because the official restore keeps all chunks, one tar per shard and the database until it finishes. That does not fit on 1 TB.
 - Runs the official bootstrap. It needs a terminal, so `node.sh` gives it one with `script`, and stops following its log once it prints "Upgrade complete".
-- Asks the node `/v1/info` every minute until every shard is less than 10 seconds behind, 3 times in a row, for up to 24 hours. Then it prints a health check.
+- Checks `/v1/info` once a minute. It stops when every shard is under 10 s behind on 3 checks in a row, or after 24 hours. Then it prints a health check.
 
 :::caution[New, not yet run live]
 In our live run we installed the two disk helpers by hand. `node.sh` now installs them itself; that code has unit tests (`test/node_sh_test.sh`) but has not run during a real sync yet.
@@ -153,7 +161,7 @@ HTTP API http://127.0.0.1:3381/v1/info: OK
 sync: SYNCED (blockDelay < 10s on all shards)
 ```
 
-Ours took 14 h 06 m from renting the server: about 8 h 34 m to load the snapshot, then 5 h 15 m to catch up. The API does not answer while the snapshot loads; that is normal.
+Ours took 14 h 06 m from renting the server. Loading the snapshot took 8 h 34 m. Catching up took 5 h 15 m. The API does not answer while the snapshot loads; that is normal.
 
 If your SSH session drops, the node keeps going on the server. Reconnect and wait for it again:
 
@@ -227,7 +235,7 @@ CONFIRM=snapchain-read-node ./teardown.sh
 hcloud server list && hcloud volume list     # snapchain-read-node should be gone
 ```
 
-This deletes the server, the volume (and the node database on it) and the firewall, then lists what is left and fails if any of the three remain. Running it twice is safe: the second run reports each item as not found. It keeps the SSH key you uploaded. Check the [Hetzner console](https://console.hetzner.cloud/) for anything else left in the project.
+This deletes the server, the volume and the firewall. The node database is on the volume, so it goes too. The script then lists what is left, and fails if any of the three remain. Running it twice is safe: the second run reports each item as not found. It keeps the SSH key you uploaded. Check the [Hetzner console](https://console.hetzner.cloud/) for anything else left in the project.
 
 :::caution
 We have run `teardown.sh` only in `DRY_RUN=1` mode and against a fake `hcloud` in tests, not against real servers yet.

@@ -86,7 +86,7 @@ Docker publishes 3381, 3383, 3000 and the statsd ports on every interface of the
 ## Sources
 
 - Snapchain v0.14.3, commit `fc87f26`: [github.com/farcasterxyz/snapchain](https://github.com/farcasterxyz/snapchain)
-- Gasless app keys: [writing-messages](https://snapchain.farcaster.xyz/guides/writing-messages), [PR #989](https://github.com/farcasterxyz/snapchain/pull/989)
-- Read nodes pass messages on: [node-types](https://snapchain.farcaster.xyz/node-types#message-submission-and-the-mempool), [PR #1034](https://github.com/farcasterxyz/snapchain/pull/1034)
+- Gasless app keys: [writing-messages](https://snapchain.farcaster.xyz/guides/writing-messages); live since engine version V16 on 2026-05-07 ([`src/version/version.rs`](https://github.com/farcasterxyz/snapchain/blob/fc87f2686472598143062a00e1c2b2633b2d87ab/src/version/version.rs)); the guide was updated in [docs PR #989](https://github.com/farcasterxyz/snapchain/pull/989)
+- Read nodes pass messages on: [node-types](https://snapchain.farcaster.xyz/node-types#message-submission-and-the-mempool) (documented in [docs PR #1034](https://github.com/farcasterxyz/snapchain/pull/1034)); code: `submit_message_internal` in `src/network/server.rs`, `ReadNodeMempool` in `src/mempool/mempool.rs`
 - [Getting Started](https://snapchain.farcaster.xyz/getting-started), [managing-a-node](https://snapchain.farcaster.xyz/guides/managing-a-node)
 - Full list: <RepoLink path="SOURCES.md" />

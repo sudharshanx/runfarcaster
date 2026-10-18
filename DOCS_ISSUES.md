@@ -48,7 +48,7 @@ Note: the file has 17 entries, not 16.
   - install Docker with get.docker.com;
   - "Allow SSH traffic from Anywhere".
 - **True:**
-  - The bootstrap always installs into `~/snapchain`, whatever the current directory (PR #1034, Getting Started). The `mkdir` is redundant: the node still ends up in `~/snapchain`, and the extra empty directory is just confusing.
+  - The bootstrap always installs into `~/snapchain`, whatever the current directory (docs PR #1034, Getting Started). The `mkdir` is redundant: the node still ends up in `~/snapchain`, and the extra empty directory is just confusing.
   - snapchain.sh installs Docker itself if it is missing.
   - Opening SSH to the whole internet is unnecessary. Restrict it to your own IP.
 - **Verified:** read snapchain-bootstrap.sh and snapchain.sh.
@@ -82,7 +82,7 @@ Note: the file has 17 entries, not 16.
 - **True:**
   - `GET /v1/signersByFid?fid=` returns both onchain and gasless keys plus `currentUserNonce`, which gasless KEY_ADD needs.
   - `GET /v1/signer?fid=&signer=` exists too.
-  - The writing-messages guide says `GetOnChainSignersByFid` is deprecated. PR #989 lists this gap as a follow-up.
+  - The writing-messages guide says `GetOnChainSignersByFid` is deprecated. docs PR #989 lists this gap as a follow-up.
 - **Verified:** read http_server.rs l.1138, 3815, 4578.
 
 ## 7. `requesterFids` must use brackets over HTTP
@@ -111,10 +111,10 @@ Note: the file has 17 entries, not 16.
   - Its default hub is `hoyt.farcaster.xyz:3383`, and it says to use a 3rd-party provider like Neynar.
   - It calls the node a "hub" throughout.
 - **True:**
-  - Since V16 (2026-05-07) app keys can be added gaslessly with a `KEY_ADD` message (`makeKeyAddBody`), with no ETH, no RPC and no wait for an OP block (PR #989, writing-messages guide).
+  - Since V16 (2026-05-07) app keys can be added gaslessly with a `KEY_ADD` message (`makeKeyAddBody`), with no ETH, no RPC and no wait for an OP block (docs PR #989, writing-messages guide).
   - `getSignedKeyRequestMetadata` signs the onchain domain, which `KEY_ADD` rejects.
   - The migrating guide says hub-web "is not fully supported".
-  - A self-run read node accepts writes and relays them (node-types page, PR #1034), so no third-party hub or API key is needed.
+  - A self-run read node accepts writes and relays them (node-types page, docs PR #1034), so no third-party hub or API key is needed.
   - In the step-3 snippet, `requestFid: APP_FID` and `key: APP_PRIVATE_KEY` are undefined identifiers. The key field should be the *public* key, not a private key. Its `deadline` uses Unix time, while the gasless flow uses Farcaster time.
   - Creating an FID and renting storage are still onchain. That part is still correct.
 - **Verified:** read the page; compared it with the writing-messages guide, key.rs, and this repo's KEY_ADD unit test and E2E test (local mock node).
@@ -124,7 +124,7 @@ Note: the file has 17 entries, not 16.
 - **Says:** onchain actions include "Adding account keys for connected apps".
 - **True:** keys can now also be added offchain, gasless, through a `KEY_ADD` message validated against an EIP-712 signature from the custody address. Onchain key adds still work.
   - The page also doesn't say that Snapchain nodes come in two kinds, validators and read nodes, or that read nodes relay writes.
-- **Verified:** writing-messages guide, PR #989, key.rs.
+- **Verified:** writing-messages guide, docs PR #989, key.rs.
 
 ## 12. Bootstrap cannot run non-interactively
 - **Page:** Getting Started and the AWS guide (`curl ... | bash`)
@@ -169,7 +169,7 @@ Note: the file has 17 entries, not 16.
 # New issues from the 2026-10-18 Parallel sweep
 
 All found with `parallel-cli search`/`extract` on 2026-10-18 (01:45-01:50 IST). "Truth" sources are the
-writing-messages guide and PR #989 (gasless `KEY_ADD`), the node-types page and PR #1034 (read nodes accept
+writing-messages guide and docs PR #989 (gasless `KEY_ADD`), the node-types page and docs PR #1034 (read nodes accept
 writes and relay), and files on the `main` branch fetched the same day. Uncertain points are marked.
 
 ## 18. docs.farcaster.xyz "Create an account key" is onchain-only
@@ -182,7 +182,7 @@ writes and relay), and files on the `main` branch fetched the same day. Uncertai
 - **Page:** https://docs.farcaster.xyz/learn/what-is-farcaster/accounts
 - **Says:** "Keys are managed by the KeyRegistry contract. To add a key, you'll need to submit the public key of an EdDSA key pair along with a requestor signature." and "rent storage and add a key ... These steps require many signatures and onchain transactions". Resource "Get account keys" links to `reference/httpapi/onchain` (`onChainSignersByFid`).
 - **True:** keys can also be gasless `KEY_ADD` messages held by Snapchain, not the KeyRegistry. Writing-messages says `GetOnChainSignersByFid` "returns onchain keys only and is deprecated"; `GetSignersByFid` / `GET /v1/signersByFid` returns both.
-- **Verified:** live page; writing-messages guide; PR #989.
+- **Verified:** live page; writing-messages guide; docs PR #989.
 
 ## 20. docs.farcaster.xyz "Messages": "Hub" terminology and outdated storage price/limits
 - **Page:** https://docs.farcaster.xyz/learn/what-is-farcaster/messages

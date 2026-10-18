@@ -21,7 +21,7 @@ export default defineConfig({
     starlight({
       title: "Farcaster node in 3 simple steps",
       description:
-        "Run your own Farcaster Snapchain read node and web client in 3 steps. Measured time and cost, what was tested, and how it works.",
+        "Run your own Farcaster node in 3 simple steps: a Snapchain read node and a web app on Hetzner. Measured time and cost, what we tested, and how it works.",
       social: [{ icon: "github", label: "Source on GitHub", href: repo }],
       editLink: { baseUrl: `${repo}/edit/main/site/` },
       customCss: ["./src/styles/custom.css"],

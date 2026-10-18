@@ -9,10 +9,12 @@ Measured on the **first live run**, 2026-10-18 (all times IST, UTC+5:30). Hetzne
 | Phase | Value | Notes |
 |---|---|---|
 | Provision (`provision.sh`) | **35 s** | server + volume + firewall, started 01:26:33 |
-| Snapshot download | **≈5 h 24 m** for ≈520 GB (5689 chunks), ≈**27 MB/s** avg | shard 1 01:37–04:11, shard 2 05:34–08:24 (download, gunzip, untar are sequential per shard) |
+| Snapshot download | **≈5 h 24 m** for 5689 chunks, **≈485 to 505 GB** (see note), ≈**25 MB/s** avg | shard 1 01:37–04:11, shard 2 05:34–08:24 (download, gunzip, untar are sequential per shard) |
 | Snapshot restore, total wall time | **≈8 h 34 m** | download start ≈01:37 → node process start 10:11:13 |
 | Block catch-up after restore | **≈5 h 15 m** at **4.3–4.6 blocks/s per shard** (net) | node start 10:11 → all shards at tip ≈15:32 (shard 1 first, ≈14:32) |
 | **Provision → fully synced** | **≈14 h 06 m** | 01:26:33 → ≈15:32; "synced" = every shard blockDelay < 10 |
+
+Snapshot size note (2026-10-18 review): the earlier ≈520 GB figure assumed every chunk is about 91 MB. Our disk readings support less: shard 1's 3041 chunks were "~243 GB" (unit not recorded; 243 GB or 261 GB if GiB), and shard 2 had 170 GiB (182.5 GB) left for 1995 of 2648 chunks, so ≈242 GB in total. That gives ≈485 to 505 GB. A reviewer's HEAD requests on 659 chunks averaged 85.3 MB, ≈485 GB. The site says "roughly 500 GB".
 
 ## Resources at sync (15:32–16:16)
 
@@ -48,6 +50,7 @@ Measured on the **first live run**, 2026-10-18 (all times IST, UTC+5:30). Hetzne
 | Cost per hour | **≈$0.164/h** estimate from the price list (cax31 $0.040 + IPv4 $0.001 + 1000 GB volume ≈$0.123); actual Hetzner invoice **unmeasured** |
 | Spend so far | ≈**$2.43** of the $5 cap at 16:16 (watchdog estimate, ≈14 h 50 m since provision) |
 | Cost to reach sync | ≈$2.31 (provision → 15:32) |
+| Left running, per month | ≈$102.29: Hetzner caps each item at its monthly price (cax31 $24.99, IPv4 $0.60, 1000 GB volume $76.70; read-only `GET /v1/pricing` and `hcloud server-type describe cax31`, 2026-10-18). The earlier ≈$120 (0.164 × 730 h) ignored the caps. |
 
 ## Client
 

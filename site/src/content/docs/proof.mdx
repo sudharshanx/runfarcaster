@@ -29,7 +29,7 @@ A logger on our side read the disk and the node's `/v1/info` over SSH every 10 m
 | Phase | Time |
 |---|---|
 | `provision.sh` | 35 s (started 01:26:33) |
-| Snapshot download | About 5 h 24 m for about 520 GB in 5689 chunks, roughly 27 MB/s |
+| Snapshot download | About 5 h 24 m for 5689 chunks, roughly 500 GB by our disk readings, about 25 MB/s |
 | Snapshot load in total (download, gunzip, untar, shard by shard) | About 8 h 34 m |
 | Catching up after the load | About 5 h 15 m, at 4.3 to 4.6 blocks a second per shard |
 | From renting the server to fully synced (every shard less than 10 s behind) | 14 h 06 m |
@@ -53,9 +53,9 @@ A logger on our side read the disk and the node's `/v1/info` over SSH every 10 m
 
 | Item | Amount |
 |---|---|
-| Price | About $0.164 an hour: cax31 $0.040, IPv4 $0.001, 1000 GB volume about $0.123 (our conversion of the monthly volume price) |
+| Price | About $0.164 an hour: cax31 $0.040, IPv4 $0.001, 1000 GB volume about $0.123 (our estimate: $76.70 a month ÷ 625 hours) |
 | Until synced | About $2.31 |
-| Left running | About $120 a month |
+| Left running | About $102 a month: $24.99 + $0.60 + $76.70, the monthly prices Hetzner stops at |
 | Invoice | Not seen yet |
 
 The official AWS guide estimates "roughly $100/month"; that is an estimate, not a run.
@@ -91,7 +91,7 @@ Taken by `e2e/real-node.mjs` in headless Chrome against the live node. We blanke
 
 | Suite | Result | What it covers |
 |---|---|---|
-| `e2e/real-node.mjs` on the live node | 16 of 16 | HTTPS with CSP `connect-src 'self'` and HSTS; status `Connected` (v0.14.3); 21 real casts; mute by FID hides casts and survives a reload; key and storage lookups; `/v1/mesh` returns 404; a broken `submitMessage` returns 400; no third-party or mixed-content requests; no key or phrase in storage; no sideways scroll at 375 px |
+| `e2e/real-node.mjs` on the live node | 16 of 16 | Listed below the table |
 | `e2e/run.sh` (the real Caddyfile, a mock node, headless Chrome) | 20 of 20 | The same app and proxy on one machine |
 | Client unit tests (`vitest`) | 34 of 34, 6 files | Messages, signer, feed, filters, retry logic, storage |
 | `test/node_sh_test.sh` | 42 of 42 | Sync rules, bootstrap under a fake terminal, `.env` answers, the new disk-helper install and re-run |
@@ -99,6 +99,22 @@ Taken by `e2e/real-node.mjs` in headless Chrome against the live node. We blanke
 | `test/watchdog_test.sh` | 15 of 15 | Progress check during a sync, a stuck node, SSH loss, money cap, macOS without `timeout` |
 | `test/teardown_test.sh` | 7 of 7 | Running twice, missing token, wrong confirmation |
 | `shellcheck` | No warnings | Every shell script |
+
+We ran the suites again on 2026-10-18 at 17:47 IST, on commit 8ef1bb8 plus the docs edits committed after it (no script or test changes). `e2e/real-node.mjs` ran once, on 2026-10-18 during the live run.
+
+What `e2e/real-node.mjs` checked:
+
+- HTTPS with CSP `connect-src 'self'` and HSTS.
+- Status `Connected` (v0.14.3).
+- 21 real casts in the feed.
+- Mute by FID hides casts, and the mute survives a reload.
+- Key and storage lookups.
+- `/v1/mesh` returns 404.
+- A broken `submitMessage` returns 400.
+- No third-party or mixed-content requests.
+- No key or phrase in browser storage.
+- No sideways scroll at 375 px.
+- No console errors or CSP violations.
 
 The live run used the earlier versions of `node.sh`, `watchdog.sh` and the firewall rules. Commands to rerun the suites:
 

@@ -9,7 +9,7 @@ const SAFETY = `Rules for you:
 - Ask me before you run teardown.sh, delete anything, or raise MAX_USD.
 - Show me real output only. If a command fails, show the exact error and stop.`;
 
-const CONTEXT = `Context: I am following the guide "Run a Farcaster Snapchain read node and client in 3 steps".
+const CONTEXT = `Context: I am following the guide "Run your own Farcaster node in 3 simple steps" (a Snapchain read node and a web app).
 Repo: ${REPO} (MIT). I cloned it to my computer and run every command from its folder. Scripts: provision.sh (step 1), node.sh (step 2), deploy-client.sh (step 3), teardown.sh, watchdog.sh.
 In any new terminal, get the server IP again with: IP=$(hcloud server ip snapchain-read-node)`;
 
@@ -38,7 +38,7 @@ node.sh installs Docker, installs two disk helpers because the disk is under 150
 Expected: "[node.sh] Data disk ... arming disk-guard and snapshot-space-saver.", then "[node.sh] ... SYNCING shard 0: height=... blockDelay=..." lines, then "[node.sh] Node is in sync." and a health check with "sync: SYNCED". The HTTP API does not answer while the snapshot loads; that is normal. Our sync took about 14 h from renting the server.
 If SSH drops, the node keeps going. Continue waiting with: ssh root@$IP 'bash -s wait' < node.sh
 Check: ssh root@$IP 'curl -s 127.0.0.1:3381/v1/info' | jq '.shardInfos[] | {shardId, blockDelay}'   (synced = every blockDelay in single digits). Port 3381 is closed to the internet, so check over SSH.
-Ignore repeated "InsufficientPeers" warnings that mention "read-node-peers".
+Repeated "InsufficientPeers" warnings that mention "read-node-peers" are fine while blockDelay stays in single digits. If blockDelay keeps growing, tell me: the validators may have stopped making blocks.
 
 ${SAFETY}`,
 
@@ -65,8 +65,8 @@ ${SAFETY}`,
   concept: `${CONTEXT}
 
 Task: answer a question about the guide. Use only these sources, and say which one each claim comes from:
-- https://snapchain.farcaster.xyz/node-types (read nodes and validators; read nodes pass messages on and keep no mempool; PR #1034)
-- https://snapchain.farcaster.xyz/guides/writing-messages (gasless KEY_ADD; PR #989)
+- https://snapchain.farcaster.xyz/node-types (read nodes and validators; read nodes pass messages on and keep no mempool)
+- https://snapchain.farcaster.xyz/guides/writing-messages (gasless KEY_ADD, live on mainnet since engine version V16 on 2026-05-07)
 - https://snapchain.farcaster.xyz/reference/httpapi/httpapi (HTTP API)
 - The repo files SOURCES.md and client/src/*.ts
 Question: <my question>

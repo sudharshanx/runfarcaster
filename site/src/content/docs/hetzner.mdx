@@ -9,6 +9,8 @@ Hetzner Cloud is the only provider we have run this on. The scripts call Hetzner
 
 Where Hetzner's console changes over time, this page links to Hetzner's own instructions instead of describing buttons.
 
+Sections 1 to 8 are one-time setup. Section 9 is the 3 steps.
+
 ## 1. Make an account
 
 Sign up at Hetzner and verify your email. Hetzner asks for contact and billing details. Their guide: [Hetzner Account Getting Started](https://docs.hetzner.com/general/billing-and-account-management/account-getting-started/).
@@ -79,10 +81,10 @@ From Hetzner's price list on 2026-10-18, in USD:
 
 | Item | Price |
 |---|---|
-| cax31 | $0.040 an hour |
-| Public IPv4 | $0.001 an hour |
-| 1000 GB volume | $0.0767 per GB per month, about $0.123 an hour |
-| Total | About $0.164 an hour, or $120 a month if you leave it on |
+| cax31 | $0.040 an hour, at most $24.99 a month |
+| Public IPv4 | $0.001 an hour, at most $0.60 a month |
+| 1000 GB volume | $76.70 a month ($0.0767 per GB). Hetzner bills it by the hour; we estimate about $0.123 an hour (monthly price ÷ 625 hours, the ratio of the server's own monthly and hourly prices) |
+| Total | About $0.164 an hour. About $102 a month if you leave it on (each item stops at its monthly price). |
 
 Our run took 14 h 06 m from renting the server to a synced node, about $2.31. We worked these out from the price list; we have not seen an invoice yet. To see the price before creating anything:
 
@@ -103,13 +105,9 @@ ssh root@$IP "SNAPCHAIN_AGREE_NO_REWARDS=yes MIN_FREE_GB=900 bash -s" < node.sh
 ./deploy-client.sh "$IP"
 ```
 
-## Find your server's IP again
-
-```bash
-IP=$(hcloud server ip snapchain-read-node)
-```
-
-Use this in any new terminal. It needs `HCLOUD_TOKEN` set.
+:::tip[Find your server's IP again]
+In any new terminal, run `IP=$(hcloud server ip snapchain-read-node)`. It needs `HCLOUD_TOKEN` set.
+:::
 
 ## 10. Delete everything
 

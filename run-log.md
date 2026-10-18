@@ -95,3 +95,5 @@
 - 2026-10-18 17:22:13 IST progress: du=556G df=60% mem_used=3757MiB no-snapshot-progress-line info=[{"s":0,"h":48312410,"d":1},{"s":1,"h":48987457,"d":2},{"s":2,"h":48823008,"d":0}] disk_full=no
 - 2026-10-18 17:32:22 IST progress: du=556G df=60% mem_used=3775MiB no-snapshot-progress-line info=[{"s":0,"h":48313010,"d":1},{"s":1,"h":48988055,"d":1},{"s":2,"h":48823607,"d":2}] disk_full=no
 - 2026-10-18 17:36 IST: firewall: removed public 3381/tcp and 3383/tcp rules (kept 22, 80, 443, 3382/udp). Checked after: /v1/info through Caddy 200 (blockDelay 1/2/0), app page 200, castsByFid 200; direct 3381/3383 from outside time out.
+- 2026-10-18 17:42:31 IST progress: du=556G df=60% mem_used=3775MiB no-snapshot-progress-line info=[{"s":0,"h":48313599,"d":0},{"s":1,"h":48988653,"d":1},{"s":2,"h":48824196,"d":5}] disk_full=no
+- 2026-10-18 17:47 IST: tests re-run on 8ef1bb8 + docs edits: node_sh 42/42, space_saver 14/14, watchdog 15/15, teardown 7/7, vitest 34/34, e2e/run.sh 20/20, shellcheck clean.
