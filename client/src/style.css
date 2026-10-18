@@ -292,3 +292,10 @@ a.embed:hover { border-color: #b9bec7; background: #fff; }
 .step-body h3 { font-size: 15px; font-weight: 600; margin: 6px 0 0; color: var(--ink); }
 .facts { margin: 0; padding-left: 20px; line-height: 1.6; color: var(--ink); }
 #add-key-title:focus { outline: none; }
+
+/* ---------- Posted with (app filters) */
+.cast-app { font-size: 13px; color: var(--muted); margin-left: 4px; align-self: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.app-list { list-style: none; margin: 6px 0 0; padding: 0; display: grid; gap: 6px; }
+.app-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
+.app-name { font-size: 15px; color: var(--ink); overflow-wrap: anywhere; }
+.app-btns { display: flex; gap: 6px; }

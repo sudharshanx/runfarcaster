@@ -13,13 +13,18 @@ export interface Filters {
   includeFids: number[];
   /** Include: if non-empty, only show casts containing at least one of these. */
   includeKeywords: string[];
+  /** Exclude: hide casts posted with these apps (app FIDs, see src/apps.ts). */
+  hideApps: number[];
+  /** Include: if non-empty, only show casts posted with these apps. */
+  includeApps: number[];
 }
 
 export const FILTERS_KEY = "filters.v1";
 
-export const emptyFilters = (): Filters => ({ mutedFids: [], mutedKeywords: [], includeFids: [], includeKeywords: [] });
+export const emptyFilters = (): Filters => ({ mutedFids: [], mutedKeywords: [], includeFids: [], includeKeywords: [], hideApps: [], includeApps: [] });
 
-export interface FilterableCast { fid: number; text: string }
+/** app: the app FID, null for an unknown app, undefined when not looked up (never hidden by app rules). */
+export interface FilterableCast { fid: number; text: string; app?: number | null }
 
 const norm = (s: string) => s.normalize("NFKC").toLowerCase().trim();
 
@@ -45,7 +50,9 @@ export function hiddenReason(cast: FilterableCast, f: Filters): string | null {
   if (f.mutedFids.includes(cast.fid)) return `muted FID ${cast.fid}`;
   const muted = f.mutedKeywords.find((w) => norm(cast.text).includes(w));
   if (muted) return `muted keyword "${muted}"`;
+  if (typeof cast.app === "number" && f.hideApps.includes(cast.app)) return `hidden app FID ${cast.app}`;
   if (f.includeFids.length > 0 && !f.includeFids.includes(cast.fid)) return "FID not in include list";
+  if (f.includeApps.length > 0 && cast.app !== undefined && (cast.app === null || !f.includeApps.includes(cast.app))) return "app not in include list";
   if (f.includeKeywords.length > 0 && !containsAny(cast.text, f.includeKeywords)) return "no include keyword";
   return null;
 }
@@ -64,6 +71,8 @@ function sanitize(raw: unknown): Filters {
     mutedKeywords: [...new Set(words(r.mutedKeywords))],
     includeFids: [...new Set(fids(r.includeFids))],
     includeKeywords: [...new Set(words(r.includeKeywords))],
+    hideApps: [...new Set(fids(r.hideApps))],
+    includeApps: [...new Set(fids(r.includeApps))],
   };
 }
 
@@ -71,7 +80,7 @@ export const loadFilters = (kv: KV): Filters => sanitize(readJSON<unknown>(kv, F
 export const saveFilters = (kv: KV, f: Filters): void => writeJSON(kv, FILTERS_KEY, sanitize(f));
 
 type ListKey = keyof Filters;
-const isFidList = (k: ListKey) => k === "mutedFids" || k === "includeFids";
+const isFidList = (k: ListKey) => k === "mutedFids" || k === "includeFids" || k === "hideApps" || k === "includeApps";
 
 /** Adds a value to one list. Returns the new Filters, or an error string for invalid input. */
 export function addToList(f: Filters, list: ListKey, input: string): Filters | string {

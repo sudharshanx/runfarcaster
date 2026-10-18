@@ -15,6 +15,7 @@ export interface FeedCast {
   parent?: { fid: number; hash: string };
   embeds?: Array<{ url?: string; castFid?: number }>;
   pending?: PendingItem; // set for optimistic (not yet confirmed) casts
+  signer?: string; // the app key that signed it (see src/apps.ts)
 }
 
 export const fcTimeToDate = (t: number) => new Date(FARCASTER_EPOCH_MS + t * 1000);
@@ -23,7 +24,7 @@ export function toFeedCast(m: MessageJson): FeedCast | null {
   const b = m.data?.castAddBody;
   if (!b || m.data.type !== "MESSAGE_TYPE_CAST_ADD") return null;
   const embeds = (b.embeds ?? []).map((e) => (e.castId ? { castFid: e.castId.fid } : { url: e.url })).filter((e) => e.castFid !== undefined || !!e.url);
-  return { fid: m.data.fid, hash: m.hash, text: b.text ?? "", timestamp: m.data.timestamp, parent: b.parentCastId, ...(embeds.length ? { embeds } : {}) };
+  return { fid: m.data.fid, hash: m.hash, text: b.text ?? "", timestamp: m.data.timestamp, parent: b.parentCastId, ...(embeds.length ? { embeds } : {}), ...(m.signer ? { signer: m.signer } : {}) };
 }
 
 /** Merge confirmed casts with optimistic ones; pending entries are dropped once the node returns them. */

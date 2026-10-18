@@ -14,6 +14,13 @@ const check = (name, ok, extra = "") => { results.push({ name, ok }); console.lo
 
 const browser = await chromium.launch({ executablePath: process.env.CHROME ?? undefined, headless: true });
 const page = await browser.newPage();
+// The mock gives bob a profile picture on imagedelivery.net (an allowed host). Answer it locally so
+// the test never leaves 127.0.0.1.
+const PNG = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=", "base64");
+const fakeImages = (p) => p.route("https://imagedelivery.net/**", (r) => r.fulfill({ status: 200, contentType: "image/png", body: PNG }));
+await fakeImages(page);
+const pageReqs = [];
+page.on("request", (r) => pageReqs.push(r.url()));
 const consoleMsgs = [];
 page.on("console", (m) => consoleMsgs.push(`${m.type()}: ${m.text()}`));
 page.on("pageerror", (e) => consoleMsgs.push(`pageerror: ${e.message}`));
@@ -41,7 +48,11 @@ check("Try a sample feed reads casts of the curated accounts (incl. balajis, FID
 
 // --- signer flow: the empty state offers "Add app key", which opens the panel
 check("post box shows the add-app-key empty state", (await page.textContent("#compose-box"))?.includes("To post, add an app key first."));
+const writeChunk = () => pageReqs.some((u) => /\/assets\/write-[\w-]+\.js$/.test(u));
+check("reading the feed does not download the signing code (write chunk)", !writeChunk());
 await page.click("#open-add-key");
+await step(() => page.waitForFunction(() => performance.getEntriesByType("resource").some((e) => /\/assets\/write-/.test(e.name)), null, { timeout: 10000 }));
+check("opening Add app key loads the signing code", writeChunk());
 check("opening the panel adds a stricter CSP meta: img-src 'self' data:", await page.evaluate(() => [...document.querySelectorAll('meta[http-equiv="Content-Security-Policy"]')].some((m) => m.getAttribute("content") === "img-src 'self' data:")));
 check("add-app-key panel open as a modal dialog", await page.evaluate(() => document.getElementById("add-key-dialog")?.matches(":modal")));
 const stepNow = () => page.evaluate(() => document.querySelector('#add-key-dialog .stepper [aria-current="step"]')?.textContent ?? "");
@@ -126,6 +137,9 @@ for (const vp of [{ width: 360, height: 740, isMobile: true, hasTouch: true }, {
 {
   const ctx = await browser.newContext({ viewport: { width: 1280, height: 900 } });
   const p = await ctx.newPage();
+  await fakeImages(p);
+  const imgReqs = [];
+  p.on("request", (r) => { if (r.url().startsWith("https://imagedelivery.net/")) imgReqs.push(r.url()); });
   const ready = () => p.waitForFunction(() => document.getElementById("node-status")?.textContent?.startsWith("Connected"), null, { timeout: 15000 });
   const settled = () => p.waitForFunction(() => !(document.getElementById("feed-meta")?.textContent ?? "").startsWith("Loading") && !document.getElementById("refresh").disabled, null, { timeout: 15000 });
   await p.goto(URL); await ready();
@@ -158,6 +172,33 @@ for (const vp of [{ width: 360, height: 740, isMobile: true, hasTouch: true }, {
   check("Load older casts pages castsByFid with pageToken and then hides itself", olderVisible && before === 20 && after === 25 && !(await p.isVisible("#load-older")), `${before} then ${after}`);
   const tokens = readFileSync(LOG, "utf8").trim().split("\n").map((l) => JSON.parse(l)).filter((r) => r.path === "/v1/castsByFid" && new URLSearchParams(r.query).get("pageToken"));
   check("older pages are requested with the node's nextPageToken", tokens.some((r) => new URLSearchParams(r.query).get("fid") === "10"));
+  // --- Posted with: app of each cast from signersByFid metadata, hide / only rules
+  check("each cast says which app posted it (from the signer's requestFid)", (await feedText()).includes("via @castapp") && (await feedText()).includes("via @otherapp") && (await feedText()).includes("via unknown app"));
+  await p.click("#filters-panel > summary");
+  await p.click('button[aria-label="Hide @castapp"]');
+  const appsShown = () => p.$$eval("#feed .cast .cast-app", (a) => [...new Set(a.map((x) => x.dataset.app))].sort().join(","));
+  check("Hide an app removes its casts", (await appsShown()) === ",600", await appsShown());
+  await p.click('button[aria-label="Hide @castapp"]');
+  await p.click('button[aria-label="Only @otherapp"]');
+  check("Only shows casts from that app (unknown app hidden too)", (await appsShown()) === "600" && (await p.$$("#feed .cast")).length === 1, await appsShown());
+  await p.reload(); await ready(); await step(() => p.waitForSelector("#feed .cast", { timeout: 15000 })); await settled();
+  check("app rule persists across reload", (await appsShown()) === "600" && (await p.textContent("#filters-panel-title")).includes("(1)"));
+  if (!(await p.evaluate(() => document.getElementById("filters-panel").open))) await p.click("#filters-panel > summary");
+  await p.click('button[aria-label="Only @otherapp"]');
+  check("removing the rule shows every app again", (await appsShown()) === ",500,600", await appsShown());
+  const signerReads = readFileSync(LOG, "utf8").trim().split("\n").map((l) => JSON.parse(l)).filter((r) => r.path === "/v1/signersByFid").map((r) => new URLSearchParams(r.query).get("fid"));
+  check("app lookups come from the node's /v1/signersByFid", signerReads.includes("10") && signerReads.includes("11"));
+  // --- pictures: on by default (allowlisted host), off in Settings loads nothing from image hosts
+  check("profile picture from an allowed host is shown", (await p.$$("#feed .cast[data-fid='10'] .avatar-img")).length > 0 && imgReqs.length > 0);
+  await p.click("#settings-panel > summary");
+  await p.uncheck("#show-pictures");
+  check("Show pictures off removes them", (await p.$$("#feed .avatar-img")).length === 0);
+  imgReqs.length = 0;
+  await p.reload(); await ready(); await step(() => p.waitForSelector("#feed .cast", { timeout: 15000 })); await settled();
+  check("with pictures off, a reload requests nothing from image hosts", imgReqs.length === 0 && (await p.$$("#feed .avatar-img")).length === 0);
+  if (!(await p.evaluate(() => document.getElementById("settings-panel").open))) await p.click("#settings-panel > summary");
+  await p.check("#show-pictures");
+  check("the setting says where pictures come from", (await p.textContent("#pictures-hint")).includes("imagedelivery.net") && (await p.textContent("#pictures-hint")).includes("only from your node"));
   await p.click("#feed-options > summary");
   await p.check("#all-replies");
   check("Show replies to people I don't follow reveals the hidden reply", (await feedText()).includes("Bob replying to Dave") && (await feedText()).includes("Replying to @dave"));

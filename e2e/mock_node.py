@@ -15,18 +15,27 @@ PORT = int(sys.argv[1]); LOG = sys.argv[2]
 FLAGS = set(sys.argv[3].split(",")) if len(sys.argv) > 3 else set()
 FC_EPOCH = 1609459200
 NOW = int(time.time()) - FC_EPOCH
-NAMES = {"alice": 4242, "bob": 10, "carol": 11, "dave": 99, "erin": 13}
+NAMES = {"alice": 4242, "bob": 10, "carol": 11, "dave": 99, "erin": 13, "castapp": 500, "otherapp": 600}
+# "Posted with": bob's key was requested by app FID 500, carol's by 600; one of bob's casts is
+# signed with a key the node no longer lists (unknown app).
+KEY_A, KEY_B, KEY_GONE = "0x" + "a1" * 32, "0x" + "b2" * 32, "0x" + "c3" * 32
+def meta(app_fid):  # ABI-encoded SignedKeyRequestMetadata, base64 like the real node
+    import base64
+    w = lambda n: n.to_bytes(32, "big")
+    return base64.b64encode(w(32) + w(app_fid) + w(0) + w(128) + w(0) + w(0)).decode()
+SIGNERS = {10: [(KEY_A, 500)], 11: [(KEY_B, 600)]}
 FOLLOWS = {4242: [10, 11], 13: [4242]}
-def cast(fid, i, ts, text, parent=None):
+def cast(fid, i, ts, text, parent=None, signer=None):
     body = {"text": text, "embeds": [], "mentions": [], "mentionsPositions": []}
     if parent: body["parentCastId"] = {"fid": parent, "hash": "0x" + "ab" * 20}
     return {"data": {"type": "MESSAGE_TYPE_CAST_ADD", "fid": fid, "timestamp": ts, "network": "FARCASTER_NETWORK_MAINNET", "castAddBody": body},
-            "hash": "0x%04x%036x" % (fid, i)}
+            "hash": "0x%04x%036x" % (fid, i), "signer": signer or {10: KEY_A, 11: KEY_B}.get(fid, KEY_A)}
 CASTS = {
     10: [cast(10, i, NOW - 600 * (i + 1), f"Bob's cast number {25 - i}", 99 if i == 1 else None) for i in range(25)],
     11: [cast(11, 0, NOW - 900, "Carol agrees with Bob", 10)],
 }
 CASTS[10][1]["data"]["castAddBody"]["text"] = "Bob replying to Dave"
+CASTS[10][3]["signer"] = KEY_GONE
 CUSTODY = "0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266"  # public Hardhat test account #0
 FID = 4242
 state = {"submits": 0, "keys": set()}
@@ -62,7 +71,8 @@ class H(http.server.BaseHTTPRequestHandler):
             fid = int(q.get("fid", 0)); name = next((n for n, f in NAMES.items() if f == fid), None)
             if not name: return self.send(200, {"messages": []})
             return self.send(200, {"messages": [{"data": {"type": "MESSAGE_TYPE_USER_DATA_ADD", "fid": fid, "timestamp": NOW - 86400, "userDataBody": {"type": t, "value": v}}, "hash": "0x00"}
-                                                for t, v in (("USER_DATA_TYPE_USERNAME", name), ("USER_DATA_TYPE_DISPLAY", name.capitalize()))]})
+                                                for t, v in (("USER_DATA_TYPE_USERNAME", name), ("USER_DATA_TYPE_DISPLAY", name.capitalize()))
+                                                + ((("USER_DATA_TYPE_PFP", "https://imagedelivery.net/mock/bob/original"),) if fid == 10 else ())]})
         if p == "/v1/userNameProofByName":
             n = q.get("name", "").lower()
             if n in NAMES: return self.send(200, {"timestamp": 1, "name": n, "owner": "0x00", "signature": "", "fid": NAMES[n], "type": "USERNAME_TYPE_FNAME"})
@@ -70,6 +80,11 @@ class H(http.server.BaseHTTPRequestHandler):
         if p == "/v1/onChainIdRegistryEventByAddress":
             if q.get("address", "").lower() == CUSTODY: return self.send(200, {"fid": FID, "type": "EVENT_TYPE_ID_REGISTER"})
             return self.send(400, {"errCode": "not_found", "details": "no fid"})
+        if p == "/v1/signersByFid" and int(q.get("fid", 0)) in SIGNERS:
+            fid = int(q["fid"])
+            return self.send(200, {"signers": [{"source": "SIGNER_SOURCE_ONCHAIN", "key": k, "keyType": 1, "fid": fid, "onChainEvent": {"type": "EVENT_TYPE_SIGNER", "fid": fid,
+                "signerEventBody": {"key": k, "keyType": 1, "eventType": "SIGNER_EVENT_TYPE_ADD", "metadata": meta(app), "metadataType": 1}}} for k, app in SIGNERS[fid]],
+                "currentUserNonce": 0, "gaslessSignerCount": 0, "gaslessSignerLimit": 1000})
         if p == "/v1/signersByFid":
             return self.send(200, {"signers": [], "currentUserNonce": 0, "gaslessSignerCount": 0, "gaslessSignerLimit": 1000})
         if p == "/v1/signer":

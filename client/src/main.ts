@@ -7,33 +7,35 @@
 //
 // SECURITY: Only paste a seed phrase into software from developers you trust. Prefer delegated
 // signers wherever possible. See src/signer.ts and README.md.
-import "./polyfills";
 import "@fontsource-variable/dm-sans";
 import "@fontsource/ibm-plex-mono/400.css";
-import { getFarcasterTime } from "@farcaster/core";
 import { NodeApi } from "./api";
-import { forgetAppKey, generateAppKey, loadAppKey, privateKeyBytes, saveAppKey, toStored, type StoredAppKey } from "./appkey";
-import { SAMPLE_ACCOUNTS, fcTimeToDate, loadProfiles, loadSampleFeed, mergeFeed, type FeedCast, type Profile } from "./feed";
+import { forgetAppKey, loadAppKey, saveAppKey, type StoredAppKey } from "./appkey";
+import { FARCASTER_EPOCH_MS, SAMPLE_ACCOUNTS, fcTimeToDate, loadProfiles, loadSampleFeed, mergeFeed, type FeedCast, type Profile } from "./feed";
+import { AppIndex } from "./apps";
 import { explainKeyError, lookupMessage, resolveFid } from "./help";
 import { countNew, hasOlder, loadOlder, startTimeline, timelineView, type Timeline } from "./timeline";
-import { allowedImageUrl, imagesLocked, lockImages } from "./images";
+import { IMAGE_HOSTS, allowedImageUrl, imagesLocked, lockImages } from "./images";
 import { addToList, hiddenReason, loadFilters, removeFromList, saveFilters, type Filters } from "./filters";
 import { bytesLeft, embedKind, hostOf, linkLabel, nodeHealth, sentence, timeAgo } from "./format";
 import { icon, type IconName } from "./icons";
-import { buildCast, buildFollow, buildReaction, signerFromPrivateKey } from "./messages";
 import { Reconciler, type PendingItem } from "./pending";
-import { DEFAULT_TTL_SECONDS, buildKeyAdd, isKeyActive } from "./signer";
 import { browserKV, readJSON, writeJSON } from "./storage";
+
+// The signing code (src/write.ts) is a separate chunk, loaded on first need.
+let writeMod: Promise<typeof import("./write")> | null = null;
+const loadWrite = () => (writeMod ??= import("./write"));
 
 const kv = browserKV();
 const SETTINGS_KEY = "settings.v1";
-interface Settings { nodeUrl: string; viewerFid: number | null; watchFids: number[]; sample?: boolean; allReplies?: boolean; introDone?: boolean }
+interface Settings { nodeUrl: string; viewerFid: number | null; watchFids: number[]; sample?: boolean; allReplies?: boolean; introDone?: boolean; noPictures?: boolean }
 const settings: Settings = { nodeUrl: (import.meta.env.VITE_NODE_URL as string | undefined) ?? "", viewerFid: null, watchFids: [], ...readJSON<Partial<Settings>>(kv, SETTINGS_KEY, {}) };
 const api = new NodeApi(settings.nodeUrl);
 let filters: Filters = loadFilters(kv);
 let appKey: StoredAppKey | null = loadAppKey(kv);
 let feed: FeedCast[] = [];
 const profiles = new Map<number, Profile>();
+const apps = new AppIndex(api, kv);
 const MAX_CAST_BYTES = 320;
 
 // ---------- tiny DOM helpers (textContent only)
@@ -119,19 +121,23 @@ app.append(
       panel("follow-panel", "Follow someone",
         lab("follow-fid", "FID to follow"),
         h("div", { class: "row" }, h("input", { id: "follow-fid", inputMode: "numeric", autocomplete: "off" }), h("button", { id: "follow", class: "btn btn-secondary" }, "Follow"))),
-      panel("filters-panel", "Filters", h("div", { id: "filters" })),
+      panel("filters-panel", "Filters", h("div", { id: "filters" }), h("div", { id: "app-filters", class: "filter" })),
       panel("pending-panel", "Sent", h("div", { id: "pending" })),
       panel("settings-panel", "Node connection",
         lab("node-url", "Node API URL"),
         h("div", { class: "row" },
           attr(h("input", { id: "node-url", placeholder: "Empty: this site (recommended)", value: settings.nodeUrl, autocomplete: "off", spellcheck: false }), { "aria-describedby": "node-url-hint" }),
           h("button", { id: "save-node", class: "btn btn-secondary" }, "Save")),
-        hint("node-url-hint", "Caddy on your node serves this app and forwards /v1 requests on the same address. Another URL only works in development, because the page may only connect to its own address (CSP connect-src 'self')."))), ), { "aria-label": "Account and settings" }),
+        hint("node-url-hint", "Caddy on your node serves this app and forwards /v1 requests on the same address. Another URL only works in development, because the page may only connect to its own address (CSP connect-src 'self')."),
+        h("label", { class: "check" },
+          attr(h("input", { type: "checkbox", id: "show-pictures", checked: !settings.noPictures }), { "aria-describedby": "pictures-hint" }),
+          h("span", {}, "Show profile pictures and images")),
+        hint("pictures-hint", `Feed data comes only from your node. Pictures are the exception: they load from ${IMAGE_HOSTS.join(", ")}, which see your IP address (no referrer is sent). Turn this off to load nothing from them.`))), ), { "aria-label": "Account and settings" }),
     h("section", { class: "feed" },
       h("div", { id: "intro", class: "card intro", hidden: true },
         h("h2", {}, "How this works"),
         h("ul", {},
-          h("li", {}, "RunFarcaster reads Farcaster posts straight from your own node."),
+          h("li", {}, "RunFarcaster reads Farcaster posts from your own node. Only pictures come from elsewhere: a few public image hosts, which you can turn off in Settings."),
           h("li", {}, "Your FID is your account number. Enter it, or your username, to see your feed."),
           h("li", {}, "To post, like or follow, you add an app key once. Reading needs nothing.")),
         h("button", { id: "intro-done", class: "btn btn-secondary btn-sm" }, "Got it")),
@@ -268,13 +274,14 @@ function stepHeader(n: number, title: string) {
         i === n - 1 ? { "aria-current": "step" } : {}))), { "aria-label": `Step ${n} of ${STEPS.length}` }),
   ];
 }
-function showStep(n: 1 | 2 | 3 | 4, fid?: number, ttlDays?: number) {
+async function showStep(n: 1 | 2 | 3 | 4, fid?: number, ttlDays?: number) {
+  const { DEFAULT_TTL_SECONDS } = n === 3 ? await loadWrite() : { DEFAULT_TTL_SECONDS: 0 };
   const dlg = $("add-key-dialog") as HTMLDialogElement;
   const old = document.getElementById("seed") as HTMLTextAreaElement | null;
   if (old) old.value = ""; // leaving step 3 drops anything typed
   const cancel = () => h("button", { id: "cancel-add-key", class: "btn btn-secondary" }, "Cancel");
-  const back = (to: 1 | 2) => { const b = h("button", { id: "step-back", class: "btn btn-secondary" }, "Back"); b.addEventListener("click", () => showStep(to)); return b; };
-  const next = (to: 2 | 3, label: string) => { const b = h("button", { id: "step-next", class: "btn" }, label); b.addEventListener("click", () => showStep(to)); return b; };
+  const back = (to: 1 | 2) => { const b = h("button", { id: "step-back", class: "btn btn-secondary" }, "Back"); b.addEventListener("click", () => void showStep(to)); return b; };
+  const next = (to: 2 | 3, label: string) => { const b = h("button", { id: "step-next", class: "btn" }, label); b.addEventListener("click", () => void showStep(to)); return b; };
   if (n === 1) {
     dlg.replaceChildren(...stepHeader(1, "What an app key is"),
       attr(h("div", { id: "step-about", class: "step-body" },
@@ -344,8 +351,9 @@ function showStep(n: 1 | 2 | 3 | 4, fid?: number, ttlDays?: number) {
 function openAddKey() {
   // No image request may leave the page while a recovery phrase can be in it (see src/images.ts).
   lockImages();
+  void loadWrite(); // fetch the signing code while the first steps are read
   const dlg = $("add-key-dialog") as HTMLDialogElement;
-  showStep(1);
+  void showStep(1);
   dlg.showModal();
   $("add-key-title").focus();
 }
@@ -364,11 +372,12 @@ async function onAddKey() {
   let phrase: string | null = seedEl.value;
   seedEl.value = "";
   const ttl = Number(($("ttl") as HTMLSelectElement).value);
-  const { privateKey } = generateAppKey();
   const btn = $("add-key") as HTMLButtonElement;
   adding = true; btn.disabled = true;
   setText("signer-msg", "Signing in this browser…");
   try {
+    const { generateAppKey, buildKeyAdd, toStored } = await loadWrite();
+    const { privateKey } = generateAppKey();
     const res = await buildKeyAdd({ mnemonic: phrase, appPrivateKey: privateKey, api, ttl });
     phrase = null; // drop our reference as early as possible
     setText("signer-msg", `Signed for FID ${res.plan.fid}. Sending to your node…`);
@@ -382,7 +391,7 @@ async function onAddKey() {
       ($("viewer-fid") as HTMLInputElement).value = String(res.plan.fid);
       feedChanged = true;
     }
-    showStep(4, res.plan.fid, Math.round(ttl / 86400)); // replaces step 3, so the phrase field is gone
+    await showStep(4, res.plan.fid, Math.round(ttl / 86400)); // replaces step 3, so the phrase field is gone
     renderSigner();
     if (feedChanged) void refreshFeed();
     void waitForKey();
@@ -399,6 +408,7 @@ async function onAddKey() {
 
 async function waitForKey(maxTries = 30) {
   if (!appKey || appKey.status === "active") return;
+  const { isKeyActive } = await loadWrite();
   for (let i = 0; i < maxTries && appKey && appKey.status !== "active"; i++) {
     try {
       if (await isKeyActive(api, appKey.fid, appKey.publicKeyHex)) {
@@ -411,16 +421,17 @@ async function waitForKey(maxTries = 30) {
 }
 
 // ---------- actions
-function requireKey(): { fid: number; signer: ReturnType<typeof signerFromPrivateKey> } | null {
+async function requireKey() {
   if (!appKey) { say("Add an app key first."); return null; }
-  return { fid: appKey.fid, signer: signerFromPrivateKey(privateKeyBytes(appKey)) };
+  const w = await loadWrite();
+  return { fid: appKey.fid, signer: w.signerFromPrivateKey(w.privateKeyBytes(appKey)), w };
 }
 
 async function onPost() {
-  const k = requireKey(); if (!k) return;
+  const k = await requireKey(); if (!k) return;
   const el = $("compose") as HTMLTextAreaElement;
   try {
-    const m = await buildCast(el.value, k);
+    const m = await k.w.buildCast(el.value, k);
     el.value = "";
     el.dispatchEvent(new Event("input"));
     await reconciler.add(m);
@@ -428,15 +439,15 @@ async function onPost() {
 }
 
 $("follow").addEventListener("click", async () => {
-  const k = requireKey(); if (!k) return;
+  const k = await requireKey(); if (!k) return;
   const v = Number(($("follow-fid") as HTMLInputElement).value.trim());
-  try { await reconciler.add(await buildFollow(v, k)); say(`Follow for FID ${v} sent.`); }
+  try { await reconciler.add(await k.w.buildFollow(v, k)); say(`Follow for FID ${v} sent.`); }
   catch (e) { say((e as Error).message); }
 });
 
 async function react(kind: "like" | "recast", c: FeedCast) {
-  const k = requireKey(); if (!k) return;
-  try { await reconciler.add(await buildReaction(kind, { fid: c.fid, hash: c.hash }, k)); say(kind === "like" ? "Like sent." : "Recast sent."); }
+  const k = await requireKey(); if (!k) return;
+  try { await reconciler.add(await k.w.buildReaction(kind, { fid: c.fid, hash: c.hash }, k)); say(kind === "like" ? "Like sent." : "Recast sent."); }
   catch (e) { say((e as Error).message); }
 }
 
@@ -497,7 +508,38 @@ function renderFilters() {
         attr(h("button", { class: "chip-x", onclick: () => { filters = removeFromList(filters, key, v); saveFilters(kv, filters); renderFilters(); renderFeed(); } }, "×"), { "aria-label": `Remove ${v}` })));
     box.append(h("div", { class: "filter" }, lab(`filter-${key}`, title), h("div", { class: "row" }, input, add), chips.length ? h("div", { class: "chips" }, ...chips) : null));
   }
+  total += filters.hideApps.length + filters.includeApps.length;
   setText("filters-panel-title", total ? `Filters (${total})` : "Filters");
+}
+
+// "Posted with": hide an app, or show only some apps. Lists the apps in the loaded feed plus any app
+// that already has a rule.
+function setAppRule(list: "hideApps" | "includeApps", app: number, on: boolean) {
+  const other = list === "hideApps" ? "includeApps" : "hideApps";
+  let f = removeFromList(filters, other, app); // an app is either hidden or "only", not both
+  f = on ? addToList(f, list, String(app)) as Filters : removeFromList(f, list, app);
+  filters = f; saveFilters(kv, filters); renderFilters(); renderFeed();
+}
+function renderAppFilters(casts: FeedCast[]) {
+  const box = $("app-filters");
+  const counts = new Map<number, number>();
+  let unknown = 0;
+  for (const c of casts) { const a = apps.appOf(c); if (typeof a === "number") counts.set(a, (counts.get(a) ?? 0) + 1); else if (a === null) unknown++; }
+  for (const a of [...filters.hideApps, ...filters.includeApps]) if (!counts.has(a)) counts.set(a, 0);
+  const rows = [...counts].sort((x, y) => y[1] - x[1]).map(([app, n]) => {
+    const hidden = filters.hideApps.includes(app), only = filters.includeApps.includes(app);
+    const name = appName(app);
+    const toggle = (list: "hideApps" | "includeApps", label: string, on: boolean) =>
+      attr(h("button", { class: `btn btn-sm ${on ? "" : "btn-secondary"}`.trim(), onclick: () => setAppRule(list, app, !on) }, label), { "aria-pressed": String(on), "aria-label": `${label} ${name}` });
+    return attr(h("li", { class: "app-row" },
+      h("span", { class: "app-name" }, name, h("span", { class: "hint" }, ` ${n} ${n === 1 ? "cast" : "casts"}`)),
+      h("span", { class: "app-btns" }, toggle("includeApps", "Only", only), toggle("hideApps", "Hide", hidden))), { "data-app": String(app) });
+  });
+  box.replaceChildren(
+    h("p", { class: "lbl", id: "app-filters-title" }, "Posted with"),
+    h("p", { class: "hint" }, "Each cast is signed by an app key, and your node records which app asked for that key. Hide an app, or pick Only to show just those apps."),
+    rows.length ? attr(h("ul", { class: "app-list" }, ...rows), { "aria-labelledby": "app-filters-title" }) : h("p", { class: "hint" }, "Apps show up here once the feed has loaded."),
+    ...(unknown ? [h("p", { class: "hint" }, `${unknown} ${unknown === 1 ? "cast was" : "casts were"} signed with a key your node no longer lists (unknown app).${filters.includeApps.length ? " Only rules hide them." : ""}`)] : []));
 }
 
 // ---------- feed
@@ -510,7 +552,7 @@ function remoteImg(url: string, cls: string, size: { width: number; height: numb
 }
 function avatar(fid: number, name: string, pfp: string | undefined) {
   const box = attr(h("div", { class: "avatar" }, initials(name)), { "aria-hidden": "true", "data-hue": String(fid % 6) });
-  const url = imagesLocked() ? null : allowedImageUrl(pfp);
+  const url = imagesLocked() || settings.noPictures ? null : allowedImageUrl(pfp);
   if (url) box.append(remoteImg(url, "avatar-img", { width: 44, height: 44 }, (img) => img.remove()));
   return box;
 }
@@ -520,7 +562,7 @@ function embedChip(e: NonNullable<FeedCast["embeds"]>[number], allowThumb = true
   const l = linkLabel(e.url ?? "");
   if (!l) return null;
   const kind = embedKind(l.href);
-  const thumbUrl = allowThumb && kind === "image" && !imagesLocked() ? allowedImageUrl(l.href) : null;
+  const thumbUrl = allowThumb && kind === "image" && !imagesLocked() && !settings.noPictures ? allowedImageUrl(l.href) : null;
   if (thumbUrl) {
     // Thumbnail in a fixed-size frame (no layout shift); falls back to the chip if it can't load.
     const t = h("a", { class: "thumb", href: l.href, target: "_blank", rel: "noopener noreferrer" }, h("span", { class: "sr-only" }, `Image on ${hostOf(l.href)} (opens in a new tab)`));
@@ -535,6 +577,15 @@ function embedChip(e: NonNullable<FeedCast["embeds"]>[number], allowThumb = true
 }
 function actionBtn(name: IconName, label: string, onclick: () => void, cls = "") {
   return attr(h("button", { class: `act ${cls}`.trim(), onclick, title: label }, icon(name)), { "aria-label": label });
+}
+function appName(app: number) {
+  const p = profiles.get(app);
+  return p?.username ? `@${p.username}` : `app FID ${app}`;
+}
+function appLabel(c: FeedCast) {
+  const a = apps.appOf(c);
+  if (a === undefined) return null;
+  return attr(h("span", { class: "cast-app", title: a === null ? "Your node lists no app for the key that signed this cast" : `Signed with an app key requested by FID ${a}` }, a === null ? "via unknown app" : `via ${appName(a)}`), { "data-app": String(a ?? "") });
 }
 function replyName(fid: number) {
   const p = profiles.get(fid);
@@ -570,6 +621,7 @@ function castCard(c: FeedCast) {
         : h("div", { class: "cast-actions" },
           actionBtn("heart", `Like cast by ${name}`, () => void react("like", c), "act-like"),
           actionBtn("repeat", `Recast cast by ${name}`, () => void react("recast", c), "act-recast"),
+          appLabel(c),
           actionBtn("mute", `Mute FID ${c.fid}`, () => { filters = addToList(filters, "mutedFids", String(c.fid)) as Filters; saveFilters(kv, filters); renderFilters(); renderFeed(); say(`Muted FID ${c.fid}. Undo under Filters.`); }, "act-mute")),
     )), { "data-fid": String(c.fid) });
   return card;
@@ -596,12 +648,13 @@ function button(id: string, label: string, onclick: () => void, cls = "btn btn-s
 const openOptions = () => { ($("feed-options") as HTMLDetailsElement).open = true; ($("viewer-fid") as HTMLInputElement).focus(); };
 
 function renderFeed() {
-  const nowFc = getFarcasterTime().unwrapOr(0);
+  const nowFc = Math.floor((Date.now() - FARCASTER_EPOCH_MS) / 1000); // Farcaster time, for optimistic casts
   const view = !settings.sample && timeline ? timelineView(timeline, !!settings.allReplies) : null;
   const base = view ? view.casts : feed;
   const merged = mergeFeed(base, reconciler.list(), nowFc, !!settings.sample); // the sample feed keeps sampleOrder
-  const shown = merged.filter((c) => hiddenReason(c, filters) === null);
+  const shown = merged.filter((c) => hiddenReason({ ...c, app: c.pending ? undefined : apps.appOf(c) }, filters) === null);
   const hidden = merged.length - shown.length;
+  renderAppFilters(merged.filter((c) => !c.pending));
   if (!loading) {
     const parts = [`${shown.length} ${shown.length === 1 ? "cast" : "casts"}`];
     if (newCount) parts.push(`${newCount} new since the last refresh`);
@@ -700,8 +753,9 @@ $("leave-sample").addEventListener("click", () => {
 
 async function nodeAnswers() { try { await api.info(); return true; } catch { return false; } }
 async function addProfiles(casts: FeedCast[]) {
+  await apps.load(casts); // which app posted each cast (src/apps.ts)
   const fids = new Set<number>();
-  for (const c of casts) { fids.add(c.fid); if (c.parent) fids.add(c.parent.fid); }
+  for (const c of casts) { fids.add(c.fid); if (c.parent) fids.add(c.parent.fid); const a = apps.appOf(c); if (a) fids.add(a); }
   const missing = [...fids].filter((f) => !profiles.has(f));
   for (const [fid, p] of await loadProfiles(api, missing)) profiles.set(fid, p);
 }
@@ -781,6 +835,7 @@ async function onLoadOlder() {
 function setAllReplies(on: boolean) { settings.allReplies = on; writeJSON(kv, SETTINGS_KEY, settings); renderFeed(); }
 $("all-replies").addEventListener("change", (ev) => setAllReplies((ev.target as HTMLInputElement).checked));
 $("load-older").addEventListener("click", () => void onLoadOlder());
+$("show-pictures").addEventListener("change", (ev) => { settings.noPictures = !(ev.target as HTMLInputElement).checked; writeJSON(kv, SETTINGS_KEY, settings); renderFeed(); });
 $("refresh").addEventListener("click", () => void refreshFeed());
 $("apply-feed").addEventListener("click", () => void refreshFeed());
 for (const id of ["viewer-fid", "watch-fids"]) $(id).addEventListener("keydown", (ev) => { if ((ev as KeyboardEvent).key === "Enter") void refreshFeed(); });
@@ -818,6 +873,7 @@ setView("feed");
 
 // ---------- boot
 renderSigner(); renderFilters(); renderPending();
+if (appKey) void loadWrite(); // you can post, so fetch the signing code now rather than on the first Post
 void refreshStatus(); void refreshFeed(); void waitForKey();
 setInterval(() => void reconciler.tick(), 2000);
 setInterval(() => void refreshStatus(), 30000);

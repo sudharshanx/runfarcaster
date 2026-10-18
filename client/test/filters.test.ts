@@ -53,6 +53,6 @@ describe("filters", () => {
     kv.set(FILTERS_KEY, "{not json");
     expect(loadFilters(kv)).toEqual(emptyFilters());
     kv.set(FILTERS_KEY, JSON.stringify({ mutedFids: ["7", -1, "x", 7], mutedKeywords: [42, " A "] }));
-    expect(loadFilters(kv)).toEqual({ mutedFids: [7], mutedKeywords: ["42", "a"], includeFids: [], includeKeywords: [] });
+    expect(loadFilters(kv)).toEqual({ mutedFids: [7], mutedKeywords: ["42", "a"], includeFids: [], includeKeywords: [], hideApps: [], includeApps: [] });
   });
 });

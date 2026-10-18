@@ -4,7 +4,7 @@
 // The only write is a deliberately INVALID submitMessage (random bytes), which the node must reject.
 // Usage: SITE=https://1-2-3-4.sslip.io CHROME=/usr/bin/google-chrome node real-node.mjs
 import { chromium } from "playwright-core";
-import { mkdirSync } from "node:fs";
+import { mkdirSync, readFileSync } from "node:fs";
 
 const SITE = process.env.SITE;
 if (!SITE) throw new Error("set SITE");
@@ -21,7 +21,7 @@ const page = await ctx.newPage();
 const consoleMsgs = [], requests = [];
 page.on("console", (m) => consoleMsgs.push({ text: `${m.type()}: ${m.text()}`, url: m.location()?.url ?? "" }));
 page.on("pageerror", (e) => consoleMsgs.push({ text: `pageerror: ${e.message}`, url: "" }));
-page.on("request", (r) => requests.push({ url: r.url(), method: r.method() }));
+page.on("request", (r) => requests.push({ url: r.url(), method: r.method(), type: r.resourceType() }));
 // Screenshots must not show the server's address: replace the hostname in visible text first.
 const redact = (p) => p.evaluate(() => {
   const host = location.hostname;
@@ -98,10 +98,13 @@ const bad = await page.evaluate(async () => {
 });
 check("invalid submitMessage rejected (4xx)", bad.status >= 400 && bad.status < 500, `${bad.status} ${bad.body}`);
 
-// mixed content: every request the page made is https to the same origin
+// mixed content: every request is https to the same origin, except image GETs to the exact
+// allowlist in client/src/images.ts (profile pictures and image posts; no referrer is sent).
 const origin = new URL(SITE).origin;
-const foreign = requests.filter((r) => !r.url.startsWith(origin) && !r.url.startsWith("data:"));
-check("no mixed content / no third-party requests", foreign.length === 0, foreign.slice(0, 3).map((r) => r.url).join(" "));
+const IMAGE_HOSTS = JSON.parse(readFileSync(new URL("../client/src/images.ts", import.meta.url), "utf8").match(/IMAGE_HOSTS = (\[[^\]]*\])/)[1]);
+const isAllowedImage = (r) => { try { const u = new URL(r.url); return r.type === "image" && r.method === "GET" && u.protocol === "https:" && !u.port && IMAGE_HOSTS.includes(u.hostname); } catch { return false; } };
+const foreign = requests.filter((r) => !r.url.startsWith(origin) && !r.url.startsWith("data:") && !isAllowedImage(r));
+check(`no mixed content; third-party requests only for images on ${IMAGE_HOSTS.join(", ")}`, foreign.length === 0, foreign.slice(0, 3).map((r) => `${r.type} ${r.url}`).join(" "));
 check("no app key or seed in storage (read-only test)", await page.evaluate(() => !localStorage.getItem("appKey.v1") && !Object.values(localStorage).some((v) => / \w+ \w+ \w+ \w+ \w+ \w+ \w+ \w+ \w+ \w+ \w+ /.test(v))));
 // Chrome logs "Failed to load resource: 400" for the deliberately invalid submitMessage above; that one is expected.
 const errs = consoleMsgs.filter((m) => (m.text.startsWith("error") || m.text.startsWith("pageerror"))
