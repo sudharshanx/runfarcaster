@@ -299,3 +299,5 @@ body.lp { margin: 0; background: #fff; color: var(--text); font-family: var(--sa
 .calc-row input{width:6.5rem}
 .calc-out{margin:1rem 0 0;font-size:0.95rem;color:#555}
 .calc-out #calc-total{font-size:1.6rem;font-weight:700;color:#111;margin-right:0.4rem;font-variant-numeric:tabular-nums}
+.calc-row select,.calc-row input{box-sizing:border-box;height:2.6rem;line-height:1.2}
+@media (max-width:640px){.calc-row{gap:0.6rem}.calc-row select,.calc-row input{min-width:0}.calc-row input{width:4.5rem}}
