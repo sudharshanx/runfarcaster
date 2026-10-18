@@ -137,12 +137,12 @@ const right = `<svg aria-hidden="true" width="12" height="12" viewBox="0 0 12 12
       <section class="wrap split cmds" aria-labelledby="cmd-title">
         <div>
           <p class="eyebrow">From your computer</p>
-          <h2 id="cmd-title" class="h-md">3 commands, run from the repo folder.</h2>
+          <h2 id="cmd-title" class="h-md">Run it from the repo folder.</h2>
           <p>Clone the repo first. You need a Hetzner token in <code>HCLOUD_TOKEN</code>, an SSH key uploaded to Hetzner, and Node.js 22.12 or later (22.x, 24.x or 26+).</p>
           <p>Step 1 starts a watchdog. It deletes everything before the bill reaches <code>MAX_USD</code>, or 24 hours later even if the node is healthy.</p>
           <a class="textlink" href={u("quickstart/")}>What each command prints<Fragment set:html={right} /></a>
         </div>
-        <div class="terminal" role="group" aria-label="The 3 commands">
+        <div class="terminal" role="group" aria-label="The 3 steps">
           {steps.map((s, i) => (
             <div class="term-step">
               <div class="term-head">
