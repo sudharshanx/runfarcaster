@@ -201,15 +201,18 @@ const right = `<svg aria-hidden="true" width="12" height="12" viewBox="0 0 12 12
         <p class="eyebrow">Cost</p>
         <h2 id="limits-title" class="h-md">What it costs on Hetzner.</h2>
         <table class="cost-table">
-          <thead><tr><th scope="col">What</th><th scope="col">Cost</th></tr></thead>
+          <thead><tr><th scope="col">Item</th><th scope="col">Per hour</th><th scope="col">Per month</th></tr></thead>
           <tbody>
-            <tr><td>Sync your node (about 14 hours)</td><td>About $2.31</td></tr>
-            <tr><td>Each hour the server runs</td><td>About $0.16</td></tr>
-            <tr><td>A full month left on</td><td>About $102</td></tr>
+            <tr><td>Server: cax31 (8 vCPU ARM, 16 GB RAM)</td><td>$0.040</td><td>$24.99</td></tr>
+            <tr><td>Public IPv4 address</td><td>$0.001</td><td>$0.60</td></tr>
+            <tr><td>1000 GB volume for the node's data</td><td>$0.123</td><td>$76.70</td></tr>
+            <tr class="cost-total"><td>Total</td><td>$0.164</td><td>$102.29</td></tr>
+            <tr><td>Our sync from zero: 14 h 6 min at $0.164 an hour</td><td colspan="2">$2.31</td></tr>
+            <tr><td>Total on cpx42, which the script picks if cax31 is sold out (untested)</td><td>$0.255</td><td>$159.29</td></tr>
           </tbody>
         </table>
-        <p class="cost-note">Billing stops when you delete the server with one command.</p>
-        <p><a href={u("server-and-node/#what-it-costs")}>See the full price breakdown</a></p>
+        <p class="cost-note">Hetzner list prices in USD, checked on 18 Oct 2026. Hetzner bills by the hour and stops at the monthly price. Your sync time may differ from ours. Billing stops when <code>teardown.sh</code> deletes the server and volume.</p>
+                <p><a href={u("server-and-node/#what-it-costs")}>See the full price breakdown</a></p>
       </section>
 
       <section class="wrap closing" aria-labelledby="close-title">
