@@ -211,7 +211,7 @@ So Caddy serves the app and passes `/v1/*` to the node, on the same address (<Re
 }
 ```
 
-Through Caddy, `/v1/mesh` (the node's peer list) returns 404. `connect-src 'self'` lets the page send requests only to its own address. If a library in the app were compromised, it could not send your data elsewhere. Caddy fetches its own Let's Encrypt certificate over ports 80 and 443.
+Through Caddy, `/v1/mesh` (the node's mesh debug view) returns 404. `/v1/currentPeers` stays public: it lists the peers the node is connected to, which are mainnet validators, with the addresses it sees for them. `connect-src 'self'` lets the page send requests only to its own address. If a library in the app were compromised, it could not send your data elsewhere. Caddy fetches its own Let's Encrypt certificate over ports 80 and 443.
 
 ## Step 8: Filters
 

@@ -22,6 +22,8 @@ page.on("pageerror", (e) => consoleMsgs.push(`pageerror: ${e.message}`));
 const step = async (fn) => { try { return await fn(); } catch (e) { console.error(String(e).split("\n")[0]); console.error(consoleMsgs.join("\n")); await browser.close(); process.exit(1); } };
 const resp = await page.goto(URL);
 check("page served with CSP connect-src 'self'", (resp.headers()["content-security-policy"] ?? "").includes("connect-src 'self'"));
+const metaCsp = await page.evaluate(() => document.querySelector('meta[http-equiv="Content-Security-Policy"]')?.getAttribute("content") ?? "");
+check("page also carries a CSP <meta> with connect-src 'self' (no frame-ancestors)", metaCsp.includes("connect-src 'self'") && !metaCsp.includes("frame-ancestors"));
 await step(() => page.waitForFunction(() => document.getElementById("node-status")?.textContent?.startsWith("Connected"), null, { timeout: 15000 }));
 check("node status via same-origin /v1/info proxy", true);
 

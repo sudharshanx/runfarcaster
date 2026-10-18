@@ -17,14 +17,15 @@ export const prompts = {
   provision: `${CONTEXT}
 
 Task: step 1, rent the server on Hetzner Cloud.
-1. Check: hcloud version, jq --version, and that HCLOUD_TOKEN is set without printing it: [ -n "$HCLOUD_TOKEN" ] && echo set. Run hcloud ssh-key list and ask me which key name to use.
-2. Find my public IP: MY_IP=$(curl -4 -s https://ifconfig.me)
+1. Check: hcloud version, jq --version, ssh -V, curl --version, and that HCLOUD_TOKEN is set without printing it: [ -n "$HCLOUD_TOKEN" ] && echo set. Run hcloud ssh-key list and ask me which key name to use.
+2. Find my public IP: MY_IP=$(curl -4 -s https://ifconfig.me) and show it with echo "$MY_IP". If it is empty, stop.
 3. Show the price, creating nothing:
    ESTIMATE_ONLY=1 SERVER_TYPE=cax31 VOLUME_GB=1000 EXPECTED_HOURS=16 ./provision.sh
 4. When I say yes, run:
    IP=$(SSH_KEY=<key-name> SERVER_TYPE=cax31 VOLUME_GB=1000 MAX_USD=5 EXPECTED_HOURS=16 SSH_SOURCE_CIDRS="$MY_IP/32" ./provision.sh)
-Expected: "[provision] cost guard OK", then a "[provision] done. Next" line on stderr, and the IPv4 address on stdout. It took 35 s for us.
-Known errors: "volumes size limit exceeded (resource_limit_exceeded)" means the account's volume limit (1024 GB for new accounts); keep VOLUME_GB=1000. If cx43 is refused, it is sold out; use SERVER_TYPE=cax31.
+Expected: "[provision] cost guard OK", then "[provision] watchdog started (pid ...)", then a "[provision] done. Next" line on stderr, and the IPv4 address on stdout. It took 35 s for us.
+Known errors: "volumes size limit exceeded (resource_limit_exceeded)" means the account's volume limit (1024 GB for new accounts); keep VOLUME_GB=1000. If cx43 is refused, it is sold out; use SERVER_TYPE=cax31. "watchdog did not start" means HCLOUD_TOKEN is missing in this terminal; nothing was created.
+Tell me: provision.sh started watchdog.sh in the background. It deletes everything when the bill would pass MAX_USD, after 2 h without progress, and after 24 h even if the node is healthy. To keep the node longer: touch .provision-state/watchdog.disarm. Its log: .provision-state/watchdog.log.
 
 ${SAFETY}`,
 
@@ -45,10 +46,11 @@ ${SAFETY}`,
   client: `${CONTEXT}
 
 Task: step 3, put the web app in front of the node.
-Needs Node.js 22.12 or later on my computer.
+Needs Node.js 22.12+ (22.x), 24.x or 26+ on my computer.
 Run: ./deploy-client.sh "$IP"   (a DNS name of mine that points at $IP can go as the 2nd argument; without it the script uses <ip-with-dashes>.sslip.io)
 Expected last line: "[deploy-client] OK: https://<name> (client) and https://<name>/v1/info (node, proxied)". About 35 s for us with a warm npm cache.
 Then I open the address. The status line should start with "Connected. version".
+Remind me: if the watchdog is still running, it deletes the node 24 h after step 1. To keep it: touch .provision-state/watchdog.disarm.
 If it fails: ports 80 and 443 must be open (provision.sh opens them). Look at: ssh root@$IP 'cd /opt/snapchain-client && docker compose logs caddy'. For a specific SSH key: SSH_OPTS="-i <keyfile>" ./deploy-client.sh "$IP".
 
 ${SAFETY}`,
@@ -77,8 +79,8 @@ ${SAFETY}`,
 
 Goal: take me from an empty Hetzner Cloud project to a synced Snapchain read node with the web app in front of it, then help me delete it all when I say so. Do one step at a time and wait for my OK before the next.
 
-Before step 1. Check the tools: hcloud, jq, ssh, curl, node (22.12 or later), npm. Check that HCLOUD_TOKEN is set without printing it. Ask me for my SSH key name (hcloud ssh-key list). Get my public IP with MY_IP=$(curl -4 -s https://ifconfig.me).
-Optional spending cap, in its own terminal: SSH_KEY_FILE=~/.ssh/id_ed25519 MAX_USD=5 nohup ./watchdog.sh >/dev/null 2>&1 &
+Before step 1. Check the tools: hcloud version, jq --version, ssh -V, curl --version, node --version (22.12+ on 22.x, 24.x or 26+), npm --version. Check that HCLOUD_TOKEN is set without printing it. Ask me for my SSH key name (hcloud ssh-key list). Get my public IP with MY_IP=$(curl -4 -s https://ifconfig.me) and check it with echo "$MY_IP".
+Spending cap: provision.sh starts watchdog.sh in the background before it creates anything, and stops if the watchdog cannot start. The watchdog deletes everything at MAX_USD, after 2 h without progress, and after 24 h even if the node is healthy. To keep the node longer: touch .provision-state/watchdog.disarm. Tell me this before step 1.
 Step 1. ESTIMATE_ONLY=1 SERVER_TYPE=cax31 VOLUME_GB=1000 EXPECTED_HOURS=16 ./provision.sh   -> show me the price (about 0.164 USD an hour for us).
         Then: IP=$(SSH_KEY=<key> SERVER_TYPE=cax31 VOLUME_GB=1000 MAX_USD=5 EXPECTED_HOURS=16 SSH_SOURCE_CIDRS="$MY_IP/32" ./provision.sh)
 Step 2. ssh root@$IP "SNAPCHAIN_AGREE_NO_REWARDS=yes MIN_FREE_GB=900 bash -s" < node.sh

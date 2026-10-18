@@ -22,6 +22,14 @@ const consoleMsgs = [], requests = [];
 page.on("console", (m) => consoleMsgs.push({ text: `${m.type()}: ${m.text()}`, url: m.location()?.url ?? "" }));
 page.on("pageerror", (e) => consoleMsgs.push({ text: `pageerror: ${e.message}`, url: "" }));
 page.on("request", (r) => requests.push({ url: r.url(), method: r.method() }));
+// Screenshots must not show the server's address: replace the hostname in visible text first.
+const redact = (p) => p.evaluate(() => {
+  const host = location.hostname;
+  const label = host.endsWith(".sslip.io") ? "<ip-with-dashes>.sslip.io" : "<your-domain>";
+  const w = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
+  for (let n = w.nextNode(); n; n = w.nextNode()) if (n.nodeValue.includes(host)) n.nodeValue = n.nodeValue.split(host).join(label);
+  for (const i of document.querySelectorAll("input, textarea")) if (i.value.includes(host)) i.value = i.value.split(host).join(label);
+});
 const step = async (name, fn) => { try { return await fn(); } catch (e) { check(name, false, String(e).split("\n")[0]); return undefined; } };
 
 const resp = await page.goto(SITE);
@@ -43,7 +51,9 @@ await step("real casts in feed", async () => {
   await page.waitForFunction(() => !(document.getElementById("feed-meta")?.textContent ?? "").startsWith("Loading"), null, { timeout: 60000 });
   check("real casts in feed", true, `${await page.locator("#feed .cast").count()} rendered; ${await page.textContent("#feed-meta")}`);
 });
-await page.screenshot({ path: `${OUT}/desktop-feed.png`, fullPage: false });
+await redact(page); await page.screenshot({ path: `${OUT}/desktop-feed.png`, fullPage: false });
+await page.evaluate(() => window.scrollTo(0, 0));
+await redact(page); await page.screenshot({ path: `${OUT}/desktop-top.png`, fullPage: false });
 
 // filters on real data
 const firstFid = await page.locator("#feed .cast .muted").first().textContent().then((t) => Number(/FID (\d+)/.exec(t ?? "")?.[1]));
@@ -104,7 +114,21 @@ await step("mobile feed", () => m.waitForFunction(() => document.querySelectorAl
   && !(document.getElementById("feed-meta")?.textContent ?? "").startsWith("Loading"), null, { timeout: 60000 }));
 const mm = await m.evaluate(() => ({ sw: document.documentElement.scrollWidth, cw: document.documentElement.clientWidth }));
 check("mobile 375px: no horizontal overflow with real casts", mm.sw <= mm.cw, `scrollWidth=${mm.sw} clientWidth=${mm.cw}`);
-await m.screenshot({ path: `${OUT}/mobile-feed.png`, fullPage: false });
+await m.evaluate(() => document.getElementById("feed-meta")?.scrollIntoView({ block: "end" }));
+await redact(m); await m.screenshot({ path: `${OUT}/mobile-feed.png`, fullPage: false });
+
+// 360 px phone: the feed itself
+const sctx = await browser.newContext({ viewport: { width: 360, height: 740 }, isMobile: true, hasTouch: true, deviceScaleFactor: 2 });
+const sp = await sctx.newPage();
+await sp.goto(SITE);
+await sp.fill("#watch-fids", WATCH);
+await sp.click("#refresh");
+await step("360 feed", () => sp.waitForFunction(() => document.querySelectorAll("#feed .cast").length > 0
+  && !(document.getElementById("feed-meta")?.textContent ?? "").startsWith("Loading"), null, { timeout: 60000 }));
+const sm = await sp.evaluate(() => ({ sw: document.documentElement.scrollWidth, cw: document.documentElement.clientWidth }));
+check("mobile 360px: no horizontal overflow with real casts", sm.sw <= sm.cw, `scrollWidth=${sm.sw} clientWidth=${sm.cw}`);
+await sp.evaluate(() => document.querySelector("#feed .cast")?.scrollIntoView({ block: "start" }));
+await redact(sp); await sp.screenshot({ path: `${OUT}/mobile-360-feed.png`, fullPage: false });
 await browser.close();
 const failed = results.filter((r) => !r.ok).length;
 console.log(`\npassed: ${results.length - failed}  failed: ${failed}`);

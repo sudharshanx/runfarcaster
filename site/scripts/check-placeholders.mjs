@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 // After `astro build`: look for placeholders that must not ship. In CI (CI=true) any hit fails the
-// build; locally it only warns, because local builds use the OWNER / example.github.io defaults.
+// build; locally it only warns.
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
 
@@ -10,6 +10,8 @@ const PATTERNS = [
   ["example.github.io", /example\.github\.io/g],
   ["AUTHOR slot", /\[AUTHOR|AUTHOR:/g],
   ["{{REPO_URL}} token", /\{\{REPO_URL\}\}/g],
+  ["{{ALL_CAPS}} token", /\{\{\s*[A-Z][A-Z0-9_]*\s*\}\}/g],
+  ["RERUN_ token", /\bRERUN_[A-Z0-9_]*/g],
 ];
 
 const files = [];

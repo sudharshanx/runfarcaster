@@ -15,7 +15,7 @@ You need:
 - A Hetzner API token in `HCLOUD_TOKEN`.
 - An SSH key uploaded to Hetzner.
 - `hcloud`, `jq`, `ssh` and `curl`.
-- Node.js 22.12 or later.
+- Node.js 22.12 or later (22.x, 24.x or 26+) with npm.
 
 [Do it on Hetzner](../hetzner/) walks through each one. [Before you start](../before-you-start/) explains costs and safety, and the [Glossary](../glossary/) explains the terms. To let a coding assistant drive, see [Do it with your AI assistant](../ai-assistant/).
 
@@ -30,16 +30,28 @@ git clone {{REPO_URL}}
 cd snapchain-tutorial
 ```
 
-## Optional: a spending cap
+Set the token in this terminal. The prompt hides what you type, so run this line on its own:
 
-`watchdog.sh` runs on your computer. It deletes the server before the bill reaches `MAX_USD`, after 24 hours, or if the node stops making progress for 2 hours. Start it before step 1, in its own terminal:
-
-```bash title="your computer, optional"
-SSH_KEY_FILE=~/.ssh/id_ed25519 MAX_USD=5 \
-  nohup ./watchdog.sh >/dev/null 2>&1 &
+```bash title="your computer"
+read -rsp 'Hetzner token: ' HCLOUD_TOKEN && export HCLOUD_TOKEN && echo
 ```
 
-`SSH_KEY_FILE` is the private half of the key you uploaded to Hetzner. The watchdog uses it to read the database size and block heights over SSH. A normal sync changes one of them every few minutes. Without `SSH_KEY_FILE` the progress check stays off and only the money and time limits apply. If SSH stops working (for example your home IP changed), the watchdog logs a warning and keeps the server. To stop the watchdog without deleting anything: `touch .provision-state/watchdog.disarm`. Its log is in `.provision-state/watchdog.log`.
+## The spending cap
+
+Step 1 starts `watchdog.sh` in the background on your computer, before it creates anything. The watchdog deletes the server, the volume and the firewall:
+- before the bill reaches `MAX_USD`,
+- 24 hours after it started, even if the node is healthy,
+- or if the node makes no progress for 2 hours.
+
+If the watchdog cannot start (for example `HCLOUD_TOKEN` is missing), step 1 stops with an error and creates nothing. Its output is in `.provision-state/watchdog.out` and its log in `.provision-state/watchdog.log`.
+
+The progress check reads the database size and block heights over SSH with `SSH_KEY_FILE`, the private half of the key you uploaded to Hetzner. It defaults to `~/.ssh/id_ed25519` if that file exists. Without a key file only the money and time limits apply. If SSH stops working (for example your home IP changed), the watchdog logs a warning and keeps the server.
+
+To keep the node longer than 24 hours:
+- Stop the watchdog without deleting anything: `touch .provision-state/watchdog.disarm`.
+- Or start step 1 with `WATCHDOG_MAX_WALL_SECS=172800` (48 hours) instead.
+
+`WATCHDOG=0` skips the watchdog. Then nothing deletes the server for you.
 
 ## 1. Rent a server
 
@@ -85,10 +97,12 @@ This needs a Hetzner volume limit above 2000 GB. The price list puts it at about
 Replace `my-key` with the name `hcloud ssh-key list` shows. Read the script first: <RepoLink path="provision.sh" />
 
 What it does:
+- Checks that each entry in `SSH_SOURCE_CIDRS` looks like an address with a prefix, such as `203.0.113.7/32`. An empty `$MY_IP` stops it here.
 - Checks that the server type exists in `fsn1`, is for sale, and has at least 16 GB of RAM.
 - Prices the run from Hetzner's live price list. If the hourly price × `EXPECTED_HOURS` is above `MAX_USD`, it stops and creates nothing. `MAX_USD` is in your account's currency.
 - Creates a firewall, the data volume and the server. The firewall opens SSH (22, only to `SSH_SOURCE_CIDRS`), gossip (3382/udp) and the web ports 80 and 443. The node's own API ports 3381 and 3383 stay closed; the app reaches the node through Caddy.
-- Prints the server's IP. Running it again reuses what exists.
+- Starts the watchdog first (see [The spending cap](#the-spending-cap)).
+- Prints the server's IP. Running it again reuses what exists and does not start a second watchdog.
 
 What it prints (shortened; the lines come from the script's log calls):
 
@@ -97,6 +111,7 @@ What it prints (shortened; the lines come from the script's log calls):
 [provision] local disk 160 GB < 2000 GB: adding a 1000 GB volume
   total       ~0.164 /h
 [provision] cost guard OK: projected <= MAX_USD=5
+[provision] watchdog started (pid 12345). It deletes everything when the bill would pass MAX_USD=5, after 24 h even if the node is healthy, or after 2 h without progress (progress check over SSH with ~/.ssh/id_ed25519).
 [provision] done. Next (in a new terminal, get the IP back with: IP=$(hcloud server ip snapchain-read-node)):
 ```
 
@@ -192,7 +207,7 @@ If you own a domain, point it at `$IP` and pass it as a second argument: `./depl
 Read the script first: <RepoLink path="deploy-client.sh" />, <RepoLink path="deploy/Caddyfile" />
 
 What it does:
-- Builds the app on your computer (`npm ci`, tests, `vite build`). Needs Node.js 22.12 or later.
+- Builds the app on your computer (`npm ci --ignore-scripts`, tests, `vite build`). Needs Node.js 22.12 or later (22.x, 24.x or 26+).
 - Copies the built app, the Caddyfile and a compose file to `/opt/snapchain-client` on the server and starts Caddy.
 - Caddy gets a Let's Encrypt certificate and serves the app plus `/v1/*` (passed to the node on `127.0.0.1:3381`) from one HTTPS address.
 
@@ -201,7 +216,7 @@ Without your own domain it uses `<ip-with-dashes>.sslip.io`, a free DNS service 
 What it prints:
 
 ```text
-[deploy-client] building client (npm ci, typecheck, tests, build)
+[deploy-client] building client (npm ci --ignore-scripts, typecheck, tests, build)
 [deploy-client] uploading to root@<ip>:/opt/snapchain-client
 [deploy-client] waiting for HTTPS on https://<ip-with-dashes>.sslip.io ...
 [deploy-client] OK: https://<ip-with-dashes>.sslip.io (client) and https://<ip-with-dashes>.sslip.io/v1/info (node, proxied)
@@ -217,6 +232,10 @@ curl -s https://<name>/v1/info | jq .version                 # your node, throug
 ```
 
 Open the address in a browser. The status line should start with `Connected. version 0.14.3;` and list how far behind each shard is. Type an FID (try `3`) under Feed and press Refresh.
+
+:::caution[The watchdog deletes the node after 24 hours]
+If the watchdog is running, it deletes everything 24 hours after step 1, even if the node is healthy. Our sync took 14 hours, which left about 10 hours with a synced node. To keep the node: `touch .provision-state/watchdog.disarm`.
+:::
 
 <CopyPrompt id="client" />
 

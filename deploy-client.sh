@@ -30,17 +30,18 @@ scp() { command scp "${SSH_OPTS_ARR[@]}" "$@"; }
 
 run() { if [[ "$DRY_RUN" == "1" ]]; then printf '[dry-run] %s\n' "$*"; else "$@"; fi; }
 
-# vite 8 needs Node 20.19+ or 22.12+; vitest 5 needs 22.12+.
+# vite 8.3 needs Node ^20.19 || >=22.12; vitest 5 needs ^22.12 || ^24 || >=26 (npm "engines").
+# So: 22.12+ on the 22 line, any 24, or 26 and later (not 23 or 25).
 node_ok() {
   command -v node >/dev/null 2>&1 || return 1
-  node -e 'const [a,b]=process.versions.node.split(".").map(Number); process.exit(a>22||(a===22&&b>=12)?0:1)'
+  node -e 'const [a,b]=process.versions.node.split(".").map(Number); process.exit((a===22&&b>=12)||a===24||a>=26?0:1)'
 }
 if [[ "${DRY_RUN:-0}" != "1" ]] && ! node_ok; then
-  echo "[deploy-client] ERROR: Node.js 22.12 or later is required (found: $(node --version 2>/dev/null || echo none))." >&2
+  echo "[deploy-client] ERROR: Node.js 22.12+ (22.x), 24.x or 26+ is required (found: $(node --version 2>/dev/null || echo none))." >&2
   exit 1
 fi
-echo "[deploy-client] building client (npm ci, typecheck, tests, build)"
-run bash -c "cd '$HERE/client' && npm ci && npm test && npm run build"
+echo "[deploy-client] building client (npm ci --ignore-scripts, typecheck, tests, build)"
+run bash -c "cd '$HERE/client' && npm ci --ignore-scripts && npm test && npm run build"
 
 echo "[deploy-client] uploading to $TARGET:$REMOTE_DIR"
 run ssh "$TARGET" "mkdir -p '$REMOTE_DIR/dist'"

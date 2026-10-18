@@ -44,6 +44,11 @@
 #   PORT_PROFILE=docs          "docs": 3382/udp gossip (+22, 80, 443, and 3381/3383 if NODE_API_CIDRS).
 #                              "readme": additionally 3381/udp, 3382/tcp and 3383/udp, public (README text).
 #   DRY_RUN=1                  Print the hcloud commands instead of running them (needs no token).
+#   WATCHDOG=1                 Start watchdog.sh in the background before creating anything (output in
+#                              .provision-state/watchdog.out). It passes MAX_USD, WATCHDOG_MAX_WALL_SECS
+#                              (as MAX_WALL_SECS, default 86400) and SSH_KEY_FILE (default
+#                              ~/.ssh/id_ed25519 if it exists). It deletes everything after 24 h by
+#                              design. Skipped if one is already running. WATCHDOG=0 to skip.
 #
 # Idempotent: existing firewall/volume/server with the same names are reused, not duplicated.
 
@@ -66,6 +71,9 @@ DRY_RUN="${DRY_RUN:-0}"
 MAX_USD="${MAX_USD:-2}"
 EXPECTED_HOURS="${EXPECTED_HOURS:-6}"
 ESTIMATE_ONLY="${ESTIMATE_ONLY:-0}"
+WATCHDOG="${WATCHDOG:-1}"
+WATCHDOG_CMD="${WATCHDOG_CMD:-$HERE/watchdog.sh}"   # overridable for tests
+STATE_DIR="${STATE_DIR:-$HERE/.provision-state}"
 LABEL_KEY="app"
 LABEL_VAL="snapchain-tutorial"
 FIREWALL_NAME="$NAME-fw"
@@ -91,6 +99,11 @@ preflight() {
   [[ "$ESTIMATE_ONLY" == "1" || -n "${SSH_KEY:-}" ]] || die "SSH_KEY (name or ID of a key in your Hetzner project) is required"
   [[ "$PORT_PROFILE" == "docs" || "$PORT_PROFILE" == "readme" ]] || die "PORT_PROFILE must be docs or readme"
   (( VOLUME_SIZE_GB >= 10 && VOLUME_SIZE_GB <= 10240 )) || die "VOLUME_SIZE_GB must be 10..10240 (Hetzner volume limits)"
+  local c
+  IFS=',' read -r -a _cidrs <<<"$SSH_SOURCE_CIDRS"
+  for c in "${_cidrs[@]}"; do
+    [[ "$c" =~ ^[0-9a-fA-F.:]+/[0-9]{1,3}$ ]] || die "SSH_SOURCE_CIDRS has an invalid entry '$c' (expected like 203.0.113.7/32). Did 'curl -4 -s https://ifconfig.me' fail?"
+  done
   if [[ "$SSH_SOURCE_CIDRS" == "0.0.0.0/0,::/0" ]]; then
     log "NOTE: SSH (22/tcp) open to the whole internet. Set SSH_SOURCE_CIDRS=YOUR_IP/32 to narrow it (curl -4 https://ifconfig.me)."
   fi
@@ -268,15 +281,41 @@ print_ip() {
   printf '%s\n' "${ip%% *}"
 }
 
+# Starts watchdog.sh in the background unless one is already running. Fails loudly if it does not
+# come up (for example HCLOUD_TOKEN missing), before anything is created.
+start_watchdog() {
+  [[ "$WATCHDOG" == "1" ]] || { log "WATCHDOG=0: no watchdog started (no automatic spending cap)."; return 0; }
+  if [[ "$DRY_RUN" == "1" ]]; then log "dry-run: would start $WATCHDOG_CMD (MAX_USD=$MAX_USD)"; return 0; fi
+  mkdir -p "$STATE_DIR"
+  local pidf="$STATE_DIR/watchdog.pid" pid key="${SSH_KEY_FILE:-}"
+  if [[ -f "$pidf" ]] && pid="$(cat "$pidf")" && kill -0 "$pid" 2>/dev/null; then
+    log "watchdog already running (pid $pid); not starting another."
+    return 0
+  fi
+  [[ -z "$key" && -f "$HOME/.ssh/id_ed25519" ]] && key="$HOME/.ssh/id_ed25519"
+  rm -f "$pidf"
+  MAX_USD="$MAX_USD" MAX_WALL_SECS="${WATCHDOG_MAX_WALL_SECS:-86400}" SSH_KEY_FILE="$key" NAME="$NAME" STATE_DIR="$STATE_DIR" \
+    nohup "$WATCHDOG_CMD" >>"$STATE_DIR/watchdog.out" 2>&1 </dev/null &
+  local wpid=$!
+  sleep "${WATCHDOG_START_WAIT:-2}"
+  if ! kill -0 "$wpid" 2>/dev/null; then
+    tail -n 5 "$STATE_DIR/watchdog.out" >&2 || true
+    die "watchdog did not start (see $STATE_DIR/watchdog.out). Nothing was created. Fix it, or set WATCHDOG=0 to go without."
+  fi
+  log "watchdog started (pid $wpid). It deletes everything when the bill would pass MAX_USD=$MAX_USD, after $(( ${WATCHDOG_MAX_WALL_SECS:-86400} / 3600 )) h even if the node is healthy, or after 2 h without progress${key:+ (progress check over SSH with $key)}."
+  log "  log: $STATE_DIR/watchdog.log  stop without deleting: touch $STATE_DIR/watchdog.disarm"
+}
+
 main() {
   preflight
   check_server_type
   cost_guard
   if [[ "$ESTIMATE_ONLY" == "1" ]]; then log "ESTIMATE_ONLY=1: nothing created."; return 0; fi
+  start_watchdog
   ensure_firewall
   ensure_volume
   ensure_server
   print_ip
 }
 
-main "$@"
+if [[ "${BASH_SOURCE[0]}" == "$0" ]]; then main "$@"; fi

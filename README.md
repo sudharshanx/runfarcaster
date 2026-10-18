@@ -15,18 +15,24 @@ Guide website: `site/`. Vouching: `VOUCHER.md`. Key handling: `SECURITY.md`.
 
 ## Quickstart
 
-You need `hcloud`, `jq`, `ssh`, `curl`, Node.js 22.12 or later, a Hetzner Cloud token in `HCLOUD_TOKEN`
-(Read & Write) and an SSH key uploaded to the Hetzner project. Posting needs a Farcaster account; use a test
+You need `hcloud`, `jq`, `ssh`, `curl`, Node.js 22.12 or later (22.x, 24.x or 26+) with npm, a Hetzner Cloud
+token (Read & Write) and an SSH key uploaded to the Hetzner project. Posting needs a Farcaster account; use a test
 account. Run everything from this folder on your own computer.
+
+Set the token first, on its own (the prompt hides what you type):
 
 ```bash
 read -rsp 'Hetzner token: ' HCLOUD_TOKEN && export HCLOUD_TOKEN && echo
+```
+
+Then the 3 steps:
+
+```bash
 MY_IP=$(curl -4 -s https://ifconfig.me)
+echo "$MY_IP"                       # must print your address
 
-# Optional spending cap, in its own terminal:
-SSH_KEY_FILE=~/.ssh/id_ed25519 MAX_USD=5 nohup ./watchdog.sh >/dev/null 2>&1 &
-
-# 1. Rent a server: cax31 (ARM64, 16 GB RAM), a 1000 GB volume and a firewall. Prints the IP. 35 s for us.
+# 1. Rent a server: cax31 (ARM64, 16 GB RAM), a 1000 GB volume and a firewall. Starts the watchdog first.
+#    Prints the IP. 35 s for us.
 IP=$(SSH_KEY=my-key SERVER_TYPE=cax31 VOLUME_GB=1000 MAX_USD=5 EXPECTED_HOURS=16 \
   SSH_SOURCE_CIDRS="$MY_IP/32" ./provision.sh)
 
@@ -35,12 +41,18 @@ ssh root@$IP "SNAPCHAIN_AGREE_NO_REWARDS=yes MIN_FREE_GB=900 bash -s" < node.sh
 
 # 3. Open the app: builds it here, serves it with Caddy over HTTPS, /v1 on the same address.
 ./deploy-client.sh "$IP"            # prints https://<ip-with-dashes>.sslip.io (or pass your own DNS name)
-
-# When done: deletes the server, the volume and the firewall. Safe to run twice.
-CONFIRM=snapchain-read-node ./teardown.sh
 ```
 
 In a new terminal, get the IP back with `IP=$(hcloud server ip snapchain-read-node)`.
+
+**The watchdog deletes everything 24 hours after step 1, even if the node is healthy.** To keep the node, run
+`touch .provision-state/watchdog.disarm` (or start step 1 with `WATCHDOG_MAX_WALL_SECS=172800` for 48 h).
+
+When you are done, delete the server, the volume and the firewall. Safe to run twice:
+
+```bash
+CONFIRM=snapchain-read-node ./teardown.sh
+```
 
 Notes:
 - New Hetzner accounts may rent at most 1024 GB of volumes in total (https://console.hetzner.cloud/limits).
@@ -56,9 +68,13 @@ Notes:
 - The x86 type cx43 was sold out on 2026-10-18; cax31 is ARM64 and every image has an ARM64 build.
 - Ports 3381 (HTTP API) and 3383 (gRPC) are closed to the internet. The app reaches the node through Caddy.
   Set `NODE_API_CIDRS` in `provision.sh` to open them to chosen addresses.
-- The watchdog runs `teardown.sh` before the bill reaches `MAX_USD` (in your Hetzner account's currency),
-  after 24 hours, or after 2 hours with no growth in the database or block heights. Without `SSH_KEY_FILE`
-  only the money and time limits apply. `touch .provision-state/watchdog.disarm` stops it without deleting.
+- `provision.sh` starts `watchdog.sh` in the background before it creates anything (output in
+  `.provision-state/watchdog.out`, log in `.provision-state/watchdog.log`). If the watchdog cannot start, for
+  example without `HCLOUD_TOKEN`, `provision.sh` stops and creates nothing. The watchdog runs `teardown.sh` before
+  the bill reaches `MAX_USD` (in your Hetzner account's currency), after 24 hours (`WATCHDOG_MAX_WALL_SECS`), or
+  after 2 hours with no growth in the database or block heights. The progress check uses `SSH_KEY_FILE` (default
+  `~/.ssh/id_ed25519` if it exists); without it only the money and time limits apply.
+  `touch .provision-state/watchdog.disarm` stops it without deleting. `WATCHDOG=0` skips it.
 
 ## The recovery phrase and app keys
 
@@ -69,8 +85,12 @@ For the one step that needs the phrase (adding an app key), run the app locally,
 
 ```bash
 ssh -N -L 3381:127.0.0.1:3381 root@$IP     # terminal 1: tunnel to the node
-cd client && npm ci && npm run dev          # terminal 2: open http://localhost:5173
+cd client && npm ci --ignore-scripts && npm run dev   # terminal 2: open http://localhost:5317
 ```
+
+Port 5317 is fixed (`strictPort`), so the app's `localStorage` is not shared with other Vite projects on 5173.
+The page has a Content-Security-Policy that only lets it connect to its own address. Type the phrase, or clear
+the clipboard after pasting it. Press "Forget app key" when you are done.
 
 A page on `localhost` comes from files on your disk. A page on `<ip>.sslip.io` depends on a DNS service someone
 else runs, so the app warns before you type a phrase there.
@@ -105,24 +125,29 @@ The node's HTTP API is plain HTTP on 3381. It has no OPTIONS route, and `submitM
 `deploy/Caddyfile` fixes that:
 - Caddy serves the app over HTTPS (Let's Encrypt) and passes `/v1/*` to `127.0.0.1:3381` on the same address.
 - The CSP sets `connect-src 'self'`.
-- `/v1/mesh` returns 404.
+- `/v1/mesh` (the mesh debug view) returns 404. `/v1/currentPeers` stays public.
 
 `npm run dev` in `client/` does the same with Vite's proxy (`SNAPCHAIN_NODE_URL`, default
 `http://127.0.0.1:3381`). The node URL can also be set in the app; leave it empty for the same address.
 
 ## The guide website
 
-`site/` is Astro Starlight. Build it with:
+`site/` is Astro Starlight. Building it needs Node.js 22.22 or later (Astro 7). Build it with:
 
 ```bash
 cd site && npm ci
-REPO_URL=https://github.com/<you>/snapchain-tutorial SITE_URL=https://<you>.github.io BASE_PATH=/snapchain-tutorial/ npm run build
+npm run build
 ```
 
-`REPO_URL` sets every repo link and the `git clone` command; `SITE_URL` and `BASE_PATH` set the address. In CI
-(`CI=true`) the build fails if `github.com/OWNER`, `example.github.io` or an AUTHOR note reaches `dist/`.
-`.github/workflows/pages.yml` sets all three for GitHub Pages. `npm run originality` compares the site's text
-with other entries.
+The defaults are `REPO_URL=https://github.com/sudharshanx/snapchain-tutorial`,
+`SITE_URL=https://sudharshanx.github.io` and `BASE_PATH=/snapchain-tutorial/`. Set those variables to build a
+fork, for example `REPO_URL=https://github.com/<you>/snapchain-tutorial SITE_URL=https://<you>.github.io npm run build`.
+`REPO_URL` sets every repo link and the `git clone` command; `SITE_URL` and `BASE_PATH` set the address.
+`.github/workflows/pages.yml` sets all three for GitHub Pages.
+
+In CI (`CI=true`) the build fails if a placeholder reaches `dist/`: `github.com/OWNER`, `example.github.io`, an
+AUTHOR note, a `{{ALL_CAPS}}` token or a `RERUN_` token. `npm run originality` lists 5-word phrases the site
+shares with a set of other pages, to catch copied text.
 
 ## The app
 
@@ -156,16 +181,18 @@ bash test/node_sh_test.sh        # node.sh with fake docker and a mock /v1/info
 bash test/space_saver_test.sh
 bash test/watchdog_test.sh       # progress check, SSH loss, money cap, macOS without timeout
 bash test/teardown_test.sh       # fake hcloud; running twice, missing token, wrong confirmation
+bash test/provision_test.sh      # CIDR check, watchdog start (stub), no second watchdog, loud failure
 python3 tools/embed-helpers.py --check
-cd client && npm ci && npm run typecheck && npm test && npm run build
+cd client && npm ci --ignore-scripts && npm run typecheck && npm test && npm run build
 cd e2e && npm ci && CADDY=caddy CHROME=/path/to/chrome ./run.sh   # Caddy, mock node, headless Chrome
 ```
 
 - Ran live on 2026-10-18: `provision.sh` (cax31, `VOLUME_GB=1000`), `node.sh` (official bootstrap, full sync, a
   second run that skipped the bootstrap), the two disk helpers installed by hand, `deploy-client.sh` (Let's
-  Encrypt via sslip.io) and `SITE=https://<name> CHROME=... node e2e/real-node.mjs` (read-only, 16 of 16; its one
+  Encrypt via sslip.io) and `SITE=https://<name> CHROME=... node e2e/real-node.mjs` (read-only, 17 of 17; its one
   write is a broken `submitMessage`, which the node rejects with 400).
-- Unit tests only: `node.sh` installing the disk helpers itself, the new watchdog progress check.
+- Unit tests only: `node.sh` installing the disk helpers itself, the new watchdog progress check, `provision.sh`
+  starting the watchdog itself.
 - Not tried: real mainnet writes (KEY_ADD, casts, likes, follows), `teardown.sh` on real servers, a 2 TB volume.
 - For a specific SSH key: `SSH_OPTS="-i key" ./deploy-client.sh "$IP"`.
 

@@ -6,9 +6,16 @@
 #   * before the projected bill would reach MAX_USD, or
 #   * if the node stops making progress for HANG_SECS (see below), or
 #   * at MAX_WALL_SECS wall-clock, whatever happens.
-# Start it BEFORE provision.sh so billing time is never under-counted:
+# provision.sh starts it for you in the background (WATCHDOG=1, the default), with its output in
+# .provision-state/watchdog.out, before it creates anything. To start it by hand instead, in a
+# terminal where HCLOUD_TOKEN is set:
 #
-#   SSH_KEY_FILE=~/.ssh/id_ed25519 MAX_USD=5 nohup ./watchdog.sh >/dev/null 2>&1 &
+#   SSH_KEY_FILE=~/.ssh/id_ed25519 MAX_USD=5 nohup ./watchdog.sh >>.provision-state/watchdog.out 2>&1 &
+#   sleep 2; cat .provision-state/watchdog.out    # must say "started"; an ERROR means it is not running
+#
+# By design it deletes everything after MAX_WALL_SECS (24 h) even if the node is healthy. To keep
+# the node longer: start it with MAX_WALL_SECS=172800 (48 h), or stop it with
+# touch .provision-state/watchdog.disarm (no teardown).
 #
 # Progress check: every poll it SSHes to the VM and reads the size of /root/snapchain and each
 # shard's block height. Progress = the database size changed by more than PROGRESS_MIN_BYTES, or
@@ -159,8 +166,13 @@ do_teardown() {
 }
 
 main() {
-  [[ -n "${HCLOUD_TOKEN:-}" || -n "$API_STUB_DIR" ]] || { echo "HCLOUD_TOKEN not set. Export your Hetzner token first (see the Hetzner page)." >&2; exit 1; }
   mkdir -p "$STATE_DIR"
+  if [[ -z "${HCLOUD_TOKEN:-}" && -z "$API_STUB_DIR" ]]; then
+    local msg="HCLOUD_TOKEN not set. NOT RUNNING: no spending cap is active. Set the token in this terminal (read -rsp 'Hetzner token: ' HCLOUD_TOKEN && export HCLOUD_TOKEN) and start it again."
+    echo "watchdog: ERROR: $msg" >&2
+    log "ERROR: $msg"
+    exit 1
+  fi
   local T0 LAST_PROGRESS_AT LAST_PROBE="" HANG_CHECK=1 UNREACHABLE_SINCE=0 now elapsed hours_at_risk projected spent ip fp
   T0="${WATCHDOG_T0:-$(date +%s)}"   # set WATCHDOG_T0 (epoch) when restarting a watchdog mid-run
   LAST_PROGRESS_AT="$T0"

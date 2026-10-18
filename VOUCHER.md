@@ -1,6 +1,6 @@
 # Vouching for this tutorial
 
-The bounty requires at least one other person to complete the tutorial and vouch for it publicly on Farcaster. Thank you for testing. Please report failures as well as successes.
+Thank you for testing. If you ran the 3 steps, please vouch for the tutorial publicly on Farcaster. Report failures as well as successes.
 
 ## Before you start
 

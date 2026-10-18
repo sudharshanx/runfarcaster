@@ -8,11 +8,12 @@
     <tr><td><code>provision.sh</code> on Hetzner (cax31, <code>VOLUME_GB=1000</code>)</td><td>Ran live</td><td>35 s</td></tr>
     <tr><td><code>node.sh</code>: official bootstrap, full mainnet sync, health check, second run skips the bootstrap</td><td>Ran live</td><td>Sync timeline below</td></tr>
     <tr><td><code>deploy-client.sh</code>: Caddy, Let's Encrypt, <code>/v1</code> on the same address</td><td>Ran live</td><td>HTTPS 200 with CSP and HSTS headers</td></tr>
-    <tr><td>App reads on the real node (feed, filters, mute, key and storage lookups, 375 px layout)</td><td>Ran live, read-only</td><td><code>e2e/real-node.mjs</code>: 16 of 16</td></tr>
+    <tr><td>App reads on the real node (feed, filters, mute, key and storage lookups, 360 and 375 px layout)</td><td>Ran live, read-only</td><td><code>e2e/real-node.mjs</code>: 17 of 17</td></tr>
     <tr><td>Node rejects a broken message</td><td>Ran live</td><td>HTTP 400 "Invalid protobuf data"</td></tr>
     <tr><td><code>disk-guard.sh</code> and <code>snapshot-space-saver.sh</code>, installed by hand</td><td>Ran live</td><td>The saver deleted used chunks and tars; its hole-punching had no effect. Disk peaked at 75%, so the guard never fired.</td></tr>
     <tr><td><code>node.sh</code> installing those two helpers by itself (new)</td><td>Unit tests only</td><td><code>test/node_sh_test.sh</code>; not yet used in a live sync</td></tr>
     <tr><td><code>watchdog.sh</code></td><td>Ran live (old version); new progress check unit-tested</td><td>Spend stayed under the $5 cap; <code>test/watchdog_test.sh</code></td></tr>
+    <tr><td><code>provision.sh</code> starting the watchdog by itself (new)</td><td>Unit tests only</td><td><code>test/provision_test.sh</code>; in our run we started it by hand</td></tr>
     <tr><td>Gasless <code>KEY_ADD</code> on mainnet</td><td>Not tried</td><td>Unit tests and a local mock node only</td></tr>
     <tr><td>Cast, like, recast, follow on mainnet</td><td>Not tried</td><td>Unit tests and a local mock node only</td></tr>
     <tr><td>Time from sending a message to seeing it</td><td>Not measured</td><td>Needs a real write</td></tr>

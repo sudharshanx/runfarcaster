@@ -6,8 +6,8 @@ import { REPO, remarkRepoUrl, rehypeTableScroll } from "./src/config.mjs";
 
 // GitHub Pages: set SITE_URL=https://<user>.github.io and BASE_PATH=/snapchain-tutorial/ (the repo name).
 // Local preview: leave both unset (served at /).
-const site = process.env.SITE_URL ?? "https://example.github.io";
-const base = process.env.BASE_PATH ?? "/";
+const site = process.env.SITE_URL ?? "https://sudharshanx.github.io";
+const base = process.env.BASE_PATH ?? "/snapchain-tutorial/";
 // The repo URL lives in src/config.mjs (REPO_URL env). CI sets it from the GitHub repository.
 const repo = REPO;
 

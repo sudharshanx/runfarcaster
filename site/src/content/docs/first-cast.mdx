@@ -9,8 +9,12 @@ Only unit tests and a local mock node have run this part. We have not added a ke
 
 You need:
 - A **test** Farcaster account and its recovery phrase. Read [Seed phrases and app keys](../before-you-start/#seed-phrases-and-app-keys) first.
-- Node.js 22.12 or later and this repo on your computer.
+- Node.js 22.12 or later (22.x, 24.x or 26+) and this repo on your computer.
 - Your node from the [Quickstart](../quickstart/).
+
+:::caution[The watchdog deletes the node after 24 hours]
+If the watchdog from step 1 is still running, it deletes the server, the volume and the firewall 24 hours after it started, even if the node is healthy. To keep the node: `touch .provision-state/watchdog.disarm`. Within a minute, `tail -n 1 .provision-state/watchdog.log` should show `disarmed by …`.
+:::
 
 :::danger
 Never paste a recovery phrase into an AI assistant or a chat.
@@ -35,16 +39,22 @@ In a second terminal, start the app. Its dev server passes `/v1` to `http://127.
 
 ```bash title="your computer, terminal 2"
 cd client
-npm ci
+npm ci --ignore-scripts
 npm run dev
 ```
 
-Open http://localhost:5173. The status line should start with `Connected.`
+`npm ci` installs the exact versions in `package-lock.json`. `--ignore-scripts` stops packages from running their own install scripts; the app builds and its tests pass without them.
+
+Open http://localhost:5317. The status line should start with `Connected.`
+
+The app uses port 5317, not Vite's usual 5173. A browser keeps one `localStorage` per address and port, and other Vite projects use 5173. If 5317 is taken, `npm run dev` stops with an error instead of moving to another port.
+
+The page carries a Content-Security-Policy: it can only connect to its own address, so a changed library cannot send data elsewhere.
 
 ## 2. Add an app key
 
 1. Go to **Signer (app key)**. Pick how long the key lasts: 1, 7, 30 or 90 days. The default is 7.
-2. Paste the test account's recovery phrase (12 to 24 words). Press **Sign one KEY_ADD, then forget the phrase**.
+2. Type the test account's recovery phrase (12 to 24 words). If you paste it instead, clear your clipboard afterwards: clipboard history and sync tools can keep a copy, and the app cannot clear it. Press **Sign one KEY_ADD, then forget the phrase**.
 3. The app empties the phrase field. From the phrase it works out your custody address, asks the node which FID that address owns, and reads `currentUserNonce`. Then it signs one gasless `KEY_ADD` and submits it.
 4. You see `App key for FID <n>: 0x… (waiting for the node to show it)`. That changes to `(active)` when `GET /v1/signer` returns the key.
 
@@ -56,7 +66,7 @@ curl -s "http://127.0.0.1:3381/v1/signersByFid?fid=<your-fid>" | jq '.currentUse
 
 `currentUserNonce` should be one higher than before, with one more signer in the list.
 
-The app key is saved in the browser for `localhost:5173` only. The copy of the app at your HTTPS address has no key. Post from the local app. To post from the HTTPS copy, you would have to type the phrase into a page served through sslip.io, which [Why run the app on your own computer](#why-run-the-app-on-your-own-computer) advises against.
+The app key is saved in the browser for `localhost:5317` only. The copy of the app at your HTTPS address has no key. Post from the local app. To post from the HTTPS copy, you would have to type the phrase into a page served through sslip.io, which [Why run the app on your own computer](#why-run-the-app-on-your-own-computer) advises against. Don't.
 
 ## 3. Cast, follow, like
 
@@ -97,4 +107,4 @@ curl -s "http://127.0.0.1:3381/v1/castsByFid?fid=<your-fid>&pageSize=1&reverse=t
 - A key you stop using expires when its lifetime runs out.
 - To cancel it now, send a `KEY_REMOVE` from your custody wallet, or use the app you manage keys with. Our app cannot do this.
 
-When you are done, stop the tunnel and the dev server with Ctrl-C.
+When you are done on `localhost`, press **Forget app key**, so no other page on `localhost:5317` can read the key later. Then stop the tunnel and the dev server with Ctrl-C.

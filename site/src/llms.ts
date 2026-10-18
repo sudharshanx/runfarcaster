@@ -25,11 +25,12 @@ const TESTED = `| What | Status |
 | provision.sh on Hetzner (cax31, VOLUME_GB=1000) | Ran live (35 s) |
 | node.sh: official bootstrap, full mainnet sync, health check, second run skips the bootstrap | Ran live |
 | deploy-client.sh: Caddy, Let's Encrypt, /v1 on the same address | Ran live |
-| App reads on the real node (e2e/real-node.mjs) | Ran live, read-only, 16 of 16 |
+| App reads on the real node (e2e/real-node.mjs) | Ran live, read-only, 17 of 17 |
 | Node rejects a broken message | Ran live (HTTP 400) |
 | disk-guard.sh and snapshot-space-saver.sh, installed by hand | Ran live; chunk and tar deletion worked, hole-punching did not; the guard never fired |
 | node.sh installing those helpers by itself (new) | Unit tests only; not yet used in a live sync |
 | watchdog.sh | Ran live (old version); new progress check unit-tested |
+| provision.sh starting the watchdog by itself (new) | Unit tests only |
 | Gasless KEY_ADD on mainnet | Not tried (unit tests and a local mock node only) |
 | Cast, like, recast, follow on mainnet | Not tried (unit tests and a local mock node only) |
 | Time from sending a message to seeing it | Not measured |

@@ -44,7 +44,7 @@ function originNote() {
   const host = location.hostname;
   if (host === "localhost" || host === "127.0.0.1" || host === "[::1]") return "";
   return h("div", { class: "warn" }, h("strong", {}, "Address check. "),
-    `This page is served from ${host}. Before you paste a recovery phrase, open this app on your own computer instead (http://localhost:5173, see the guide's "Your first cast" page). Then no DNS name you do not control can swap the page.`);
+    `This page is served from ${host}. Before you paste a recovery phrase, open this app on your own computer instead (http://localhost:5317, see the guide's "Your first cast" page). Then no DNS name you do not control can swap the page.`);
 }
 const setText = (id: string, t: string) => { $(id).textContent = t; };
 
@@ -273,13 +273,19 @@ function renderFeed() {
   }
 }
 
+// Only the newest refresh may set the feed: the boot load (default FIDs) can finish after a
+// refresh the user started, and must not overwrite it.
+let feedGen = 0;
 async function refreshFeed() {
   const v = ($("viewer-fid") as HTMLInputElement).value.trim();
   settings.viewerFid = /^\d+$/.test(v) ? Number(v) : null;
   settings.watchFids = ($("watch-fids") as HTMLInputElement).value.split(",").map((s) => Number(s.trim())).filter((n) => Number.isSafeInteger(n) && n > 0);
   writeJSON(kv, SETTINGS_KEY, settings);
   setText("feed-meta", "Loading…");
-  feed = await loadFeed(api, settings.viewerFid, settings.watchFids);
+  const gen = ++feedGen;
+  const loaded = await loadFeed(api, settings.viewerFid, settings.watchFids);
+  if (gen !== feedGen) return;
+  feed = loaded;
   renderFeed();
 }
 $("refresh").addEventListener("click", () => void refreshFeed());

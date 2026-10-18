@@ -42,10 +42,10 @@ You need to run that `read` line again in every new terminal.
 | `hcloud` | Talks to Hetzner | [hetznercloud/cli](https://github.com/hetznercloud/cli) (macOS: `brew install hcloud`) |
 | `jq` | Reads JSON in the scripts | `brew install jq` or `sudo apt install jq` |
 | `ssh`, `curl` | Reach the server | Already on macOS and most Linux systems |
-| Node.js 22.12 or later, npm | Builds the app | [nodejs.org](https://nodejs.org/) |
+| Node.js 22.12 or later (22.x, 24.x or 26+), npm | Builds the app | [nodejs.org](https://nodejs.org/) |
 
 ```bash title="check"
-hcloud version && jq --version && node --version && ssh -V
+hcloud version && jq --version && ssh -V && curl --version && node --version && npm --version
 hcloud server list        # works once HCLOUD_TOKEN is set; an empty list is fine
 ```
 
@@ -94,16 +94,19 @@ ESTIMATE_ONLY=1 SERVER_TYPE=cax31 VOLUME_GB=1000 EXPECTED_HOURS=16 ./provision.s
 
 ## 9. Run the 3 steps
 
-Follow the [Quickstart](../quickstart/). In short:
+Follow the [Quickstart](../quickstart/). First get the code and `cd` into it, as its first block shows (`git clone`, then `cd snapchain-tutorial`). In short:
 
 ```bash title="your computer"
 MY_IP=$(curl -4 -s https://ifconfig.me)
+echo "$MY_IP"        # must print an address; if it is empty, run the line above again
 IP=$(SSH_KEY=my-key SERVER_TYPE=cax31 VOLUME_GB=1000 \
   MAX_USD=5 EXPECTED_HOURS=16 SSH_SOURCE_CIDRS="$MY_IP/32" \
   ./provision.sh)
 ssh root@$IP "SNAPCHAIN_AGREE_NO_REWARDS=yes MIN_FREE_GB=900 bash -s" < node.sh
 ./deploy-client.sh "$IP"
 ```
+
+Step 1 also starts the watchdog, which deletes everything 24 hours later even if the node is healthy. To keep the node longer, run `touch .provision-state/watchdog.disarm` ([details](../quickstart/#the-spending-cap)).
 
 :::tip[Find your server's IP again]
 In any new terminal, run `IP=$(hcloud server ip snapchain-read-node)`. It needs `HCLOUD_TOKEN` set.
@@ -126,4 +129,4 @@ hcloud ssh-key list        # teardown keeps your key; delete it if you like:
 # hcloud ssh-key delete my-key
 ```
 
-When all lists are empty you pay nothing more. Then delete the API token in the console if you no longer need it. Review the script before running it: <RepoLink path="teardown.sh" />
+When all lists are empty (except your SSH key) you pay nothing more. Then delete the API token in the console if you no longer need it. Review the script before running it: <RepoLink path="teardown.sh" />

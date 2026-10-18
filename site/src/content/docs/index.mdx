@@ -47,7 +47,7 @@ ssh root@$IP \
 ./deploy-client.sh "$IP"
 ```
 
-The [Quickstart](quickstart/) has the same commands with what each one prints and how to check it worked. To stop paying, run `CONFIRM=snapchain-read-node ./teardown.sh`.
+The [Quickstart](quickstart/) has the same commands with what each one prints and how to check it worked. Step 1 also starts a watchdog. It deletes everything before the bill reaches `MAX_USD`, or 24 hours later even if the node is healthy ([how to keep it](quickstart/#the-spending-cap)). To stop paying sooner, run `CONFIRM=snapchain-read-node ./teardown.sh`.
 
 <div class="numbered">
   <section>
@@ -75,27 +75,27 @@ The [Quickstart](quickstart/) has the same commands with what each one prints an
 
 <div class="shots">
   <figure>
-    <Image src={mobile360} alt="The app on a 360 px phone: casts with Like, Recast and Mute buttons" widths={[360, 720]} sizes="(max-width: 600px) 100vw, 33vw" />
+    <Image src={mobile360} alt="The app on a 360 px phone: casts from FID 3 with Like, Recast and Mute buttons" widths={[360, 720]} sizes="(max-width: 600px) 100vw, 33vw" />
     <figcaption>Feed on a 360 px phone</figcaption>
   </figure>
   <figure>
-    <Image src={mobile375} alt="The app on a 375 px phone: post box, outgoing messages, filters and feed settings" widths={[375, 750]} sizes="(max-width: 600px) 100vw, 33vw" />
-    <figcaption>Post box and filters, 375 px</figcaption>
+    <Image src={mobile375} alt="The app on a 375 px phone: Follow, outgoing messages, filters, and the feed form with each field labelled" widths={[375, 750]} sizes="(max-width: 600px) 100vw, 33vw" />
+    <figcaption>Filters and feed settings, 375 px</figcaption>
   </figure>
   <figure>
-    <Image src={desktop} alt="The app on a desktop screen: key box, post box, filters and feed settings" widths={[640, 1280]} sizes="(max-width: 600px) 100vw, 33vw" />
+    <Image src={desktop} alt="The app on a desktop screen: node status, then the app key box with the Address check warning, a labelled phrase field and the lifetime menu" widths={[640, 1280]} sizes="(max-width: 600px) 100vw, 33vw" />
     <figcaption>Desktop</figcaption>
   </figure>
 </div>
 
-We took these during our browser test against the synced node. One field that held a test FID is blanked out.
+We took these with our read-only browser test against the synced node, after redeploying the current app. The server's address in the Address check is replaced with `<ip-with-dashes>.sslip.io`.
 
 {/* AUTHOR: one line on what it felt like when the feed first loaded from your own node. */}
 {/* AUTHOR: 59 s vertical video (9:16): rent the server, a synced /v1/info, the feed on a phone. Put it here with a caption that says how you made it. */}
 
 ## What we have and have not tried
 
-We ran a full mainnet sync, the HTTPS app and a read-only browser test (16 of 16 checks passed). We sent one deliberately broken message, and the node rejected it.
+We ran a full mainnet sync, the HTTPS app and a read-only browser test (17 of 17 checks passed, rerun on the current app). We sent one deliberately broken message, and the node rejected it.
 
 Not tried yet:
 

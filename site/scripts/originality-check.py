@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: MIT
-"""Originality check: shared 5-grams and 4-grams between our prose and other entries.
+"""Originality check: shared 5-grams and 4-grams between our prose and other published guides.
 
 Competitor text is fetched once into a cache dir (default /workspace/comp/cache; override with
 ORIG_CACHE) and reused. Ours: site/src/content/docs/*.mdx, site/src/prompts.ts, site/src/components,
