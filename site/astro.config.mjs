@@ -19,6 +19,7 @@ export default defineConfig({
   redirects: {
     "/receipts/": `${base.replace(/\/$/, "")}/proof/`,
     "/troubleshooting/": `${base.replace(/\/$/, "")}/fix/`,
+    "/tutorial/": `${base.replace(/\/$/, "")}/how-farcaster-works/`,
   },
   markdown: { remarkPlugins: [remarkRepoUrl], rehypePlugins: [rehypeTableScroll, rehypeStepIds] },
   integrations: [
@@ -49,9 +50,9 @@ export default defineConfig({
         {
           label: "Go deeper",
           items: [
+            { label: "How Farcaster works", slug: "how-farcaster-works" },
             { label: "Before you start", slug: "before-you-start" },
             { label: "Do it on Hetzner", slug: "hetzner" },
-            { label: "Tutorial: what you ran", slug: "tutorial" },
             { label: "Your first cast", slug: "first-cast" },
             { label: "Do it with your AI assistant", slug: "ai-assistant" },
             { label: "Fix a problem", slug: "fix" },

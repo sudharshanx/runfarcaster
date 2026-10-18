@@ -9,7 +9,7 @@ const { chromium } = require("playwright-core");
 const BASE = process.env.BASE ?? "http://127.0.0.1:4321/";
 const OUT = process.env.OUT ?? "screenshots";
 mkdirSync(OUT, { recursive: true });
-const pages = [["home", ""], ["quickstart", "quickstart/"], ["tutorial", "tutorial/"], ["hetzner", "hetzner/"], ["proof", "proof/"]];
+const pages = [["home", ""], ["quickstart", "quickstart/"], ["how-farcaster-works", "how-farcaster-works/"], ["hetzner", "hetzner/"], ["proof", "proof/"]];
 const views = [["mobile-375", { width: 375, height: 812 }, true], ["desktop", { width: 1440, height: 900 }, false]];
 
 const browser = await chromium.launch({ executablePath: process.env.CHROME, headless: true });
