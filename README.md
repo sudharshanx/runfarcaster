@@ -14,11 +14,9 @@ likes, recasts and follows have been tested against a mock node only. Numbers: `
 `run-log.md` (server details replaced with placeholders).
 
 Two modes:
-- **Instant run**: a preview in about 5 minutes. Run the app from `client/` on your own computer against the
-  RunFarcaster project's synced node; no server needed. That node shuts down on Oct 24, 2026, the bounty deadline.
-  Steps, with the node address: the Instant run page on the guide website (`site/src/content/docs/instant-run.mdx`).
-- **Full run**: the 3 commands below. Your own Hetzner server, your own read node and your own app. To vouch, complete
-  the Full run; an Instant run does not count.
+- **Instant run**: test in 5 minutes against a node that is already running, until Oct 24, 2026.
+  Steps: `site/src/content/docs/instant-run.mdx`.
+- **Full run**: the 3 commands below, on your own server. Vouchers do this one.
 
 Guide website: `site/`. Vouching: `VOUCHER.md`. Key handling: `SECURITY.md`.
 

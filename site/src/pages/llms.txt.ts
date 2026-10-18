@@ -11,8 +11,8 @@ export const GET: APIRoute = async ({ site }) => {
 > RunFarcaster sets up a Farcaster node and app of your own, with no gatekeepers in between. Rent a Hetzner server. Start a Snapchain read node on it with the official bootstrap. Open a small web app served from the same server over HTTPS. You need no API keys. On a Hetzner cax31 with a 1000 GB volume, expect about 14 hours from renting the server to synced, about $2.31 at $0.164 an hour, and a database of about 560 GB. cax31 was sold out on 2026-10-18; with SERVER_TYPE="" the script rents the first 16 GB type for sale, likely cpx42 (about $0.255 an hour with the volume, untested). A gasless KEY_ADD and a cast have been tested on mainnet (2026-10-18); likes, recasts and follows only against a mock node.
 
 Two modes:
-- Instant run (${base}instant-run/): a preview. The app from client/ runs on your own computer with \`npm run dev\` and reads from the RunFarcaster project's node. About 5 minutes, no server. That node shuts down on Oct 24, 2026 (the bounty deadline); after that, use the Full run. An Instant run does not count for vouching.
-- Full run (${base}quickstart/): the 3 commands below. Your own server, your own read node and your own app. Complete it to vouch.
+- Instant run (${base}instant-run/): test in 5 minutes against a node that is already running, until Oct 24, 2026.
+- Full run (${base}quickstart/): the 3 commands below, on your own server. Vouchers do this one.
 
 Key facts:
 - An app key is added with a KEY_ADD message that the custody address signs (EIP-712). It needs no transaction on OP Mainnet. Mainnet has accepted it since engine version V16 on 2026-05-07 (https://snapchain.farcaster.xyz/guides/writing-messages; snapchain src/version/version.rs).

@@ -6,7 +6,7 @@ description: The Full run rents a server, starts your own node and opens the app
 import CopyPrompt from "../../components/CopyPrompt.astro";
 import RepoLink from "../../components/RepoLink.astro";
 
-RunFarcaster has two modes. The [Instant run](../instant-run/) is a 5-minute preview: the app runs on your laptop and reads from the project's node until Oct 24, 2026. The Full run on this page sets up everything on your own server, and it is the one to complete before you vouch.
+Want to test first? The [Instant run](../instant-run/) takes 5 minutes against a node that is already running. This page is the Full run, on your own server. Vouchers do this one.
 
 At the end you have your own Snapchain read node, hosted at Hetzner, and a web app on the same machine that shows your feed from it. Add an app key and the app posts, likes and follows through your node too ([Post with an app key](../first-cast/)).
 
@@ -57,10 +57,6 @@ With `SERVER_TYPE=""`, `provision.sh` tries cx43, cax31, cpx42 and ccx23 in that
 To see the pick and the price first, without creating anything: `ESTIMATE_ONLY=1 SERVER_TYPE="" VOLUME_GB=1000 ./provision.sh`. The guide has been tested on cax31 only; times on other types vary.
 
 </details>
-
-:::tip[Only want to see the app?]
-The [Instant run](../instant-run/) runs the app on your laptop against a node that is already synced, with no server to rent. It is a preview until Oct 24, 2026, and it does not count for vouching.
-:::
 
 <details id="try-it">
 <summary>A trial server that deletes itself</summary>
