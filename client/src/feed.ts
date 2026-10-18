@@ -27,14 +27,15 @@ export function toFeedCast(m: MessageJson): FeedCast | null {
 }
 
 /** Merge confirmed casts with optimistic ones; pending entries are dropped once the node returns them. */
-export function mergeFeed(casts: FeedCast[], pending: PendingItem[], nowFc: number): FeedCast[] {
+export function mergeFeed(casts: FeedCast[], pending: PendingItem[], nowFc: number, keepOrder = false): FeedCast[] {
   const seen = new Set(casts.map((c) => c.hash.toLowerCase()));
   const optimistic: FeedCast[] = pending
     .filter((p) => p.kind === "cast" && !seen.has(p.hash.toLowerCase()) && p.status !== "confirmed")
     .map((p) => ({ fid: p.fid, hash: p.hash, text: p.text ?? "", timestamp: nowFc, pending: p }));
   const byHash = new Map<string, FeedCast>();
   for (const c of [...optimistic, ...casts]) if (!byHash.has(c.hash.toLowerCase())) byHash.set(c.hash.toLowerCase(), c);
-  return [...byHash.values()].sort((a, b) => b.timestamp - a.timestamp);
+  const out = [...byHash.values()];
+  return keepOrder ? out : out.sort((a, b) => b.timestamp - a.timestamp);
 }
 
 async function mapLimit<T, R>(items: T[], limit: number, fn: (t: T) => Promise<R>): Promise<R[]> {
@@ -110,6 +111,20 @@ export const SAMPLE_ACCOUNTS: ReadonlyArray<{ fname: string; fid: number }> = [
   { fname: "farcaster", fid: 1 },
 ];
 
-/** Recent casts of the sample accounts (a few each), merged newest first. */
-export const loadSampleFeed = (api: Pick<NodeApi, "linksByFid" | "castsByFid">, perFid = 5) =>
-  loadFeed(api, null, SAMPLE_ACCOUNTS.map((a) => a.fid), SAMPLE_ACCOUNTS.length, perFid);
+/**
+ * Sample feed order: each account's newest cast first (newest account first), then everything else
+ * newest first, so the first screen shows many people. `pinFid` (balajis) is moved into the top 3.
+ * Input must be newest first (loadFeed's order).
+ */
+export function sampleOrder(casts: FeedCast[], pinFid = SAMPLE_ACCOUNTS[0]!.fid): FeedCast[] {
+  const seen = new Set<number>();
+  const lead: FeedCast[] = [], rest: FeedCast[] = [];
+  for (const c of casts) (seen.has(c.fid) ? rest : lead).push(c), seen.add(c.fid);
+  const i = lead.findIndex((c) => c.fid === pinFid);
+  if (i > 2) lead.splice(2, 0, ...lead.splice(i, 1));
+  return [...lead, ...rest];
+}
+
+/** Recent casts of the sample accounts (a few each), in sampleOrder. */
+export const loadSampleFeed = async (api: Pick<NodeApi, "linksByFid" | "castsByFid">, perFid = 5) =>
+  sampleOrder(await loadFeed(api, null, SAMPLE_ACCOUNTS.map((a) => a.fid), SAMPLE_ACCOUNTS.length, perFid));

@@ -118,6 +118,23 @@ describe("sample feed", () => {
     const feed = await loadSampleFeed(api);
     expect(calls.map((c) => c[0]).sort((a, b) => a - b)).toEqual(SAMPLE_ACCOUNTS.map((a) => a.fid).sort((a, b) => a - b));
     expect(calls.every((c) => c[1] === 5)).toBe(true);
-    expect(feed[0]!.fid).toBe(Math.max(...SAMPLE_ACCOUNTS.map((a) => a.fid))); // newest first
+    expect(feed.slice(0, 3).map((c) => c.fid)).toContain(37); // balajis in the top 3
+  });
+});
+
+describe("sampleOrder", () => {
+  const c = (fid: number, ts: number) => ({ fid, hash: `0x${fid}-${ts}`, text: "", timestamp: ts });
+  it("puts one cast per account first, then the rest newest first, with the pinned FID in the top 3", async () => {
+    const { sampleOrder } = await import("../src/feed");
+    // newest first; FID 9 posts a lot, FID 37 posted long ago
+    const input = [c(9, 100), c(9, 99), c(8, 98), c(9, 97), c(7, 96), c(6, 95), c(9, 94), c(37, 10), c(8, 5)];
+    const out = sampleOrder(input, 37).map((x) => `${x.fid}@${x.timestamp}`);
+    expect(out).toEqual(["9@100", "8@98", "37@10", "7@96", "6@95", "9@99", "9@97", "9@94", "8@5"]);
+  });
+  it("leaves the pinned FID where it is when it is already in the top 3, and keeps every cast", async () => {
+    const { sampleOrder } = await import("../src/feed");
+    const input = [c(37, 50), c(2, 40), c(2, 30), c(3, 20)];
+    expect(sampleOrder(input, 37).map((x) => x.hash)).toEqual(["0x37-50", "0x2-40", "0x3-20", "0x2-30"]);
+    expect(sampleOrder([], 37)).toEqual([]);
   });
 });

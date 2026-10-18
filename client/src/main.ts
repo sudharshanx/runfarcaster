@@ -470,7 +470,7 @@ function castCard(c: FeedCast) {
 let loading = false;
 function renderFeed() {
   const nowFc = getFarcasterTime().unwrapOr(0);
-  const merged = mergeFeed(feed, reconciler.list(), nowFc);
+  const merged = mergeFeed(feed, reconciler.list(), nowFc, !!settings.sample); // the sample feed keeps sampleOrder
   const shown = merged.filter((c) => hiddenReason(c, filters) === null);
   const hidden = merged.length - shown.length;
   if (!loading) setText("feed-meta", `${shown.length} ${shown.length === 1 ? "cast" : "casts"}${hidden ? `, ${hidden} hidden by filters` : ""}`);
