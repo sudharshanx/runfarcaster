@@ -1,0 +1,85 @@
+---
+title: Reference
+description: Scripts, environment variables, ports, endpoints and repo layout.
+---
+
+import RepoLink from "../../components/RepoLink.astro";
+
+## Scripts
+
+| Script | Runs on | Does |
+|---|---|---|
+| <RepoLink path="provision.sh" /> | your machine | Creates firewall, volume, server on Hetzner (`hcloud`); cost guard; prints the IPv4 |
+| <RepoLink path="node.sh" /> | VM (`ssh … bash -s < node.sh`) | `all` (default): preflight, Docker, official bootstrap, wait for sync, health. Also `wait`, `health` |
+| <RepoLink path="deploy-client.sh" /> | your machine | Builds the client, deploys Caddy + client to `/opt/snapchain-client` |
+| <RepoLink path="teardown.sh" /> | your machine | Deletes server, volume, firewall; lists what remains |
+| <RepoLink path="watchdog.sh" /> | your machine | Tears down before spend reaches `MAX_USD`, on no progress, or at a wall-clock cap |
+| <RepoLink path="disk-guard.sh" /> | VM (systemd timer) | `install`/`check`/`status`/`uninstall`; stops the node at 90% disk |
+| <RepoLink path="snapshot-space-saver.sh" /> | VM (systemd) | `install`/`run`/`once`/`uninstall`; frees restore space; exits when the restore is done |
+
+`provision.sh`, `node.sh`, `deploy-client.sh`, `teardown.sh` and the two VM helpers accept `DRY_RUN=1` (print or log, change nothing); `watchdog.sh` does not. Tokens are read from the environment and never printed.
+
+## Environment variables
+
+| Variable | Script | Default | Notes |
+|---|---|---|---|
+| `HCLOUD_TOKEN` | provision, teardown, watchdog | (required) | Hetzner API token, read/write |
+| `SSH_KEY` | provision | (required) | Name or ID of an SSH key in your Hetzner project |
+| `SERVER_TYPE` | provision | `cx43` | `cax31` today; empty = auto-pick from `SERVER_TYPE_CANDIDATES` |
+| `SERVER_TYPE_CANDIDATES` | provision | `cx43 cax31 cpx42 ccx23` | Cheapest first |
+| `VOLUME_GB` | provision | `2000` (`REQUIRED_DISK_GB`) | `1000` fits a new account's quota |
+| `LOCATION` | provision | `fsn1` | |
+| `MAX_USD` | provision, watchdog | `2` / `5` | Spend cap |
+| `EXPECTED_HOURS` | provision | `6` | Cost guard horizon; use `16` |
+| `ESTIMATE_ONLY` | provision | `0` | `1` = price check only, creates nothing |
+| `SSH_SOURCE_CIDRS` | provision | `0.0.0.0/0,::/0` | Narrow to your IP |
+| `PORT_PROFILE` | provision | `docs` | `readme` also opens the README's TCP+UDP superset |
+| `NAME` | provision, teardown, watchdog | `snapchain-read-node` | Volume `$NAME-data`, firewall `$NAME-fw` |
+| `CONFIRM` | teardown | (prompt) | Must equal `NAME` |
+| `SNAPCHAIN_AGREE_NO_REWARDS` | node.sh | (prompt) | `yes` records the no-rewards agreement |
+| `OPERATOR_FID` | node.sh | unset | Enables the weekly auto-upgrade cron; unset = `SKIP_CRONTAB=true` |
+| `MIN_FREE_GB` | node.sh | `1500` | `900` for a 1000 GB volume |
+| `SYNC_TIMEOUT_SECS` | node.sh | `43200` | `86400` covers a 14 h sync |
+| `SYNC_MAX_BLOCK_DELAY` / `SYNC_STABLE_CHECKS` / `SYNC_POLL_SECS` | node.sh | `10` / `3` / `60` | Sync criterion |
+| `NODE_UPGRADE` | node.sh | `0` | `1` re-runs the official bootstrap (upgrade) |
+| `SSH_OPTS` | deploy-client | empty | Extra ssh/scp options, e.g. `-i key` |
+| `LIMIT_PCT` | disk-guard | `90` | |
+| `HANG_SECS` / `MAX_WALL_SECS` | watchdog | `7200` / `86400` | |
+
+## Ports
+
+| Port | Purpose | Open in our firewall |
+|---|---|---|
+| 3381/tcp | Snapchain HTTP API | Yes |
+| 3382/udp | Gossip (libp2p QUIC) | Yes |
+| 3383/tcp | Snapchain gRPC API | Yes |
+| 80/tcp, 443/tcp | Caddy: Let's Encrypt and the HTTPS client | Yes |
+| 22/tcp | SSH | Yes, limit with `SSH_SOURCE_CIDRS` |
+| 3000/tcp | Grafana (default `admin:admin`) | **No, keep closed** |
+| 8125/udp, 8126/tcp | statsd | No |
+
+3381 and 3383 only need to be public if something outside the VM reads from the node; the client goes through Caddy on 443.
+
+## HTTP endpoints the client uses
+
+`/v1/info`, `/v1/castsByFid`, `/v1/castById`, `/v1/linksByFid`, `/v1/linkById`, `/v1/reactionById`, `/v1/userDataByFid`, `/v1/signersByFid`, `/v1/signer`, `/v1/onChainIdRegistryEventByAddress`, `POST /v1/submitMessage`. Reference: [HTTP API](https://snapchain.farcaster.xyz/reference/httpapi/httpapi).
+
+## Repo layout
+
+| Path | What |
+|---|---|
+| `client/` | Vite + TypeScript web client (`@farcaster/core` 0.20.0) |
+| `deploy/` | `Caddyfile`, Caddy compose file, Hetzner firewall rules |
+| `test/`, `e2e/` | Script tests; headless-browser tests (mock node and live node) |
+| `site/` | This site (Astro Starlight) |
+| `MEASUREMENTS.md`, `run-log.md` | Live-run numbers and log |
+| `DOCS_ISSUES.md`, `SOURCES.md` | Docs audit; every fact with its source |
+| `SECURITY.md`, `VOUCHER.md` | Key handling; vouch checklist |
+
+## Sources
+
+- Snapchain v0.14.3, commit `fc87f26`: [github.com/farcasterxyz/snapchain](https://github.com/farcasterxyz/snapchain)
+- Gasless app keys: [writing-messages](https://snapchain.farcaster.xyz/guides/writing-messages), [PR #989](https://github.com/farcasterxyz/snapchain/pull/989)
+- Read nodes relay writes: [node-types](https://snapchain.farcaster.xyz/node-types#message-submission-and-the-mempool), [PR #1034](https://github.com/farcasterxyz/snapchain/pull/1034)
+- [Getting Started](https://snapchain.farcaster.xyz/getting-started), [managing-a-node](https://snapchain.farcaster.xyz/guides/managing-a-node)
+- Full list: <RepoLink path="SOURCES.md" />

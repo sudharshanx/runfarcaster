@@ -1,0 +1,29 @@
+---
+// "Copy prompt" button: copies a ready-to-paste prompt for a coding assistant.
+import { prompts, type PromptKey } from "../prompts";
+interface Props { id: PromptKey; label?: string; show?: boolean; question?: string }
+const { id, label = "Copy prompt for your AI assistant", show = false, question } = Astro.props;
+const text = question ? prompts[id].replace("<my question>", question) : prompts[id];
+---
+<div class="copy-prompt not-content">
+  <button type="button" data-copy-prompt>{label}</button>
+  <span class="sr-only" role="status" aria-live="polite" data-copy-status></span>
+  <details open={show}>
+    <summary>Show prompt</summary>
+    <pre>{text}</pre>
+  </details>
+</div>
+<script>
+  for (const btn of document.querySelectorAll<HTMLButtonElement>("[data-copy-prompt]")) {
+    if (btn.dataset.bound) continue;
+    btn.dataset.bound = "1";
+    btn.addEventListener("click", async () => {
+      const text = btn.parentElement?.querySelector("pre")?.textContent ?? "";
+      const old = btn.textContent;
+      const status = btn.parentElement?.querySelector("[data-copy-status]");
+      try { await navigator.clipboard.writeText(text); btn.textContent = "Copied"; if (status) status.textContent = "Prompt copied to clipboard"; }
+      catch { btn.textContent = "Copy failed. Open Show prompt and copy it by hand."; if (status) status.textContent = "Copy failed"; }
+      setTimeout(() => { btn.textContent = old; }, 2000);
+    });
+  }
+</script>

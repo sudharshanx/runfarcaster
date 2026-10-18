@@ -1,0 +1,110 @@
+---
+title: Run your own Farcaster Snapchain read node and client in three commands
+description: Rent a server, turn it into a Snapchain read node, and serve a small web client from it. No API keys from anyone. Measured time and cost.
+template: splash
+hero:
+  title: '<span class="eyebrow" aria-hidden="true">No API keys · MIT · ~$2.31 to sync</span>Your own Farcaster node. Three commands.'
+  tagline: 'A Snapchain read node and a web client on a server you rent.<br />No API keys from anyone. You furnish the compute.'
+  actions:
+    - text: Quickstart
+      link: quickstart/
+      icon: right-arrow
+---
+
+import AtAGlance from "../../components/AtAGlance.astro";
+import RepoLink from "../../components/RepoLink.astro";
+import { Image } from "astro:assets";
+import mobile360 from "../../assets/client-mobile-360.png";
+import mobile375 from "../../assets/client-mobile-375.png";
+import desktop from "../../assets/client-desktop.png";
+
+<p class="proof">Measured on one live mainnet run (2026-10-18): ≈14 h 06 m to sync, ≈$2.31, 557.86 GB on disk. <a href="receipts/#measurements">See the receipts</a>.</p>
+
+## The three commands
+
+```bash title="your machine"
+# 1. Rent the compute: VM + data volume + firewall on Hetzner. Prints the IP.
+IP=$(SSH_KEY=my-key SERVER_TYPE=cax31 VOLUME_GB=1000 \
+     MAX_USD=5 EXPECTED_HOURS=16 ./provision.sh)
+
+# 2. Turn it into a Snapchain read node and wait for sync (hours).
+ssh root@$IP "SNAPCHAIN_AGREE_NO_REWARDS=yes MIN_FREE_GB=900 \
+  bash -s" < node.sh
+
+# 3. Serve the web client from the node over HTTPS.
+./deploy-client.sh "$IP"
+```
+
+Stop the bill: `CONFIRM=snapchain-read-node ./teardown.sh`.
+These are the settings we ran (cx43 was sold out; new accounts have a 1024 GB volume quota). On a 1 TB volume, also install the two disk helpers shown in the [Quickstart](quickstart/).
+
+:::note[AUTHOR]
+Intro hook, 2 to 3 sentences in your own words: who you are, why you wanted your own node, what the reader will have at the end.
+:::
+
+<div class="numbered">
+  <section>
+    <p class="label">01 / NODE</p>
+    <p class="claim">A read node that runs on its own.</p>
+    <p>The official bootstrap restores a snapshot, then follows the validators block by block.<br />No API key, no third-party hub. Hetzner cax31 + 1000 GB volume, ≈$0.164/h.</p>
+  </section>
+  <section>
+    <p class="label">02 / CLIENT</p>
+    <p class="claim">A client served from that node.</p>
+    <p>Caddy serves it over HTTPS on the same origin as the node API.<br />Feed, cast, follow, like, recast, include/exclude filters. Works at 360 px.</p>
+  </section>
+  <section>
+    <p class="label">03 / SIGNER</p>
+    <p class="claim">Gasless app keys. No Optimism transaction.</p>
+    <p>Your custody key signs one EIP-712 <code>KEY_ADD</code> (<a href="https://github.com/farcasterxyz/snapchain/pull/989">snapchain #989</a>); your read node relays it (<a href="https://github.com/farcasterxyz/snapchain/pull/1034">#1034</a>).<br />Not yet tested end-to-end on mainnet: see <a href="receipts/#test-status">test status</a>.</p>
+  </section>
+</div>
+
+## At a glance
+
+<AtAGlance />
+
+## What you get
+
+<div class="shots">
+  <figure>
+    <Image src={mobile360} alt="The client on a 360 px phone: real casts from the node with Like, Recast and Mute buttons" widths={[360, 720]} sizes="(max-width: 600px) 100vw, 33vw" />
+    <figcaption>Feed, 360 px phone</figcaption>
+  </figure>
+  <figure>
+    <Image src={mobile375} alt="The client on a 375 px phone: post box, outgoing messages, filters and feed controls" widths={[375, 750]} sizes="(max-width: 600px) 100vw, 33vw" />
+    <figcaption>Post, filters, feed controls, 375 px</figcaption>
+  </figure>
+  <figure>
+    <Image src={desktop} alt="The client on desktop: signer box, post box, filters and feed controls" widths={[640, 1280]} sizes="(max-width: 600px) 100vw, 33vw" />
+    <figcaption>Desktop</figcaption>
+  </figure>
+</div>
+
+Real screenshots from the headless-browser test against our synced node (`e2e/real-node.mjs`). One field showing a test account's FID was blanked.
+
+:::note[AUTHOR]
+One line on what it felt like when the feed first loaded from your own node.
+:::
+
+## 59-second walkthrough
+
+<div class="video-slot" role="img" aria-label="Placeholder for a 59-second vertical video">
+  <p><strong>Video slot (9:16, 59 s)</strong></p>
+  <p>Not recorded yet.</p>
+</div>
+
+:::note[AUTHOR]
+Record a 59 s vertical screen video (provision, synced `/v1/info`, feed on a phone) and replace this slot with it. Say in the caption how it was made.
+:::
+
+## Status
+
+- Tested live: provision, full mainnet sync, HTTPS client, read-only browser test (16/16), invalid submit rejected.
+- Not tested: a real `KEY_ADD`, cast, like or follow on mainnet, and `teardown.sh` on real resources.
+
+Full table: [Test status](receipts/#test-status). Vouches: [Vouches](receipts/#vouches).
+
+**中文:** A Chinese translation is planned and will be written by a person, not machine-translated.
+
+Source code (MIT): <RepoLink path="" label="GitHub repo" /> · For coding assistants: <a href="llms.txt"><code>llms.txt</code></a>

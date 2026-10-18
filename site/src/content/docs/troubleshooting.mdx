@@ -1,0 +1,38 @@
+---
+title: Troubleshooting
+description: Symptoms, causes and fixes, taken from our live run and the docs audit.
+---
+
+import CopyPrompt from "../../components/CopyPrompt.astro";
+
+| Symptom | Cause | Fix |
+|---|---|---|
+| `volumes size limit exceeded (resource_limit_exceeded)` from `provision.sh` | Hetzner account-wide volume quota; new accounts get 1024 GB total | `VOLUME_GB=1000`, plus `disk-guard.sh` and `snapshot-space-saver.sh` ([Quickstart](../quickstart/)). Or request a higher limit at console.hetzner.cloud/limits |
+| `provision.sh` refuses `cx43` | cx43 reported `available: false` in fsn1, nbg1, hel1 | `SERVER_TYPE=cax31`, or `SERVER_TYPE=` to auto-pick the cheapest available type |
+| `projected cost exceeds MAX_USD=2. Nothing was created.` | Default guard is $2 for `EXPECTED_HOURS=6`; a real sync takes ≈14 h | `MAX_USD=5 EXPECTED_HOURS=16` (what we used). Preview with `ESTIMATE_ONLY=1` |
+| `node.sh` stops: `only N GB free ... need >= 1500 GB` | 1000 GB volume shows ≈984 GB | `MIN_FREE_GB=900` |
+| Disk climbs fast during the restore | The official restore keeps chunks + an uncompressed tar + the DB until the end | `snapshot-space-saver.sh install` once `.rocks.snapshot` exists. Our peak with it: 699 GB (75%) of 984 GB. Its tar hole-punching had no effect; deleting used chunks and tars was enough |
+| Node stopped, file `/root/snapchain-DISK-FULL` exists | `disk-guard.sh` hit 90% | Do not restart on the same disk. Use a bigger volume, or tear down |
+| `HTTP API not answering yet` for hours | Normal during the snapshot restore (≈8 h 34 m for us) | Wait. Watch `df -h /root/snapchain` grow |
+| `not in sync after 43200s` | `node.sh` default wait is 12 h; our sync took ≈14 h | Harmless. `ssh root@$IP 'bash -s wait' < node.sh`, or set `SYNC_TIMEOUT_SECS=86400` |
+| `InsufficientPeers` warnings mentioning `read-node-peers`, ≈18/min | No connected validator subscribes to that topic | Harmless; sync is unaffected. Check peers and `blockDelay` instead |
+| `HandshakeTimedOut` to two bootstrap peers every 30 s | Remote side | Harmless if `blockDelay` keeps falling |
+| `/v1/info` shows `mempoolSize: 4294967295` | Read nodes have no mempool | Expected |
+| `castsByFid ... reverse=1` returns 400 `provided string was not true or false` | Query parser only accepts `true`/`false` | `reverse=true` |
+| `requesterFids=1&requesterFids=2` returns "Multiple values for one key" | Same parser | `requesterFids[]=1&requesterFids[]=2` |
+| SSH to the VM times out | `SSH_SOURCE_CIDRS` does not include your current IP (we hit this from a machine with rotating egress IPs) | Update the firewall rule for 22/tcp, or re-run `provision.sh` with the right CIDR |
+| `deploy-client.sh` ends `not reachable yet` | Let's Encrypt needs ports 80/443 and a DNS name that resolves to the VM | Check `docker compose logs caddy` in `/opt/snapchain-client`. Without your own name the script uses `<ip-with-dashes>.sslip.io`, a third-party DNS service |
+| `/v1/mesh` returned 200 through Caddy | A bare `respond` loses to `handle` in Caddy's ordering (found and fixed in our run) | Use the current `deploy/Caddyfile` (`handle @admin { respond 404 }`) |
+| Client says `Node not reachable` | A node URL is saved in the client, or the CSP blocks it | Leave the node URL empty (same origin) and Save |
+| A cast stays `[relayed]`, then `[failed]` | Relay gossip was lost; read nodes keep no mempool | **Retry** in Outgoing messages resubmits the same bytes |
+| Bootstrap fails with `/dev/tty: No such device or address` | The official bootstrap needs a TTY | Use `node.sh`; it runs the bootstrap under `script` |
+
+:::note[AUTHOR]
+Add any problem you hit that is not in this table, in your own words.
+:::
+
+## Ask an assistant
+
+Paste your exact command and output (remove tokens, IPs and hostnames first):
+
+<CopyPrompt id="debug" label="Copy debugging prompt" show />

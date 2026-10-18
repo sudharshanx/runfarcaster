@@ -1,0 +1,229 @@
+---
+title: Quickstart
+description: Three commands from an empty Hetzner project to a synced Snapchain read node and a web client served from it.
+---
+
+import AtAGlance from "../../components/AtAGlance.astro";
+import { Tabs, TabItem } from "@astrojs/starlight/components";
+import CopyPrompt from "../../components/CopyPrompt.astro";
+import RepoLink from "../../components/RepoLink.astro";
+
+Rent a server, turn it into a Snapchain read node, and serve the web client from it.
+
+The node downloads a snapshot of the network, then follows the validators block by block. The client runs in your browser and talks only to your node, through Caddy on the same HTTPS origin.
+
+You need the `hcloud` CLI, `jq`, `ssh`, Node.js 20 or later, a Hetzner token in `HCLOUD_TOKEN` and an SSH key uploaded to Hetzner. Details: [Before you start](../before-you-start/). Prefer an assistant? See [Do it with your AI assistant](../ai-assistant/).
+
+<AtAGlance />
+
+:::note[AUTHOR]
+One sentence on how long the hands-on part took you, and what you did while the node synced.
+:::
+
+Run every command from the repo root on your own machine:
+
+:::note[AUTHOR]
+Replace `OWNER` with the GitHub account once the repo is public.
+:::
+
+```bash
+git clone https://github.com/OWNER/snapchain-tutorial && cd snapchain-tutorial
+```
+
+## 1. Provision the compute
+
+<Tabs syncKey="disk">
+<TabItem label="New account, 1 TB (what we ran)">
+
+```bash title="your machine"
+IP=$(SSH_KEY=my-key SERVER_TYPE=cax31 VOLUME_GB=1000 \
+     MAX_USD=5 EXPECTED_HOURS=16 \
+     SSH_SOURCE_CIDRS=<your-ip>/32 ./provision.sh)
+echo "$IP"
+```
+
+</TabItem>
+<TabItem label="2 TB volume (docs default, not run by us)">
+
+```bash title="your machine"
+IP=$(SSH_KEY=my-key SERVER_TYPE=cax31 \
+     MAX_USD=5 EXPECTED_HOURS=16 \
+     SSH_SOURCE_CIDRS=<your-ip>/32 ./provision.sh)
+echo "$IP"
+```
+
+Needs a volume quota above 2000 GB. Estimated ≈$0.29/h.
+
+</TabItem>
+</Tabs>
+
+Review the script before running it: <RepoLink path="provision.sh" />
+
+What it does:
+- Checks that the server type exists, is available in `fsn1` and has at least 16 GB RAM.
+- Prints a cost estimate from Hetzner's live price list and **refuses to create anything** if hourly cost × `EXPECTED_HOURS` is above `MAX_USD`.
+- Creates a firewall (22/tcp, 3381/tcp, 3382/udp, 3383/tcp, 80/tcp, 443/tcp), the data volume and the server. cloud-init mounts the volume at `/root/snapchain`.
+- Prints the IPv4 address. Re-running it reuses what already exists.
+
+Expected output (stderr; abridged, written from the script's log lines, not a pasted log):
+
+```text
+[provision] server type cax31: 8 vCPU (shared), 16 GB RAM, 160 GB disk, arm
+[provision] local disk 160 GB < 2000 GB: adding a 1000 GB volume
+COST ESTIMATE (from the live price list, NOT a measurement; currency USD, gross):
+  ...
+  total       ~0.164 /h
+[provision] cost guard OK: projected <= MAX_USD=5
+[provision] done. Next:
+```
+
+Took 35 s in our run.
+
+**Verify it worked**
+
+```bash
+hcloud server list      # snapchain-read-node, status running
+hcloud volume list      # snapchain-read-node-data, 1000 GB
+```
+
+<CopyPrompt id="provision" />
+
+:::caution
+This creates billable resources. If you skip `SSH_SOURCE_CIDRS`, SSH is open to the whole internet (key-only login). Start `watchdog.sh` first if you want an automatic spend cap.
+:::
+
+## 2. Set up the read node
+
+<Tabs syncKey="disk">
+<TabItem label="New account, 1 TB (what we ran)">
+
+```bash title="your machine"
+scp disk-guard.sh snapshot-space-saver.sh root@$IP:
+ssh root@$IP ./disk-guard.sh install
+ssh root@$IP "SNAPCHAIN_AGREE_NO_REWARDS=yes MIN_FREE_GB=900 \
+  SYNC_TIMEOUT_SECS=86400 bash -s" < node.sh
+```
+
+In a **second terminal**, once the snapshot download has started:
+
+```bash title="your machine, second terminal"
+ssh root@$IP 'until [ -d /root/snapchain/.rocks.snapshot ]; do sleep 10; done
+  ./snapshot-space-saver.sh install'
+```
+
+The official restore keeps every compressed chunk, an uncompressed tar per shard and the database until the end. On 1 TB that does not fit. `snapshot-space-saver.sh` deletes the parts the node has finished reading. `disk-guard.sh` stops the node cleanly at 90% disk use.
+
+:::caution[Not run in this exact form]
+In our run we installed the space saver by hand about 7 minutes after the download started. The `until` loop above automates that and has not been run as written. The saver exits immediately if `.rocks.snapshot` does not exist yet.
+:::
+
+</TabItem>
+<TabItem label="2 TB volume (docs default, not run by us)">
+
+```bash title="your machine"
+ssh root@$IP "SNAPCHAIN_AGREE_NO_REWARDS=yes \
+  SYNC_TIMEOUT_SECS=86400 bash -s" < node.sh
+```
+
+</TabItem>
+</Tabs>
+
+Review the scripts before running them: <RepoLink path="node.sh" />, <RepoLink path="disk-guard.sh" />, <RepoLink path="snapshot-space-saver.sh" />. `node.sh` downloads and runs the official [`snapchain-bootstrap.sh`](https://github.com/farcasterxyz/snapchain/blob/main/scripts/snapchain-bootstrap.sh) and logs its sha256.
+
+What it does:
+- Checks Ubuntu 22.04/24.04, RAM and free disk; installs Docker from Docker's apt repository.
+- Writes the bootstrap answers to `~/snapchain/.env` (the no-rewards agreement, `SKIP_CRONTAB=true` unless you set `OPERATOR_FID`).
+- Runs the **official** bootstrap under a pseudo-terminal (it needs a TTY) and stops following its logs once it reports "Upgrade complete". No API keys.
+- Polls `/v1/info` until every shard's `blockDelay` is under 10 for 3 polls in a row, then prints a health check.
+
+Expected output while syncing (format from `node.sh`; the shard numbers are from our run log at 10:34 IST, the clock times are examples):
+
+```text
+[node.sh] Waiting for sync: all shards blockDelay < 10s for 3 polls (timeout 86400s).
+[node.sh] 04:31:10Z HTTP API not answering yet (snapshot download in progress?).
+[node.sh] 05:04:36Z SYNCING shard 0: height=48210601 blockDelay=79236 | shard 1: height=48906556 blockDelay=57766 | shard 2: height=48723458 blockDelay=76739
+...
+[node.sh] Node is in sync.
+================ Snapchain health check ================
+HTTP API http://127.0.0.1:3381/v1/info: OK
+sync: SYNCED (blockDelay < 10s on all shards)
+sample query /v1/castsByFid?fid=1&pageSize=1: HTTP 200
+```
+
+Took ≈14 h 06 m from provisioning in our run: ≈8 h 34 m snapshot restore, then ≈5 h 15 m catch-up.
+
+The HTTP API is down during the snapshot restore; that is expected. If SSH disconnects, the node keeps running. Resume waiting with:
+
+```bash
+ssh root@$IP 'bash -s wait' < node.sh
+```
+
+**Verify it worked**
+
+```bash
+curl -s http://$IP:3381/v1/info | jq '.shardInfos[] | {shardId, blockDelay}'
+```
+
+Synced means every shard shows a `blockDelay` in single digits ([Getting Started](https://snapchain.farcaster.xyz/getting-started)).
+
+<CopyPrompt id="node" />
+
+## 3. Deploy the client
+
+```bash title="your machine"
+./deploy-client.sh "$IP"            # or: ./deploy-client.sh "$IP" node.example.com
+```
+
+Review the script before running it: <RepoLink path="deploy-client.sh" />, <RepoLink path="deploy/Caddyfile" />
+
+What it does:
+- Builds the client locally (`npm ci`, tests, `vite build`).
+- Copies `client/dist`, `deploy/Caddyfile` and a compose file to `/opt/snapchain-client` on the VM, then starts Caddy.
+- Caddy gets a Let's Encrypt certificate and serves the client and `/v1/*` (proxied to `127.0.0.1:3381`) on one HTTPS origin.
+
+Without a DNS name it uses `<ip-with-dashes>.sslip.io`, a third-party wildcard DNS service. Pass your own name if you have one.
+
+Expected output:
+
+```text
+[deploy-client] building client (npm ci, typecheck, tests, build)
+[deploy-client] uploading to root@<ip>:/opt/snapchain-client
+[deploy-client] waiting for HTTPS on https://<ip-with-dashes>.sslip.io ...
+[deploy-client] OK: https://<ip-with-dashes>.sslip.io (client) and https://<ip-with-dashes>.sslip.io/v1/info (node, proxied)
+```
+
+Took ≈35 s in our run.
+
+**Verify it worked**
+
+```bash
+curl -sI https://<name>/ | grep -i content-security-policy   # connect-src 'self'
+curl -s https://<name>/v1/info | jq .version                 # same node, through Caddy
+```
+
+Open the URL. The status line should start with `Connected. version 0.14.3;` followed by each shard's delay. Enter an FID under **Feed** and press **Refresh**.
+
+<CopyPrompt id="client" />
+
+## How it works
+
+- A read node has **no API key** and no account with anyone. It syncs from the validators over gossip (UDP 3382).
+- The client is static files. Every request goes to `/v1/*` on the same origin, so the browser needs no CORS preflight and sees no mixed content.
+- Posting needs an app key. See [Your first cast](../first-cast/) and the [Tutorial](../tutorial/#step-1-app-keys-are-gasless-now).
+
+## Tear it down
+
+Review the script before running it: <RepoLink path="teardown.sh" />
+
+```bash title="your machine"
+CONFIRM=snapchain-read-node ./teardown.sh   # deletes server, volume, firewall
+hcloud server list && hcloud volume list     # should not list snapchain-read-node
+```
+
+Deleting the volume deletes the node database. `teardown.sh` lists servers, volumes, firewalls and primary IPs at the end and fails if anything it created is still there. It does not delete the SSH key you uploaded.
+
+<CopyPrompt id="teardown" />
+
+:::caution
+`teardown.sh` has only been run with `DRY_RUN=1`. Check the Hetzner console after it finishes.
+:::

@@ -1,0 +1,28 @@
+---
+title: Do it with your AI assistant
+description: One prompt to run the whole tutorial with a coding assistant, and one to debug an error. Safety rules included.
+---
+
+import CopyPrompt from "../../components/CopyPrompt.astro";
+
+These prompts work with any coding assistant that can run shell commands on your machine (or tell you what to run). They use the exact script names and variables from the repo.
+
+:::danger[Two rules]
+Never paste a seed phrase or private key into an AI assistant. Never paste your Hetzner token; keep it in `HCLOUD_TOKEN` in your shell.
+:::
+
+## Run the whole tutorial
+
+<CopyPrompt id="master" label="Copy the full-run prompt" show />
+
+## Debug an error
+
+Fill in the angle brackets. Remove tokens, IP addresses and hostnames from the output first.
+
+<CopyPrompt id="debug" label="Copy the debugging prompt" show />
+
+## Ask about a concept
+
+<CopyPrompt id="concept" label="Copy the concept prompt" show />
+
+Machine-readable versions of this site: [`llms.txt`](../llms.txt) (summary) and [`llms-full.txt`](../llms-full.txt) (every page as Markdown).

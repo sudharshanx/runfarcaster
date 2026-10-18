@@ -1,0 +1,27 @@
+---
+title: Glossary
+description: Farcaster and Snapchain terms used on this site, one line each.
+---
+
+| Term | Meaning |
+|---|---|
+| FID | Farcaster ID: your account number, registered onchain on OP Mainnet. |
+| Custody address | The Ethereum address that owns an FID. It can add or remove app keys and transfer the FID. |
+| **App key** (signer) | An ed25519 key that signs messages for an FID, limited to its scopes and TTL. Cannot move funds. |
+| KEY_ADD | A message that adds an app key without an onchain transaction (gasless), authorised by an EIP-712 signature from the custody address. |
+| Scope | A message type an app key may sign, e.g. `CAST_ADD`, `REACTION_ADD`, `LINK_ADD`. |
+| TTL | How long an app key stays valid, 1 s to 90 days, refreshed on each use (sliding). |
+| Nonce | A counter per FID; each `KEY_ADD` must use a value above `currentUserNonce`. |
+| Message | A signed piece of Farcaster data: cast, reaction, link (follow), profile data, verification, key add/remove. |
+| Cast | A post. Max 320 bytes of text. |
+| Storage | Units rented onchain that cap how many messages of each type an FID keeps; the oldest are pruned beyond that. |
+| Snapchain | The network that orders and stores Farcaster messages, split into shards. |
+| Shard | A partition of Snapchain data. Shard 0 holds global metadata; shards 1 and 2 hold user data. |
+| Validator | A Snapchain node that produces and votes on blocks. |
+| Read node | A Snapchain node that follows validators, serves the API, and relays submitted messages. No mempool, no rewards. |
+| Mempool | Where a validator keeps messages waiting for a block. Read nodes have none. |
+| blockDelay | Seconds a shard's newest block is behind now. Single digits = synced. |
+| Snapshot | A compressed copy of the database a new node downloads before catching up. |
+| Gossip | Peer-to-peer message exchange between nodes (libp2p over QUIC, UDP 3382). |
+| Farcaster time | Seconds since 2021-01-01 00:00 UTC, used in message timestamps. |
+| Same origin | Page and API served from one scheme + host + port, so the browser needs no CORS. |

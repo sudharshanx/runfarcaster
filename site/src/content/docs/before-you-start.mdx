@@ -1,0 +1,98 @@
+---
+title: Before you start
+description: Prerequisites, Hetzner limits, what it costs, how to stop the bill, and how to handle a seed phrase safely.
+---
+
+import RepoLink from "../../components/RepoLink.astro";
+
+:::note[AUTHOR]
+One or two sentences: what you wish you had known before you started.
+:::
+
+## What a read node is (and is not)
+
+- It **follows** the chain. It downloads a snapshot, then fetches every new block from validators.
+- It **does not** produce blocks or vote. Only validators do that.
+- It **earns no rewards.** The official bootstrap asks you to agree to this. `SNAPCHAIN_AGREE_NO_REWARDS=yes` records that agreement for you; read it first at [Getting Started](https://snapchain.farcaster.xyz/getting-started).
+- It **can accept writes** and relay them to validators, but it has no mempool of its own. See [Writes on a read node](../tutorial/#step-2-read-nodes-take-writes-and-relay-them).
+
+## Checklist
+
+- [ ] A Hetzner Cloud account and an API token (read/write) for an **empty** project. Export it as `HCLOUD_TOKEN`.
+- [ ] An SSH public key uploaded to that project (`hcloud ssh-key list` shows its name).
+- [ ] On your machine: [`hcloud` CLI](https://github.com/hetznercloud/cli), `jq`, `ssh`/`scp`, `curl`, Node.js 20+ and npm (to build the client).
+- [ ] **Your volume quota** at [console.hetzner.cloud/limits](https://console.hetzner.cloud/limits) (see below).
+- [ ] For posting: a Farcaster account that already has an **FID and storage**. Reading needs neither.
+- [ ] About 14 hours in which the server can run unattended.
+
+```bash title="Check the tools"
+hcloud version && jq --version && node --version
+hcloud ssh-key list          # needs HCLOUD_TOKEN in the environment
+```
+
+:::tip[Keep the token out of your shell history]
+```bash
+read -rs HCLOUD_TOKEN && export HCLOUD_TOKEN
+```
+The scripts read it from the environment and never print it.
+:::
+
+## Hetzner gotchas (both hit us)
+
+| Gotcha | What you see | What to do |
+|---|---|---|
+| Volume quota. New accounts get 1024 GB of volumes in total, shared by all projects, and may not be allowed to raise it yet. The docs ask for 1.5 to 2 TB. | `volumes size limit exceeded (resource_limit_exceeded)` | Use `VOLUME_GB=1000` plus the two disk helpers in the [Quickstart](../quickstart/). That is what we ran. |
+| cx43 sold out. The x86 16 GB type was `available: false` in fsn1, nbg1 and hel1 on 2026-10-18. | `provision.sh` refuses the type | `SERVER_TYPE=cax31` (ARM64; the snapchain, statsd and Grafana images all publish arm64), or `SERVER_TYPE=` to auto-pick the cheapest available type. |
+
+## What it costs
+
+| Item | Price (Hetzner list, 2026-10-18, USD) |
+|---|---|
+| cax31 (ARM64, 8 vCPU, 16 GB RAM, 160 GB disk) | $0.040/h |
+| Primary IPv4 | $0.001/h |
+| Volume 1000 GB | $0.0767/GB/month ≈ $0.123/h (estimate) |
+| **Total** | **≈$0.164/h ≈ $120/month** if left on |
+
+Measured run: **≈$2.31** from provision to fully synced (≈14 h 06 m). These are price-list estimates; we did not check an invoice.
+
+```bash title="Preview the cost, create nothing"
+ESTIMATE_ONLY=1 SERVER_TYPE=cax31 VOLUME_GB=1000 EXPECTED_HOURS=16 ./provision.sh
+```
+
+### How to stop the bill
+
+- `CONFIRM=snapchain-read-node ./teardown.sh` deletes the server, the volume and the firewall, then lists what is left. **The node database is deleted with the volume.**
+- `watchdog.sh` runs on your machine and calls `teardown.sh` before the projected bill reaches `MAX_USD`, if the node stops making progress, or at a wall-clock cap. Start it before `provision.sh`.
+- `provision.sh` refuses to create anything if hourly cost × `EXPECTED_HOURS` exceeds `MAX_USD` (default $2).
+
+:::caution
+`teardown.sh` has not yet been run against real resources (only `DRY_RUN`). After it finishes, check the Hetzner console yourself.
+:::
+
+## Seed phrases and app keys
+
+:::danger[Your recovery phrase controls your whole account]
+**Only paste a seed phrase into software from developers you trust.** Prefer a **delegated signer** created by an app you already trust. Use a test account if you can.
+:::
+
+If you choose to paste it into this client, here is exactly what happens (<RepoLink path="client/src/signer.ts" />):
+
+1. The browser generates a new ed25519 **app key**.
+2. The phrase is used **once, locally**, to sign one gasless `KEY_ADD` (EIP-712, from your custody address). No ETH, no transaction.
+3. The phrase is then **discarded**: never stored, logged or sent. Only the signed `KEY_ADD` message goes to your node.
+4. The app key is stored in this browser's `localStorage`. "Forget app key" deletes it locally; it does **not** revoke it onchain.
+
+JavaScript cannot guarantee that memory is wiped, which is one more reason to use a trusted device.
+
+| The app key **can** | The app key **cannot** |
+|---|---|
+| Sign casts (`CAST_ADD`) | Move funds or sign transactions |
+| Sign likes and recasts (`REACTION_ADD`) | Delete casts, unfollow, change your profile (scopes not requested) |
+| Sign follows (`LINK_ADD`) | Add or remove other keys (`KEY_ADD`/`KEY_REMOVE` are never allowed as scopes) |
+| Keep working until its TTL runs out (default 7 days, max 90, slides forward on use) | Outlive revocation by your custody address |
+
+See <RepoLink path="SECURITY.md" /> for the full list.
+
+:::note[AUTHOR]
+Personal tip on seed-phrase safety, e.g. how you set up a test account.
+:::

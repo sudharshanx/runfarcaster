@@ -1,0 +1,22 @@
+---
+// Source: README.md "What has been tested", run-log.md, MEASUREMENTS.md. Keep in sync.
+---
+<table>
+  <thead><tr><th>What</th><th>Status</th><th>Evidence</th></tr></thead>
+  <tbody>
+    <tr><td><code>provision.sh</code> on Hetzner (cax31, <code>VOLUME_GB=1000</code>)</td><td>Tested live</td><td>35 s, run-log 2026-10-18</td></tr>
+    <tr><td><code>node.sh</code>: official bootstrap, full mainnet sync, health check, idempotent re-run</td><td>Tested live</td><td>MEASUREMENTS.md timeline</td></tr>
+    <tr><td><code>deploy-client.sh</code>: Caddy + Let's Encrypt, same-origin <code>/v1</code> proxy</td><td>Tested live</td><td>HTTPS 200, CSP + HSTS present</td></tr>
+    <tr><td>Client reads on the real node (feed, filters, mute, <code>signersByFid</code>, storage limits, 375 px layout)</td><td>Tested live, read-only</td><td><code>e2e/real-node.mjs</code> 16/16</td></tr>
+    <tr><td><code>submitMessage</code> rejects an invalid message</td><td>Tested live</td><td>HTTP 400 "Invalid protobuf data"</td></tr>
+    <tr><td><strong>Gasless KEY_ADD on mainnet</strong></td><td><strong>Not tested</strong></td><td>Unit tests and a local mock node only</td></tr>
+    <tr><td><strong>Cast, like, recast, follow on mainnet</strong></td><td><strong>Not tested</strong></td><td>Unit tests and a local mock node only</td></tr>
+    <tr><td>Time from submit to visible on a read node</td><td>Not measured</td><td>No valid mainnet write was made</td></tr>
+    <tr><td><code>teardown.sh</code> against real resources</td><td>Not tested</td><td><code>DRY_RUN</code> and shellcheck only</td></tr>
+    <tr><td><code>snapshot-space-saver.sh</code></td><td>Partly worked live</td><td>Deleted used chunks and tars; tar hole-punching had no effect</td></tr>
+    <tr><td><code>disk-guard.sh</code>, <code>watchdog.sh</code></td><td>Ran live, never fired</td><td>Peak disk 75%; spend stayed under the $5 cap</td></tr>
+    <tr><td>2 TB volume path, x86 (cx43) server</td><td>Not tested</td><td>Volume quota; cx43 unavailable</td></tr>
+    <tr><td>Running without inbound 3382/udp</td><td>2-minute test only</td><td>Peers stayed 5/5; long-term effect unknown</td></tr>
+    <tr><td>Local suites: shellcheck, <code>node_sh_test</code> 23/23, <code>space_saver_test</code> 9/9, client vitest 34, mock e2e 20/20</td><td>Pass</td><td>run-log 16:16 IST</td></tr>
+  </tbody>
+</table>

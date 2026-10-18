@@ -1,0 +1,99 @@
+---
+title: Receipts
+description: Measured time, cost and resources from the live run, what was and was not tested, test logs, and public vouches.
+---
+
+import TestedTable from "../../components/TestedTable.astro";
+import RepoLink from "../../components/RepoLink.astro";
+
+One live run on mainnet, 2026-10-18 (times IST, UTC+5:30). Hetzner cax31 (ARM64, 8 vCPU, 16 GB RAM, fsn1), 1000 GB volume, Ubuntu 24.04, Snapchain v0.14.3 (`farcasterxyz/snapchain:latest`). Raw data: <RepoLink path="MEASUREMENTS.md" />, <RepoLink path="run-log.md" />.
+
+## Measurements
+
+### Timeline
+
+| Phase | Measured |
+|---|---|
+| `provision.sh` | 35 s |
+| Snapshot download | ≈5 h 24 m for ≈520 GB (5689 chunks), ≈27 MB/s |
+| Snapshot restore, total (download, gunzip, untar per shard) | ≈8 h 34 m |
+| Catch-up after restore | ≈5 h 15 m at 4.3 to 4.6 blocks/s per shard |
+| **Provision to fully synced** (every shard `blockDelay` < 10) | **≈14 h 06 m** |
+| `deploy-client.sh` incl. Let's Encrypt | ≈35 s |
+
+### Resources at sync
+
+| | Measured | How |
+|---|---|---|
+| Database | 557.86 GB (shard 0: 37 GB, shard 1: 261 GB, shard 2: 259 GB) | `/v1/info` `dbStats.approxSize`, `du` |
+| Messages / FIDs | 914,243,963 messages, 3,355,148 FID registrations | `/v1/info` |
+| Disk after sync | 557 GB used, 378 GB free (60%) of 984 GB | `df -h` |
+| Peak disk during restore | 699 GB (75%), with `snapshot-space-saver.sh` | 10-minute logger; true peak may be slightly higher |
+| RAM, host | 2.4 to 2.6 GiB used (+≈13 GiB page cache) | `free -m` |
+| RAM, containers | snapchain 1.53 GiB, statsd 264 MiB, Grafana 68 MiB, Caddy 12 MiB | `docker stats` |
+| CPU | snapchain ≈1.3% at tip; load average ≈0.7 to 1.5 on 8 vCPU | `docker stats`, `/proc/loadavg` |
+| Peers | 5, all mainnet validators | `/v1/mesh` (node-local) |
+| Read latency through Caddy | ≈0.2 s per `/v1/*` request | `curl` |
+
+### Cost
+
+| | |
+|---|---|
+| Rate | ≈$0.164/h = cax31 $0.040 + IPv4 $0.001 + 1000 GB volume ≈$0.123 (Hetzner price list; volume hourly rate is our conversion of the monthly price) |
+| To reach sync | **≈$2.31** |
+| If left on | ≈$120/month |
+| Actual invoice | Not checked |
+
+For comparison: the official AWS guide estimates "roughly $100/month"; a competing entry quotes about $265/month. Neither is a measured run.
+
+:::note[AUTHOR]
+When the Hetzner invoice arrives, add the line item here (amount and hours billed).
+:::
+
+### Not measured
+
+Time from submit to visible for a valid message; Grafana's peak RAM; the long-term effect of closing inbound 3382/udp (a 2-minute test changed nothing: peers stayed 5/5).
+
+## Test status
+
+<TestedTable />
+
+## Test logs
+
+Commands, from the repo root:
+
+```bash
+shellcheck -x -P SCRIPTDIR *.sh test/*.sh e2e/*.sh
+bash test/node_sh_test.sh            # 23/23: node.sh against fake docker + mock /v1/info
+bash test/space_saver_test.sh        # 9/9
+cd client && npm ci && npm run typecheck && npm test   # vitest: 6 files, 34 tests
+cd e2e && npm ci && CADDY=caddy CHROME=/path/to/chrome ./run.sh   # 20/20: real Caddyfile, mock node
+SITE=https://<name> CHROME=/path/to/chrome node e2e/real-node.mjs  # 16/16 on the live node, read-only
+```
+
+What `e2e/real-node.mjs` checked on the live node: HTTPS with CSP `connect-src 'self'` and HSTS; status `Connected` (v0.14.3); 21 real casts in the feed; mute by FID hides casts and survives a reload; `signersByFid` and storage limits read; `/v1/mesh` returns 404; an invalid `submitMessage` returns 400; no third-party or mixed-content requests; no app key or phrase in storage; no horizontal scroll at 375 px. It never pastes a phrase, never creates a key, and never presses Cast, Like, Recast or Follow.
+
+## Vouches
+
+The bounty asks for at least one other person to run the tutorial and vouch for it publicly on Farcaster.
+
+| Voucher | Date | Cast | Result |
+|---|---|---|---|
+| _none yet_ | | | |
+
+:::note[AUTHOR]
+Add each vouch cast link here as it comes in, including ones that report failures.
+:::
+
+### How to vouch
+
+Run it on your own machine and account, then cast what happened, including anything that failed. The checklist is in <RepoLink path="VOUCHER.md" />:
+
+1. Note the commit you tested: `git rev-parse --short HEAD`.
+2. Run the [Quickstart](../quickstart/) and record: provision time, time to sync, cost shown by Hetzner, server type and volume size.
+3. Open the client from your node and confirm the feed loads.
+4. Optional, **test account only**: add an app key and post one cast ([Your first cast](../first-cast/)). Record the cast hash and whether it appears in another client.
+5. Run `teardown.sh` and confirm in the Hetzner console that nothing is left.
+6. Cast your results publicly on Farcaster: the commit, timings, cost, cast hash (if any), teardown result, and anything that broke.
+
+Never share your recovery phrase, your Hetzner token or your server's private details in the cast.

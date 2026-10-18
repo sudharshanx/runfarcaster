@@ -1,0 +1,73 @@
+/* Calm monochrome palette (XMTP-style): grey accents instead of Starlight's purple. */
+:root {
+  --sl-color-accent-low: #2a2a2a;
+  --sl-color-accent: #d4d4d4;
+  --sl-color-accent-high: #f5f5f5;
+}
+:root[data-theme="light"] {
+  --sl-color-accent-low: #e8e8e8;
+  --sl-color-accent: #1a1a1a;
+  --sl-color-accent-high: #000000;
+}
+.sl-markdown-content code { overflow-wrap: anywhere; }
+
+/* Home hero */
+.hero .eyebrow {
+  display: block;
+  font-family: var(--__sl-font-mono, ui-monospace, monospace);
+  font-size: 0.8rem;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--sl-color-gray-3);
+  margin-bottom: 1rem;
+}
+.hero h1 { line-height: 1.1; }
+.hero .actions a { min-height: 44px; }
+@media (max-width: 50rem) { .hero .actions, .hero .actions a { width: 100%; justify-content: center; } }
+.proof { font-size: var(--sl-text-sm); color: var(--sl-color-gray-3); border-top: 1px solid var(--sl-color-hairline); padding-top: 0.75rem; }
+
+/* Numbered sections: 01 / NODE ... */
+.numbered { display: grid; gap: 0; grid-template-columns: 1fr; margin-top: 2rem; }
+.numbered section { border-top: 1px solid var(--sl-color-hairline); padding: 1.25rem 0; margin: 0; }
+.numbered .label { font-family: var(--__sl-font-mono, ui-monospace, monospace); font-size: 0.75rem; letter-spacing: 0.1em; color: var(--sl-color-gray-3); margin: 0; }
+.numbered .claim { font-size: var(--sl-text-xl); font-weight: 700; margin: 0.25rem 0 0.5rem; color: var(--sl-color-white); }
+.numbered p { margin: 0; }
+@media (min-width: 60rem) { .numbered { grid-template-columns: repeat(3, 1fr); column-gap: 2rem; } }
+
+/* At a glance */
+.glance { border: 1px solid var(--sl-color-hairline); border-radius: 0.5rem; padding: 0.75rem 1rem; }
+.glance dl { display: grid; grid-template-columns: max-content 1fr; gap: 0.35rem 1rem; margin: 0; }
+.glance dt { font-weight: 600; }
+.glance dd { margin: 0; }
+@media (max-width: 30rem) { .glance dl { grid-template-columns: 1fr; } .glance dd { margin-bottom: 0.4rem; } }
+
+/* Screenshots */
+.shots { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; align-items: start; }
+.shots figure { margin: 0; }
+.shots img { border: 1px solid var(--sl-color-hairline); border-radius: 0.5rem; width: 100%; height: auto; }
+.shots figcaption { font-size: var(--sl-text-sm); color: var(--sl-color-gray-3); }
+
+/* Video placeholder, 9:16 */
+.video-slot { aspect-ratio: 9 / 16; max-width: 240px; border: 1px dashed var(--sl-color-gray-4); border-radius: 0.5rem; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; color: var(--sl-color-gray-3); }
+
+/* Tables scroll inside themselves on phones instead of widening the page. */
+.sl-markdown-content table { display: block; overflow-x: auto; }
+
+/* Copy prompt */
+.copy-prompt { margin: 0.75rem 0 1.25rem; }
+.copy-prompt button { min-height: 44px; padding: 0 1rem; border: 1px solid var(--sl-color-gray-4); border-radius: 0.4rem; background: transparent; color: var(--sl-color-white); font: inherit; font-size: var(--sl-text-sm); cursor: pointer; }
+.copy-prompt button:hover { border-color: var(--sl-color-white); }
+.copy-prompt summary { font-size: var(--sl-text-xs); color: var(--sl-color-gray-3); cursor: pointer; margin-top: 0.4rem; }
+.copy-prompt pre { white-space: pre-wrap; overflow-wrap: anywhere; font-size: var(--sl-text-xs); border: 1px solid var(--sl-color-hairline); border-radius: 0.4rem; padding: 0.75rem; max-height: 24rem; overflow: auto; }
+.copy-prompt button:focus-visible { outline: 2px solid var(--sl-color-white); outline-offset: 2px; }
+.byline { font-size: var(--sl-text-sm); color: var(--sl-color-gray-3); }
+pre.diagram { font-size: var(--sl-text-xs); line-height: 1.4; overflow-x: auto; }
+
+/* Web interface guideline fixes */
+.sl-markdown-content :is(h1, h2, h3), .hero h1 { text-wrap: balance; }
+.sl-markdown-content p { text-wrap: pretty; }
+.sl-markdown-content td, .glance dd { font-variant-numeric: tabular-nums; }
+.copy-prompt button { touch-action: manipulation; transition: border-color 0.15s; }
+@media (prefers-reduced-motion: reduce) { .copy-prompt button { transition: none; } }
+.copy-prompt .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }

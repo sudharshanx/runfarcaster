@@ -1,0 +1,60 @@
+---
+title: Docs issues we found
+description: Outdated or wrong statements in the official Farcaster and Snapchain docs, found while building this tutorial. Summary of DOCS_ISSUES.md.
+---
+
+import RepoLink from "../../components/RepoLink.astro";
+
+Each entry in <RepoLink path="DOCS_ISSUES.md" /> gives the page, what it says, what is true and how we checked. Pages were re-fetched on 2026-10-18; code references are snapchain v0.14.3 (`fc87f26`).
+
+:::note[AUTHOR]
+List any pull requests you open upstream (repo, PR link, status). Only list PRs a human wrote and reviewed.
+:::
+
+## Snapchain docs and repo
+
+| # | Page | Issue |
+|---|---|---|
+| 1 | [running-a-node](https://snapchain.farcaster.xyz/guides/running-a-node) | Firewall image opens gossip 3382 on TCP; gossip is QUIC over **UDP** 3382 |
+| 2 | running-a-node | "Allow SSH from Anywhere", redundant `mkdir snapchain`, manual Docker install the bootstrap already does |
+| 3 | Getting Started vs README | Disk: 2 TB vs 1.5 TB. We measured 557.86 GB DB, 699 GB peak with our space saver |
+| 4 | README | "Ports 3381 - 3383 exposed on both TCP and UDP."; compose publishes only 3381/tcp, 3382/udp, 3383/tcp |
+| 5 | [HTTP API](https://snapchain.farcaster.xyz/reference/httpapi/httpapi) | Paging example uses `reverse=1` (rejected); JS example uses the wrong page-token parameter |
+| 6 | HTTP API reference | `/v1/signersByFid` and `/v1/signer` are missing; they return gasless keys and `currentUserNonce` |
+| 7 | (undocumented) | `requesterFids` needs `[]` brackets over HTTP |
+| 8 | [writing-messages](https://snapchain.farcaster.xyz/guides/writing-messages) | Example logs the private key |
+| 9 | writing-messages | Suggests 9 scopes and a 30-day TTL; fewer scopes and a shorter TTL are safer (suggestion) |
+| 12 | Getting Started | Bootstrap needs a TTY and never returns; not documented |
+| 13 | managing-a-node | FID 0 needs `SKIP_CRONTAB=true` (now fixed in the docs) |
+| 14 | managing-a-node | Grafana 3000 published on all interfaces with `admin:admin` (mostly fixed) |
+| 16 | Getting Started | No mention of provider quotas; Hetzner new accounts cap volumes at 1024 GB |
+| 17 | Getting Started | Snapshot restore keeps chunks + tar + DB until the end; explains the 1.5 to 2 TB figure but no doc says so |
+| 29 | writing-messages | Imports from `@farcaster/hub-web` with gRPC `hub-nodejs` code (likely; snippet not run) |
+| 31 | several | Leftover "Hub"/"Hubble" wording; logo alt text copied from the firewall image |
+
+## docs.farcaster.xyz
+
+| # | Page | Issue |
+|---|---|---|
+| 10 | [Hello World](https://docs.farcaster.xyz/developers/guides/basics/hello-world) | Adds the app key onchain with ~$10 of OP ETH; gasless `KEY_ADD` replaced that (PR #989) |
+| 11 | [Architecture overview](https://docs.farcaster.xyz/learn/architecture/overview) | Lists adding keys as onchain-only; no validators vs read nodes |
+| 18 | Create an account key | Onchain KeyGateway only |
+| 19 | Accounts | Keys "managed by the KeyRegistry"; links the deprecated onchain-signers endpoint |
+| 20 | Messages | "Hub" wording; storage limits and price out of date |
+| 21 | Get account messages | Uses `apps/hubble`, which no longer exists |
+| 22 | Apps | Dead Replicator link (now `packages/shuttle`) |
+| 23 | Signer Requests | Describes onchain registration only (low confidence) |
+
+## hub-monorepo and mirrors
+
+| # | Page | Issue |
+|---|---|---|
+| 15 | `@farcaster/core` | Needs a `Buffer` polyfill in browsers; ships `@faker-js/faker` as a runtime dependency |
+| 24 | hub-monorepo README | Describes an `/apps/` folder that does not exist |
+| 25 | hub-nodejs README | Hubble framing, dead doc links |
+| 26 | hub-nodejs Builders.md | Documents removed `makeSignerAdd`; omits `makeKeyAdd*` builders |
+| 27 | hub-web README | Old port 2281, broken axios example, dead link |
+| 28 | hello-world example | Onchain signer; README names the wrong folder |
+| 30 | Neynar Snapchain mirror | Still teaches the onchain signer flow |
+
+Sources: <RepoLink path="SOURCES.md" />.

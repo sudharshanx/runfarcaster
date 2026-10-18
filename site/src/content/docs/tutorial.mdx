@@ -1,0 +1,238 @@
+---
+title: "Tutorial: what you just ran"
+description: The protocol concepts behind the three commands, in eight short steps. Gasless app keys, read-node write relay, FIDs, custody, storage, shards, the HTTP API, same-origin proxying and filters.
+tableOfContents:
+  maxHeadingLevel: 2
+---
+
+import CopyPrompt from "../../components/CopyPrompt.astro";
+import RepoLink from "../../components/RepoLink.astro";
+
+<p class="byline">By [AUTHOR NAME] · Updated on 18 October 2026<br />Tested on Hetzner cax31 (ARM64), Ubuntu 24.04, Snapchain v0.14.3, mainnet. Writes not yet tested on mainnet: see <a href="../receipts/#test-status">test status</a>.</p>
+
+## Introduction
+
+:::note[AUTHOR]
+Two or three sentences: what confused you most when you started, and what this page will make clear.
+:::
+
+This page explains the parts of Farcaster you touched in the [Quickstart](../quickstart/). It starts with the two things most older guides get wrong: app keys no longer need an onchain transaction, and read nodes do accept writes.
+
+## Prerequisites
+
+- A synced read node from the [Quickstart](../quickstart/), or any Snapchain node whose HTTP API you can reach. Below, `NODE` is its address: `http://<ip>:3381` or your `https://<name>` (Caddy proxies `/v1`).
+- `curl` and `jq`.
+- For posting: a Farcaster account with an FID and storage. Reading needs neither.
+
+```bash
+export NODE=http://<ip>:3381
+```
+
+How the pieces connect:
+
+<pre class="diagram" aria-label="Diagram: browser to Caddy to read node to validators">{`browser ──HTTPS──▶ Caddy (:443) ──/v1/*──▶ read node (:3381) ◀──gossip, UDP 3382──▶ validators
+         same origin   static client         no mempool, relays writes             produce blocks
+                                                     │
+                       OP Mainnet: FIDs, custody addresses, storage, onchain keys`}</pre>
+
+## Step 1: App keys are gasless now
+
+To post, the client needs an **app key** (the docs also say *signer*): an ed25519 key pair that signs messages for your FID. Since engine version V16 (live on mainnet 2026-05-07), you add it with a `KEY_ADD` **message** instead of an onchain transaction. No ETH, no RPC, no waiting for an OP block. Source: [writing-messages guide](https://snapchain.farcaster.xyz/guides/writing-messages), [snapchain PR #989](https://github.com/farcasterxyz/snapchain/pull/989).
+
+A gasless `KEY_ADD` carries three signatures:
+
+| Signed by | What | Why |
+|---|---|---|
+| Custody address (EIP-712, domain `Farcaster KeyAdd`, chainId 1) | `KeyAdd(fid, key, keyType, scopes, ttl, nonce, deadline)` | You authorise this key, these scopes, this TTL |
+| Custody address (same domain) | `SignedKeyRequest(requestFid, key, deadline)` | Names the app that requested the key |
+| The new app key | The message envelope | Proves the app holds the private key |
+
+Rules the node enforces (`key.rs` at v0.14.3, see SOURCES.md):
+- `nonce` must be greater than `currentUserNonce` from `GET /v1/signersByFid`. The client uses `currentUserNonce + 1`.
+- `ttl` must be 1 second to 90 days. It is a sliding window: every use pushes the expiry forward.
+- Up to 16 scopes; `KEY_ADD` and `KEY_REMOVE` are never allowed as scopes. Up to 1000 gasless keys per FID.
+- `deadline` is in Farcaster time (seconds since 2021-01-01 UTC).
+
+```bash title="Your current nonce and keys"
+curl -s "$NODE/v1/signersByFid?fid=<your-fid>" \
+  | jq '{currentUserNonce, gaslessSignerCount, gaslessSignerLimit, signers: [.signers[] | {source, scopes, ttl}]}'
+```
+
+The client asks only for `CAST_ADD`, `REACTION_ADD` and `LINK_ADD`, with a 7-day default TTL. The official guide's example asks for 9 scopes and 30 days ([Docs issues #9](../docs-issues/)).
+
+```ts title="client/src/signer.ts (condensed)"
+const { currentUserNonce } = await api.signersByFid(fid);
+const body = await makeKeyAddBody(
+  { fid: BigInt(fid), key, scopes, ttl, nonce: currentUserNonce + 1, deadline: nowFc + 3600 },
+  new ViemLocalEip712Signer(custodyAccount),      // custody key signs the two EIP-712 payloads
+);
+const msg = await makeKeyAdd(body.value, { fid, network: FarcasterNetwork.MAINNET }, appSigner); // app key signs the envelope
+```
+
+Use `makeKeyAddBody`. The older `getSignedKeyRequestMetadata` signs the onchain domain, which `KEY_ADD` rejects.
+
+:::danger[Seed phrases]
+Signing the two EIP-712 payloads needs your custody key. Only paste a seed phrase into software from developers you trust, use a test account, and prefer a delegated signer when one is available. What this client does with the phrase: [Before you start](../before-you-start/#seed-phrases-and-app-keys).
+:::
+
+<CopyPrompt id="concept" label="Copy prompt: ask an assistant about gasless app keys" question="How does a gasless KEY_ADD work, which three signatures does it carry, and how do nonce and TTL work?" />
+
+## Step 2: Read nodes take writes and relay them
+
+A read node accepts `POST /v1/submitMessage`, validates the message and gossips it to validators on the `mempool` topic. It keeps **no mempool of its own**. Source: [node-types: message submission](https://snapchain.farcaster.xyz/node-types#message-submission-and-the-mempool), [snapchain PR #1034](https://github.com/farcasterxyz/snapchain/pull/1034).
+
+So a `200` means "valid and accepted for relay", not "in a block". The docs say to query the message back to confirm inclusion. On a read node, `/v1/info` even reports `mempoolSize: 4294967295` for the user shards.
+
+```bash title="The only write we sent to mainnet: random bytes"
+head -c 64 /dev/urandom | curl -s -X POST "$NODE/v1/submitMessage" \
+  -H 'Content-Type: application/octet-stream' --data-binary @-
+# HTTP 400: Invalid protobuf data: Unable to decode message
+```
+
+What the client does with each cast, like, recast or follow (<RepoLink path="client/src/pending.ts" />):
+
+1. Shows it at once (optimistic UI), marked *sending*.
+2. Submits the signed bytes. On `200`: *Accepted by the node for relay. Waiting to see it in a block.*
+3. Every 4 s, asks the node for it (`castById`, `reactionById`, `linkById`) and checks the hash.
+4. If it is still missing 30 s after the last submit, resubmits the **same bytes** (same hash, so no duplicate).
+5. After 4 submits, marks it *failed* with a plain reason. A `4xx` from the node fails it at once: validation errors do not fix themselves.
+
+We have not measured how long a valid message takes to become visible, because no valid mainnet write has been made yet.
+
+<CopyPrompt id="concept" label="Copy prompt: ask about write relay" question="What does a 200 from submitMessage on a read node mean, and why should a client query the message back and retry?" />
+
+## Step 3: Farcaster has onchain and offchain parts
+
+| Layer | Where | What lives there |
+|---|---|---|
+| Identity | OP Mainnet contracts (IdRegistry, KeyRegistry, StorageRegistry) | FIDs, custody addresses, storage rent, onchain app keys |
+| Data | Snapchain | Messages: casts, reactions, links (follows), profile data, verifications, and now gasless `KEY_ADD` |
+| Apps | Anywhere | Clients like this one, reading from any node |
+
+Your node watches the onchain events and stores the messages. No single app owns your account: any client that can reach a node can read it, and any key you authorised can write for it.
+
+## Step 4: FIDs, custody addresses and storage
+
+- **FID**: your account number, registered onchain. Profiles, casts and follows all point to an FID.
+- **Custody address**: the Ethereum address that owns the FID. It can add and remove app keys and transfer the FID. This client derives it from a seed phrase at `m/44'/60'/0'/0/0`.
+- **Storage**: rented onchain in units. Each unit allows a limited number of each message type; when you go over, the oldest messages are pruned ([docs: Messages](https://docs.farcaster.xyz/learn/what-is-farcaster/messages)). Creating an FID and renting storage still need onchain transactions; this tutorial does neither.
+
+The per-unit limits in the official docs are out of date ([Docs issues #20](../docs-issues/)). Ask your node instead:
+
+```bash
+curl -s "$NODE/v1/storageLimitsByFid?fid=3" | jq
+curl -s "$NODE/v1/userDataByFid?fid=3" | jq '.messages[].data.userDataBody'
+```
+
+<CopyPrompt id="concept" label="Copy prompt: ask about FIDs and custody" question="What is the difference between an FID, a custody address and an app key, and what can each one do?" />
+
+## Step 5: Snapchain shards, validators and read nodes
+
+| | Validator | Read node (yours) |
+|---|---|---|
+| Produces and votes on blocks | Yes | No |
+| Stores all messages | Yes | Yes, fetched from validators |
+| Accepts `submitMessage` | Yes, into its mempool | Yes, relays to validators |
+| Rewards | Not covered here | None |
+| Lag | At the tip | "Always slightly behind", by the time it takes to fetch each block ([node-types](https://snapchain.farcaster.xyz/node-types)) |
+
+Data is split into shards. `/v1/info` lists shard 0 (global metadata) and the user-data shards 1 and 2. On our node, 557.86 GB in total: shard 0 37 GB, shard 1 261 GB, shard 2 259 GB.
+
+```bash
+curl -s "$NODE/v1/info" | jq '{version, numShards, shards: [.shardInfos[] | {shardId, maxHeight, blockDelay}]}'
+```
+
+`blockDelay` is how many seconds each shard's newest block is behind the current time. Single digits on every shard means synced ([Getting Started](https://snapchain.farcaster.xyz/getting-started)). A new node first restores a snapshot (≈520 GB compressed in 5689 chunks on 2026-10-18), then catches up block by block; ours caught up at 4.3 to 4.6 blocks/s per shard.
+
+## Step 6: Reading over the HTTP API
+
+The HTTP API is on port 3381. There is no "home timeline" endpoint; the client builds one (<RepoLink path="client/src/feed.ts" />):
+
+```bash
+# 1. Who does FID 3 follow?
+curl -s "$NODE/v1/linksByFid?fid=3&link_type=follow&pageSize=5&reverse=true" \
+  | jq '[.messages[].data.linkBody.targetFid]'
+
+# 2. Latest casts of one FID, newest first
+curl -s "$NODE/v1/castsByFid?fid=3&pageSize=3&reverse=true" \
+  | jq '.messages[] | {fid: .data.fid, text: .data.castAddBody.text, hash}'
+
+# 3. Next page: pass nextPageToken back as pageToken
+curl -s "$NODE/v1/castsByFid?fid=3&pageSize=3&reverse=true&pageToken=<nextPageToken>"
+```
+
+The client fetches the follow list, then the latest 10 casts of up to 40 FIDs (6 requests at a time), and sorts them by timestamp. Timestamps are Farcaster time: seconds since 2021-01-01 00:00 UTC.
+
+:::caution[Use `reverse=true`]
+`reverse=1` returns HTTP 400 "provided string was not `true` or `false`", even though one docs table shows it ([Docs issues #5](../docs-issues/)).
+:::
+
+<CopyPrompt id="concept" label="Copy prompt: ask about the HTTP API" question="Which Snapchain HTTP API endpoints build a simple home feed, and how does paging with pageToken work?" />
+
+## Step 7: Mixed content and the same-origin proxy
+
+A browser page served over HTTPS may not call `http://<ip>:3381` (mixed content). Calling it cross-origin also fails: `submitMessage` needs `Content-Type: application/octet-stream`, which triggers a CORS preflight, and the node has no `OPTIONS` route.
+
+The fix is one origin. Caddy serves the client and proxies `/v1/*` to the node (<RepoLink path="deploy/Caddyfile" />):
+
+```text title="deploy/Caddyfile (excerpt)"
+{$SITE_ADDRESS} {
+	@admin path /v1/mesh /v1/mesh/*
+	handle @admin {
+		respond 404
+	}
+
+	handle /v1/* {
+		reverse_proxy {$NODE_UPSTREAM:127.0.0.1:3381}
+	}
+
+	handle {
+		root * {$CLIENT_ROOT:/srv/client}
+		try_files {path} /index.html
+		file_server
+	}
+	# plus security headers, including a CSP with connect-src 'self'
+}
+```
+
+`/v1/mesh` (node-local peer info) returns 404 through the proxy. `connect-src 'self'` means the page can only talk to this origin, which limits where a compromised dependency could send data. Caddy gets the Let's Encrypt certificate itself (ports 80 and 443).
+
+## Step 8: Filters
+
+Filters work on casts from **any** client, because they run on the messages your node returns (<RepoLink path="client/src/filters.ts" />).
+
+| Rule | Effect |
+|---|---|
+| Mute FID / mute keyword | Never show matching casts |
+| Only show FIDs / only show keywords | If set, show only matching casts |
+
+Exclude rules win over include rules. Keywords are case-insensitive substring matches. Filters are saved in this browser's `localStorage`, and the feed shows how many casts were hidden.
+
+## Conclusion
+
+You ran a Snapchain read node with no API keys, served a client from it, and saw how writes travel: an app key added by a gasless `KEY_ADD`, messages relayed by your node to validators, and confirmed by reading them back.
+
+:::note[AUTHOR]
+Your closing: what you would try next, and one thing you learned.
+:::
+
+When you are done, stop the bill:
+
+```bash
+CONFIRM=snapchain-read-node ./teardown.sh
+```
+
+## What this tutorial changes vs the official Snapchain node guide
+
+| | Official guide ([running-a-node](https://snapchain.farcaster.xyz/guides/running-a-node), [Getting Started](https://snapchain.farcaster.xyz/getting-started)) | This tutorial |
+|---|---|---|
+| Provisioning | AWS console click-through with screenshots | `provision.sh` on Hetzner, one command |
+| Cost | "Roughly $100/month" (estimate) | ≈$0.164/h, ≈$2.31 to reach sync (measured run, price-list rates) |
+| Time to sync | "A few hours" | ≈14 h 06 m, measured |
+| Disk | 2 TB (docs) / 1.5 TB (README) | 1000 GB worked with two helpers; 557.86 GB DB, 75% peak |
+| Firewall | Security group opens 3382/**tcp**, SSH from anywhere ([Docs issues #1, #2](../docs-issues/)) | 3382/udp, SSH limited with `SSH_SOURCE_CIDRS` |
+| Bootstrap | `curl … \| bash`, needs a TTY, never returns | Same official bootstrap, run non-interactively by `node.sh`, waits for sync |
+| API keys | Suggests a managed service if you want speed | None; the client reads from your own node |
+| App keys | hello-world still adds keys onchain with ~$10 of OP ETH ([Docs issues #10](../docs-issues/)) | Gasless `KEY_ADD` ([PR #989](https://github.com/farcasterxyz/snapchain/pull/989)) |
+| Writes | Older pages send writes to a hosted hub | Your read node relays them ([PR #1034](https://github.com/farcasterxyz/snapchain/pull/1034)) |
+| Teardown | Not covered | `teardown.sh` (not yet run on real resources) |

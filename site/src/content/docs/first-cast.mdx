@@ -1,0 +1,58 @@
+---
+title: Your first cast
+description: Add an app key with one gasless KEY_ADD, then cast, follow and like from your own node. Not yet tested end-to-end on mainnet.
+---
+
+:::caution[Not yet tested on mainnet]
+This flow is covered by unit tests and a local mock node only. Nobody has yet added a key or posted a cast on mainnet through it. If you try it, use a test account and tell us what happened ([Vouches](../receipts/#vouches)).
+:::
+
+You need: the client open at your `https://<name>` URL, a **test** Farcaster account with an FID and storage, and its recovery phrase. Read [Seed phrases and app keys](../before-you-start/#seed-phrases-and-app-keys) first.
+
+:::danger
+Never paste a recovery phrase into an AI assistant, a chat, or a site you did not deploy yourself from code you have read.
+:::
+
+## 1. Add an app key
+
+1. Open **Signer (app key)**. Choose a lifetime (1, 7, 30 or 90 days; default 7).
+2. Paste the test account's recovery phrase (12 to 24 words) and press **Sign one KEY_ADD, then forget the phrase**.
+3. The client finds your FID from the custody address, reads `currentUserNonce` from `/v1/signersByFid`, signs one gasless `KEY_ADD` and submits it to your node. The phrase field is cleared.
+4. The box shows `App key for FID <n>: 0x… (waiting for the node to show it)`, then `(active)` once `GET /v1/signer` returns the key.
+
+Verify it worked:
+
+```bash
+curl -s "https://<name>/v1/signersByFid?fid=<your-fid>" | jq '.currentUserNonce, [.signers[] | .source]'
+```
+
+`currentUserNonce` should have gone up by one and a new signer should be listed.
+
+## 2. Cast, follow, like
+
+| Action | Where | Message type |
+|---|---|---|
+| Cast | **Post** box, then **Cast** (max 320 bytes) | `CAST_ADD` |
+| Follow | **FID to follow**, then **Follow** | `LINK_ADD` (type `follow`) |
+| Like / recast | Buttons under a cast in **Feed** | `REACTION_ADD` |
+
+Each one appears in **Outgoing messages** with a status: `[sending]`, `[relayed]` (accepted for relay), `[retrying]`, `[confirmed]` (the node returns it) or `[failed]` with a reason and a **Retry** button. See [Step 2 of the tutorial](../tutorial/#step-2-read-nodes-take-writes-and-relay-them) for why.
+
+## 3. Check it from another client
+
+Open your profile in any other Farcaster client and look for the cast. The client does not display hashes; get it from your node:
+
+```bash
+curl -s "https://<name>/v1/castsByFid?fid=<your-fid>&pageSize=1&reverse=true" \
+  | jq '.messages[0] | {hash, text: .data.castAddBody.text}'
+```
+
+:::note[AUTHOR]
+After your own first mainnet cast: paste the cast link here and note how long it took to show up.
+:::
+
+## Revoke or forget the key
+
+- **Forget app key** deletes it from this browser. It does not revoke it.
+- An unused key expires when its TTL runs out.
+- To revoke it now, remove it with your custody wallet (a `KEY_REMOVE` or the app you use to manage keys). The client does not do this.

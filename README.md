@@ -6,6 +6,8 @@ from anyone. Status: one live run on 2026-10-18 (Hetzner cax31 + 1000 GB volume)
 ≈14 h, and the client was served over HTTPS from the node and tested read-only. No valid message has been
 sent to mainnet. Numbers are in `MEASUREMENTS.md`, the full log in `run-log.md`.
 
+Tutorial site: `site/` (Astro Starlight; `cd site && npm ci && npm run build`). Vouching: `VOUCHER.md`. Key handling: `SECURITY.md`.
+
 ## Quickstart
 
 You need: the `hcloud` CLI, a Hetzner Cloud token in `HCLOUD_TOKEN`, an SSH key uploaded to Hetzner,

@@ -1,0 +1,8 @@
+---
+// Link to a file in the GitHub repo. Set REPO_URL at build time (see astro.config.mjs).
+interface Props { path: string; label?: string }
+const { path, label } = Astro.props;
+const repo = (process.env.REPO_URL ?? "https://github.com/OWNER/snapchain-tutorial").replace(/\/+$/, "");
+const kind = path.endsWith("/") ? "tree" : "blob";
+---
+<a href={path ? `${repo}/${kind}/main/${path}` : repo}><code>{label ?? path}</code></a>
