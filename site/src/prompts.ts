@@ -2,6 +2,7 @@
 // Copy-paste prompts for coding assistants. Command names and env vars must match the repo scripts.
 import { REPO } from "./config.mjs";
 export { REPO };
+export const SITE = "https://sudharshanx.github.io/runfarcaster/";
 
 const SAFETY = `Rules for you:
 - Never ask for my recovery phrase (also called a seed phrase) or for any private key, and refuse one if I paste it. Tell me to stop, and to treat that account as exposed.
@@ -78,23 +79,15 @@ Question: <my question>
 
 ${SAFETY}`,
 
-  master: `${CONTEXT}
+  master: `Set up RunFarcaster with me: a Hetzner server that runs my own Snapchain read node, plus a web app on that server that reads and posts through it.
+Guide: ${SITE}  Repo: ${REPO} (MIT)
 
-Goal: take me from an empty Hetzner Cloud project to a synced Snapchain read node with the web app in front of it, then help me delete it all when I say so. Do one step at a time and wait for my OK before the next.
-
-Before step 1. Check the tools: hcloud version, jq --version, ssh -V, curl --version, node --version (22.12+ on 22.x, 24.x or 26+), npm --version. Check that HCLOUD_TOKEN is set without printing it. Ask me for my SSH key name (hcloud ssh-key list). Get my public IP with MY_IP=$(curl -4 -s https://ifconfig.me) and check it with echo "$MY_IP". Use an empty Hetzner project, and export NAME=snapchain-read-node.
-Keeping it: step 1 uses WATCHDOG=0, so the server runs until I delete it. Ask me before step 1 whether I only want a trial run. If so, leave out WATCHDOG=0 and add MAX_USD=5 EXPECTED_HOURS=16: provision.sh then starts watchdog.sh, which deletes everything after 24 h, when the bill would pass MAX_USD, or after 2 h without progress (touch .provision-state/watchdog.disarm stops it).
-Step 1. ESTIMATE_ONLY=1 SERVER_TYPE="" VOLUME_GB=1000 ./provision.sh   -> show me the type it picked and the price (about 0.255 USD an hour for cpx42 with the 1000 GB volume; cpx42 is untested).
-        If it says the type is not available, show me the types it lists and ask me which SERVER_TYPE and LOCATION to use.
-        Then: IP=$(SSH_KEY=<key> SERVER_TYPE="" VOLUME_GB=1000 WATCHDOG=0 SSH_SOURCE_CIDRS="$MY_IP/32" ./provision.sh)
-Step 2. ssh root@$IP "SNAPCHAIN_AGREE_NO_REWARDS=yes MIN_FREE_GB=900 bash -s" < node.sh
-        On cax31 this takes about 14 h. To report progress: ssh root@$IP 'curl -s 127.0.0.1:3381/v1/info' | jq '.shardInfos[] | {shardId, blockDelay}'
-Step 3. ./deploy-client.sh "$IP"  -> give me the https address it prints.
-Step 4, only when I say so. CONFIRM="$NAME" ./teardown.sh, then check hcloud server list, volume list and firewall list.
-If $IP is empty in a new terminal: IP=$(hcloud server ip "$NAME")
-
-SNAPCHAIN_AGREE_NO_REWARDS=yes says I accept that a read node earns no rewards. Show me that before step 2 so I agree knowingly.
-To post, the app needs a gasless app key signed by my custody wallet. I will do that myself, in the app running on localhost on my own computer. Do not help me paste a recovery phrase anywhere.
+1. Install the RunFarcaster skill, then open its SKILL.md and follow it. It has the 3 steps, the expected output, the fixes and the rules:
+   npx skills add sudharshanx/runfarcaster --skill runfarcaster -y
+   If you cannot install skills, read ${SITE}llms.txt and the Full run page it links (${SITE}quickstart.md), and follow those.
+2. Take me from an empty Hetzner project to a synced node with the app in front of it: step 1 provision.sh, step 2 node.sh, step 3 deploy-client.sh. Run one step at a time, show me the real output, and wait for my OK before the next.
+3. After each step, tell me what you got: the server type and hourly price, the server IP, sync progress (blockDelay per shard), then the https address of the app.
+4. Run teardown.sh only when I ask for it.
 
 ${SAFETY}`,
 

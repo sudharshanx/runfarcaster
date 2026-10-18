@@ -7,6 +7,7 @@ tableOfContents:
 
 import CopyPrompt from "../../components/CopyPrompt.astro";
 import RepoLink from "../../components/RepoLink.astro";
+import PartsDiagram from "../../components/landing/PartsDiagram.astro";
 
 <p class="byline">Updated on 18 October 2026<br />Tested on Hetzner cax31 (ARM64), Ubuntu 24.04, Snapchain v0.14.3, mainnet. Adding an app key and posting a cast have been tested on mainnet; likes, recasts and follows against a mock node only. See <a href="../proof/#test-status">test status</a>.</p>
 
@@ -39,10 +40,9 @@ Adding an app key takes the same path. The app sends a gasless `KEY_ADD` message
 
 ## How the parts connect
 
-<pre class="diagram" role="img" tabindex="0" aria-label="Diagram. The browser talks HTTPS to Caddy on port 443. Caddy serves the app and passes /v1 requests to the read node on port 3381. The read node exchanges blocks and messages with validators over UDP port 3382. The validators read accounts, custody addresses, storage and onchain keys from OP Mainnet and put those events in blocks.">{`browser ──HTTPS──▶ Caddy (:443) ──/v1/*──▶ read node (:3381) ◀──gossip, UDP 3382──▶ validators
-         one address   serves the app        passes messages on                    make blocks
-                                                                                        │
-                                       read from OP Mainnet: FIDs, custody, storage, onchain keys`}</pre>
+<PartsDiagram />
+
+Caddy serves the app on port 443 and passes `/v1` requests to the node on port 3381. The node talks to the validators over UDP port 3382. The validators read FIDs, custody addresses, storage and onchain keys from OP Mainnet and put those events in blocks.
 
 ## Point the commands at your node
 

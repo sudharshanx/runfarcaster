@@ -6,7 +6,7 @@ description: Copy a prompt that lets a coding assistant run the 3 steps or debug
 import CopyPrompt from "../../components/CopyPrompt.astro";
 import RepoLink from "../../components/RepoLink.astro";
 
-Copy a prompt into a coding assistant that runs shell commands on your computer or tells you what to run. The prompts use this repo's script names and variables.
+Paste one prompt into Claude Code, Codex, Cursor or another coding assistant that runs shell commands. It installs the RunFarcaster skill, follows it through the 3 steps, and asks before each one.
 
 :::danger[Keep two things out of the chat]
 Your recovery phrase and any private key: the assistant never needs them. Your Hetzner token: keep it in `HCLOUD_TOKEN` in your own shell.
@@ -14,7 +14,19 @@ Your recovery phrase and any private key: the assistant never needs them. Your H
 
 ## Run all 3 steps
 
-<CopyPrompt id="master" label="Copy the full-run prompt" show />
+<CopyPrompt id="master" label="Copy the setup prompt" show />
+
+The skill holds the commands, the expected output, the fixes and the safety rules. An assistant that cannot install skills reads [`llms.txt`](../llms.txt) and the [Full run](../quickstart/) instead.
+
+## The skill
+
+The prompt runs this command. To install the skill yourself, run it in your project folder:
+
+```bash
+npx skills add sudharshanx/runfarcaster --skill runfarcaster
+```
+
+Add `-g` to install it for every project, or `-y` to skip the questions about which agents get it. It uses the open [Agent Skills](https://agentskills.io/) format, which Claude Code, Cursor, Codex and other agents load. A skill runs with your agent's permissions; the files are in <RepoLink path="skills/runfarcaster/" />.
 
 ## Debug an error
 
@@ -26,20 +38,4 @@ Fill in the angle brackets. Take tokens, IP addresses and hostnames out of the o
 
 <CopyPrompt id="concept" label="Copy the question prompt" show />
 
-## Install the skill
-
-The RunFarcaster skill gives a coding agent the 3 steps, the fixes and the safety rules. It uses the open [Agent Skills](https://agentskills.io/) format, so Claude Code, Cursor, Codex and other agents can load it. Run this in your project folder:
-
-```bash
-npx skills add sudharshanx/runfarcaster --skill runfarcaster
-```
-
-Add `-g` to install it for every project. Or ask your coding agent:
-
-```text
-Install the RunFarcaster skill from github.com/sudharshanx/runfarcaster
-```
-
-The files are in <RepoLink path="skills/runfarcaster/" />. Read them before you install: a skill runs with your agent's permissions.
-
-The whole site as plain text, for assistants: [`llms.txt`](../llms.txt) (summary) and [`llms-full.txt`](../llms-full.txt) (every page in Markdown).
+The whole site as plain text: [`llms.txt`](../llms.txt) (summary) and [`llms-full.txt`](../llms-full.txt) (every page in Markdown).
