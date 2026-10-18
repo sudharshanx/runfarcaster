@@ -200,11 +200,15 @@ const right = `<svg aria-hidden="true" width="12" height="12" viewBox="0 0 12 12
       <section class="wrap panel limits" aria-labelledby="limits-title">
         <p class="eyebrow">Cost</p>
         <h2 id="limits-title" class="h-md">What it costs on Hetzner.</h2>
-        <dl class="limits-grid">
-          <div><dt>About $2.31</dt><dd>to get your node synced. That took about 14 hours on our test server.</dd></div>
-          <div><dt>About $0.16 an hour</dt><dd>while the server runs. Billing stops when you delete it with one command.</dd></div>
-          <div><dt>About $102 a month</dt><dd>if you leave it on all month.</dd></div>
-        </dl>
+        <table class="cost-table">
+          <thead><tr><th scope="col">What</th><th scope="col">Cost</th></tr></thead>
+          <tbody>
+            <tr><td>Sync your node (about 14 hours)</td><td>About $2.31</td></tr>
+            <tr><td>Each hour the server runs</td><td>About $0.16</td></tr>
+            <tr><td>A full month left on</td><td>About $102</td></tr>
+          </tbody>
+        </table>
+        <p class="cost-note">Billing stops when you delete the server with one command.</p>
         <p><a href={u("server-and-node/#what-it-costs")}>See the full price breakdown</a></p>
       </section>
 

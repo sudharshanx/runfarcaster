@@ -268,3 +268,9 @@ body.lp { margin: 0; background: #fff; color: var(--text); font-family: var(--sa
   .closing { padding-block: 48px 56px; }
   .lp-nav .hbtn-sm { display: none; }
 }
+
+.cost-table{width:100%;max-width:560px;border-collapse:collapse;margin:1.25rem 0 0.75rem;font-size:1rem}
+.cost-table th,.cost-table td{text-align:left;padding:0.7rem 0.75rem;border-bottom:1px solid rgba(0,0,0,0.1)}
+.cost-table th{font-size:0.8rem;font-weight:600;text-transform:uppercase;letter-spacing:0.04em;color:#666}
+.cost-table td:last-child,.cost-table th:last-child{text-align:right;white-space:nowrap;font-weight:600}
+.cost-note{color:#555;margin:0 0 0.5rem}
