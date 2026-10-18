@@ -31,7 +31,7 @@ export default defineConfig({
     starlight({
       title: "RunFarcaster",
       description:
-        "RunFarcaster sets up your own Farcaster node and app with no gatekeepers in between.",
+        "RunFarcaster sets up a Farcaster node and app of your own, with no gatekeepers in between.",
       editLink: { baseUrl: `${repo}/edit/main/site/` },
       head: [
         { tag: "meta", attrs: { property: "og:image", content: OG_IMAGE } },

@@ -14,7 +14,7 @@ const base = import.meta.env.BASE_URL.replace(/\/?$/, "/");
 const u = (p: string) => `${base}${p}`;
 const blob = (p: string) => `${REPO}/blob/main/${p}`;
 const title = "RunFarcaster: Read and post on Farcaster from your own server";
-const description = "RunFarcaster sets up your own Farcaster node and app with no gatekeepers in between.";
+const description = "RunFarcaster sets up a Farcaster node and app of your own, with no gatekeepers in between.";
 const canonical = new URL(base, Astro.site).href;
 const ogImage = new URL(`${base}og.png`, Astro.site).href;
 const ogAlt = "RunFarcaster: Read and post on Farcaster from your own server. 01 Rent a server, 02 Start the node, 03 Open the app.";
@@ -133,7 +133,7 @@ const right = `<svg aria-hidden="true" width="12" height="12" viewBox="0 0 12 12
       <section class="wrap hero" aria-labelledby="hero-title">
         <p class="eyebrow">Open source · No API keys · MIT</p>
         <h1 id="hero-title">Read and post on Farcaster from your own server<span class="dot">.</span></h1>
-        <p class="hero-sub">RunFarcaster sets up your own Farcaster node and app with no gatekeepers in between.</p>
+        <p class="hero-sub">RunFarcaster sets up a Farcaster node and app of your own, with no gatekeepers in between.</p>
         <div class="hero-ctas">
           <a class="hbtn hbtn-primary" href={u("ai-assistant/")}><Fragment set:html={sparkle} />Set up with AI</a>
           <a class="hbtn hbtn-secondary" href={u("quickstart/")}>Run the 3 commands</a>
