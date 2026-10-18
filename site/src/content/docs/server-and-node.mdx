@@ -7,7 +7,7 @@ import RepoLink from "../../components/RepoLink.astro";
 
 {/* AUTHOR: one or two sentences on what you wish you had known before you started. */}
 
-Hetzner Cloud is the only provider this guide has been tested on. The scripts call Hetzner's own `hcloud` command-line tool, so other clouds would need different scripts. Where Hetzner's console changes over time, this page links to Hetzner's own instructions instead of describing buttons.
+Set up a Hetzner Cloud account, an API token and an SSH key before step 1. Hetzner is the only tested provider: the scripts call Hetzner's `hcloud` command-line tool, so other clouds need different scripts.
 
 ## What you need
 
@@ -17,11 +17,11 @@ Hetzner Cloud is the only provider this guide has been tested on. The scripts ca
 - On your computer: `hcloud`, `jq`, `ssh`, `curl`, and Node.js 22.12 or later (22.x, 24.x or 26+) with npm.
 - A Hetzner volume limit of at least 1000 GB.
 - About 14 hours during which the server can run without you.
-- Only to post: a test Farcaster account that has an FID and paid storage. Reading needs no account. Registering an FID and paying for storage are onchain actions; see the [Farcaster docs](https://docs.farcaster.xyz/). This guide does not cover creating one.
+- Only to post: a test Farcaster account that has an FID and paid storage. Reading needs no account. Registering an FID and paying for storage are onchain actions that this guide does not cover; see the [Farcaster docs](https://docs.farcaster.xyz/).
 
 ## Hetzner account and project
 
-Sign up at Hetzner and verify your email. Hetzner asks for contact and billing details. Their guide: [Hetzner Account Getting Started](https://docs.hetzner.com/general/billing-and-account-management/account-getting-started/).
+Sign up at Hetzner, verify your email, and enter contact and billing details. Hetzner's guide: [Hetzner Account Getting Started](https://docs.hetzner.com/general/billing-and-account-management/account-getting-started/).
 
 In the [Hetzner Cloud console](https://console.hetzner.cloud/), create a new project just for this, for example `snapchain`. A separate project keeps the token's reach small and makes cleanup easy to check: when you are done, the project should be empty. Hetzner explains projects in its [Cloud FAQ](https://docs.hetzner.com/cloud/general/faq/).
 
@@ -29,7 +29,7 @@ In the [Hetzner Cloud console](https://console.hetzner.cloud/), create a new pro
 
 Inside the project, create an API token with Read & Write permission. Hetzner's steps: [Generating an API token](https://docs.hetzner.com/cloud/api/getting-started/generating-api-token/). Hetzner shows the token only once.
 
-Put it in your shell without typing it into the command line, so it stays out of your shell history:
+Read it into your shell with a hidden prompt, so it stays out of your shell history:
 
 ```bash title="your computer"
 read -rsp 'Hetzner token: ' HCLOUD_TOKEN && export HCLOUD_TOKEN && echo
@@ -39,7 +39,7 @@ read -rsp 'Hetzner token: ' HCLOUD_TOKEN && export HCLOUD_TOKEN && echo
 Anyone with this token can create servers on your bill. Do not commit it, paste it into a chat or an AI assistant, or put it in a file inside the repo. The scripts read it from the environment and never print it. If it leaks, delete it in the console and create a new one.
 :::
 
-You need to run that `read` line again in every new terminal.
+Run that `read` line again in every new terminal.
 
 ## Tools
 
@@ -55,7 +55,7 @@ hcloud version && jq --version && ssh -V && curl --version && node --version && 
 hcloud server list        # works once HCLOUD_TOKEN is set; an empty list is fine
 ```
 
-Install Node.js 22.12+ or 24: `nvm install 24 && nvm use 24` ([nvm install docs](https://github.com/nvm-sh/nvm#installing-and-updating)), or download it from [nodejs.org](https://nodejs.org/en/download). Node.js 20.19 can run `npm run dev`, but not the tests that `deploy-client.sh` runs.
+Node.js 20.19 can run `npm run dev`, but not the tests that `deploy-client.sh` runs.
 
 ## SSH key
 
@@ -68,7 +68,7 @@ hcloud ssh-key create --name my-key \
 hcloud ssh-key list
 ```
 
-`my-key` is the name you pass as `SSH_KEY=my-key` in step 1 of the Full run. Keys belong to one project, so upload it to the project you made above. The `hcloud ssh-key create` command is from the [hcloud CLI tutorial](https://github.com/hetznercloud/cli/blob/main/docs/tutorials/create-a-server.md).
+`my-key` is the name you pass as `SSH_KEY=my-key` in step 1 of the Full run. Keys belong to one project, so upload it to the one you made above. The `hcloud ssh-key create` command is from the [hcloud CLI tutorial](https://github.com/hetznercloud/cli/blob/main/docs/tutorials/create-a-server.md).
 
 ## Hetzner limits
 
@@ -86,9 +86,9 @@ hcloud ssh-key list
 | Location | `fsn1` (Falkenstein) | The script's default. Server and volume must be in the same location. |
 | Image | Ubuntu 24.04 | The script's default. |
 
-Server types sell out. On 18 Oct 2026 at 18:48 IST, Hetzner listed cax31 and cx43 as sold out in fsn1, nbg1 and hel1. The cheapest type with 16 GB of RAM for sale in fsn1 was cpx42 (x86, 8 vCPU, 16 GB RAM) at $0.1314 an hour, at most $81.99 a month. With the IPv4 address and the 1000 GB volume that comes to about $159 a month. The guide has not been tested on cpx42, so sync times there may differ.
+On 18 Oct 2026 at 18:48 IST, Hetzner listed cax31 and cx43 as sold out in fsn1, nbg1 and hel1. The cheapest type with 16 GB of RAM for sale in fsn1 was cpx42 (x86, 8 vCPU, 16 GB RAM) at $0.1314 an hour, at most $81.99 a month. With the IPv4 address and the 1000 GB volume that comes to about $159 a month.
 
-The Full run sets `SERVER_TYPE=""`, so `provision.sh` rents the first type for sale in `LOCATION` from cx43, cax31, cpx42 and ccx23, with at least 16 GB of RAM. With cx43 and cax31 sold out, that is likely cpx42. If none is for sale, it lists the types you can rent and creates nothing. Then set `SERVER_TYPE`, or `LOCATION` (fsn1, nbg1, hel1, ash, hil or sin).
+With cx43 and cax31 sold out, the Full run's `SERVER_TYPE=""` likely picks cpx42. [Step 1](../quickstart/#step-1) has the order it tries and what to set when nothing is for sale.
 
 ## What it costs
 
@@ -101,7 +101,7 @@ For the tested cax31, from Hetzner's price list on 2026-10-18, in USD:
 | 1000 GB volume | $76.70 a month ($0.0767 per GB). Hetzner bills it by the hour; that works out to about $0.123 an hour (monthly price ÷ 625 hours, the ratio of the server's own monthly and hourly prices) |
 | Total | About $0.164 an hour. About $102 a month if you leave it on (each item stops at its monthly price). |
 
-On cax31, expect about 14 hours from renting the server to a synced node, about $2.31 at these prices. These figures come from the price list, not an invoice.
+On cax31, expect about 14 hours from renting the server to a synced node: about $2.31 by the price list, not an invoice.
 
 With cpx42 ($0.1314 an hour) instead of cax31, the total is about $0.255 an hour, about $159 a month. **cpx42 has not been tested**, so its sync time is unknown.
 
@@ -110,8 +110,6 @@ To see the type it would pick and the price, before creating anything:
 ```bash title="See the price, create nothing"
 ESTIMATE_ONLY=1 SERVER_TYPE="" VOLUME_GB=1000 EXPECTED_HOURS=16 ./provision.sh
 ```
-
-`provision.sh` creates nothing if the hourly price × `EXPECTED_HOURS` is above `MAX_USD`. The default `MAX_USD` is 2, in your Hetzner account's currency.
 
 ## What step 1 does
 
@@ -122,7 +120,7 @@ Read the script first: <RepoLink path="provision.sh" />
 - Reads the hourly price from Hetzner's live price list and prints it. It stops before creating anything if that price × `EXPECTED_HOURS` (default 6) is above `MAX_USD` (default 2, in your account's currency).
 - Creates a firewall, the data volume and the server. The firewall opens SSH (22, only to `SSH_SOURCE_CIDRS`), gossip (3382/udp) and the web ports 80 and 443. The node's own API ports 3381 and 3383 stay closed; the app reaches the node through Caddy.
 - Starts `watchdog.sh` first, unless you set `WATCHDOG=0`.
-- Prints the server's IP. Running it again reuses what exists and does not start a second watchdog.
+- Prints the server's IP. A second run reuses what exists and does not start a second watchdog.
 
 From the tested run, with cax31 set by hand:
 
@@ -172,7 +170,7 @@ Read the script first: <RepoLink path="deploy-client.sh" />, <RepoLink path="dep
 
 - Builds the app on your computer (`npm ci --ignore-scripts`, tests, `vite build`).
 - Copies the built app, the Caddyfile and a compose file to `/opt/snapchain-client` on the server and starts Caddy.
-- Caddy gets a Let's Encrypt certificate and serves the app plus `/v1/*` (passed to the node on `127.0.0.1:3381`) from one HTTPS address. [Why the app and the node share one address](../how-farcaster-works/#why-the-app-and-the-node-share-one-address) explains why.
+- Caddy gets a Let's Encrypt certificate and serves the app plus `/v1/*` (passed to the node on `127.0.0.1:3381`) from one HTTPS address. Background: [Why the app and the node share one address](../how-farcaster-works/#why-the-app-and-the-node-share-one-address).
 
 ```text
 [deploy-client] building client (npm ci --ignore-scripts, typecheck, tests, build)
@@ -198,7 +196,7 @@ CONFIRM="$NAME" ./teardown.sh
 
 `$NAME` is the name from step 1 (`export NAME=snapchain-read-node` in the Full run). If the server with that name has a different ID from the one `provision.sh` recorded in this folder, `teardown.sh` stops and deletes nothing. Check `NAME` first; `OTHER_SERVER_OK=1` overrides the check.
 
-`teardown.sh` deletes the server, its volume and the firewall, then lists what is left. The node's database is on the volume, so it goes too. Running it twice is safe. Afterwards, check these yourself, either in the console or with the CLI:
+`teardown.sh` deletes the server, its volume (with the node's database) and the firewall, then lists what is left. Running it twice is safe. It has been tested only with `DRY_RUN=1` and against a fake `hcloud`, so review it first (<RepoLink path="teardown.sh" />) and check these yourself afterwards, in the console or with the CLI:
 
 ```bash
 hcloud server list
@@ -210,9 +208,5 @@ hcloud ssh-key list        # teardown keeps your key; delete it if you like:
 ```
 
 When all lists are empty (except your SSH key) you pay nothing more. Then delete the API token in the console if you no longer need it.
-
-:::caution
-`teardown.sh` has been tested only with `DRY_RUN=1` and against a fake `hcloud`. Review it before running it: <RepoLink path="teardown.sh" />
-:::
 
 If you started the watchdog in step 1 ([A trial server that deletes itself](../quickstart/#try-it)), it runs `teardown.sh` for you after 24 hours, before the bill reaches `MAX_USD`, or when the node has made no progress for 2 hours.

@@ -1,11 +1,10 @@
 # RunFarcaster: read and post on Farcaster from your own server
 
 Three commands: rent a Hetzner server, bring up a Snapchain read node there, and open a web app that reads your
-feed from that node and posts through it.
+feed from that node and posts casts, likes and follows through it. You need no API keys.
 
-This repo holds the scripts for those 3 steps, a small web app, the tests and the guide's website. The node is a
-Snapchain read node with a full copy of Farcaster. The app shows a feed from that node and can post casts,
-likes and follows through it. You need no API keys.
+This repo holds the scripts for those 3 steps, the web app, the tests and the guide's website. The read node keeps
+a full copy of Farcaster.
 
 Status: the 3 steps have been tested end to end once on mainnet (2026-10-18), on a Hetzner cax31 with a 1000 GB
 volume. On that hardware, expect about 14 hours from renting the server to a synced node, about $2.31 by the price
@@ -79,7 +78,7 @@ Notes:
 - New Hetzner accounts may rent at most 1024 GB of volumes in total (https://console.hetzner.cloud/limits).
   The Snapchain docs ask for 1.5 to 2 TB. `VOLUME_GB=1000` works with two helpers that keep the
   snapshot from filling the disk: `disk-guard.sh` stops the node at 90% full and `snapshot-space-saver.sh`
-  deletes snapshot files once the node has read them. `node.sh` now installs both on disks under 1500 GB.
+  deletes snapshot files once the node has read them. `node.sh` installs both on disks under 1500 GB.
   **That automatic install has unit tests but has not run during a live sync yet;** on the mainnet run they were
   installed by hand. `MIN_FREE_GB=900` lets `node.sh` accept the volume, which shows 984 GB.
 - If SSH drops during step 2, the node keeps going. Wait again with `ssh root@$IP 'bash -s wait' < node.sh`.
@@ -91,7 +90,7 @@ Notes:
   The guide has been tested on cax31 (ARM64) only; times on other types vary.
 - Ports 3381 (HTTP API) and 3383 (gRPC) are closed to the internet. The app reaches the node through Caddy.
   Set `NODE_API_CIDRS` in `provision.sh` to open them to chosen addresses.
-- Optional: without `WATCHDOG=0`, `provision.sh` starts `watchdog.sh` in the background before it creates anything (output in
+- Without `WATCHDOG=0`, `provision.sh` starts `watchdog.sh` in the background before it creates anything (output in
   `.provision-state/watchdog.out`, log in `.provision-state/watchdog.log`). If the watchdog cannot start, for
   example without `HCLOUD_TOKEN`, `provision.sh` stops and creates nothing. The watchdog runs `teardown.sh` before
   the bill reaches `MAX_USD` (in your Hetzner account's currency), after 24 hours (`WATCHDOG_MAX_WALL_SECS`), or
@@ -113,7 +112,7 @@ cd client && npm ci --ignore-scripts
 SNAPCHAIN_NODE_URL=https://<name> npm run dev   # <name>: the address deploy-client.sh printed; open http://localhost:5317
 ```
 
-The dev server passes `/v1` on to your node's HTTPS address, so no SSH tunnel is needed. Pick a 1-day key expiry
+The dev server passes `/v1` on to your node's HTTPS address, so you need no SSH tunnel. Pick a 1-day key expiry
 for a test. The app cannot revoke keys yet: a gasless key is cancelled with a `KEY_REMOVE` message from the custody
 address.
 
@@ -233,9 +232,10 @@ cd e2e && npm ci && CADDY=caddy CHROME=/path/to/chrome ./run.sh   # Caddy, mock 
   second run that skipped the bootstrap), the two disk helpers installed by hand, `deploy-client.sh` (Let's
   Encrypt via sslip.io) and `SITE=https://<name> CHROME=... node e2e/real-node.mjs` (read-only, 17 of 17; its one
   write is a broken `submitMessage`, which the node rejects with 400).
-- Unit tests only: `node.sh` installing the disk helpers itself, the new watchdog progress check, `provision.sh`
+- Unit tests only: `node.sh` installing the disk helpers itself, the watchdog progress check, `provision.sh`
   starting the watchdog itself.
-- Not tried: real mainnet writes (KEY_ADD, casts, likes, follows), `teardown.sh` on real servers, a 2 TB volume.
+- Not tried: likes, recasts and follows on mainnet (a gasless KEY_ADD and one cast did run; see Status above),
+  `teardown.sh` on real servers, a 2 TB volume.
 - For a specific SSH key: `SSH_OPTS="-i key" ./deploy-client.sh "$IP"`.
 
 ## Assumptions

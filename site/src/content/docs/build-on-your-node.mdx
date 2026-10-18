@@ -5,12 +5,12 @@ description: Use your node's HTTP API from your own code. Base URL, a first requ
 
 import { Tabs, TabItem } from "@astrojs/starlight/components";
 
-Your node already holds every Farcaster message, and it answers plain HTTP requests. Apps, bots and analytics jobs can read from it directly instead of from a paid data API. This page covers what you need before the [recipes](../recipes/): where to send requests, what comes back, how paging works and what errors look like.
+Read every Farcaster message from your own node over plain HTTP, for an app, a bot or an analytics job, with no paid data API. Start here before the [recipes](../recipes/): the base URL, the message format, Farcaster time, paging and errors.
 
 <p class="byline">Every example on these pages ran against a synced mainnet node (Snapchain v0.14.3) on 18 October 2026. Responses are trimmed; field names and values are real.</p>
 
 :::note[How this differs from the official docs]
-The [Snapchain HTTP API reference](https://snapchain.farcaster.xyz/reference/httpapi/httpapi) lists every endpoint and field, and it stays the place to look up details. These pages are task-first instead: each recipe solves one job end to end, ran against a real node, and links to the reference page for the fields it uses. Where the node behaved differently from the reference, the recipe says so, and [Docs issues](../docs-issues/) keeps the list.
+Look up every endpoint and field in the [Snapchain HTTP API reference](https://snapchain.farcaster.xyz/reference/httpapi/httpapi). Each recipe here does one job end to end against a real node and links to the reference for the fields it uses. Where the node behaved differently from the reference, the recipe says so, and [Docs issues](../docs-issues/) keeps the list.
 :::
 
 ## Base URL
@@ -23,7 +23,7 @@ export NODE=https://<your node>
 
 Port 3381, the node's own HTTP port, stays closed to the internet. From the server itself, or through an SSH tunnel (`ssh -N -L 3381:127.0.0.1:3381 root@$IP`), `http://127.0.0.1:3381` works too.
 
-There is no API key and no sign-in. Anyone who knows the address can read from it, which is fine for public Farcaster data. Caddy blocks only the node's admin pages (`/v1/mesh`).
+There is no API key and no sign-in: anyone who knows the address can read public Farcaster data from it. Caddy blocks only the node's admin pages (`/v1/mesh`).
 
 ## A first request
 

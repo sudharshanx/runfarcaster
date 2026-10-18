@@ -1,11 +1,11 @@
 ---
-title: Docs issues we found
-description: Outdated or wrong statements in the official Farcaster and Snapchain docs, found while building this guide, and how this guide differs from the official one. Read it when the official docs and this guide disagree.
+title: Docs issues
+description: Outdated or wrong statements in the official Farcaster and Snapchain docs, and how this guide differs from the official one. Check here when the official docs and this guide disagree.
 ---
 
 import RepoLink from "../../components/RepoLink.astro";
 
-<RepoLink path="DOCS_ISSUES.md" /> has the details: for each problem, the page, what it says, what we found and how we checked. We read the pages again on 2026-10-18. Code references are to Snapchain v0.14.3 (`fc87f26`).
+The official docs had these outdated or wrong statements when the pages were last read, on 2026-10-18. Code references are to Snapchain v0.14.3 (`fc87f26`). <RepoLink path="DOCS_ISSUES.md" /> has, for each problem, the page, what it says, what the check found and how it was checked.
 
 {/* AUTHOR: list any pull requests you open upstream (repo, PR link, status). Only list PRs a human wrote and reviewed. */}
 
@@ -15,7 +15,7 @@ import RepoLink from "../../components/RepoLink.astro";
 |---|---|---|
 | 1 | [running-a-node](https://snapchain.farcaster.xyz/guides/running-a-node) | Firewall image opens gossip 3382 on TCP; gossip is QUIC over **UDP** 3382 |
 | 2 | running-a-node | "Allow SSH from Anywhere", redundant `mkdir snapchain`, manual Docker install the bootstrap already does |
-| 3 | Getting Started vs README | Disk: 2 TB vs 1.5 TB. We measured 557.86 GB DB, 699 GB peak with our space saver |
+| 3 | Getting Started vs README | Disk: 2 TB vs 1.5 TB. Measured: 557.86 GB DB, 699 GB peak with this guide's space saver |
 | 4 | README | "Ports 3381 - 3383 exposed on both TCP and UDP."; compose publishes only 3381/tcp, 3382/udp, 3383/tcp |
 | 5 | [HTTP API](https://snapchain.farcaster.xyz/reference/httpapi/httpapi) | Paging example uses `reverse=1` (rejected); JS example uses the wrong page-token parameter |
 | 6 | HTTP API reference | `/v1/signersByFid` and `/v1/signer` are missing; they return gasless keys and `currentUserNonce` |

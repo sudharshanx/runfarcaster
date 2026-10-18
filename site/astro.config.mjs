@@ -85,7 +85,7 @@ export default defineConfig({
             { label: "Glossary", slug: "glossary" },
             { label: "Fix a problem", slug: "fix" },
             { label: "Proof: what we ran", slug: "proof" },
-            { label: "Docs issues we found", slug: "docs-issues" },
+            { label: "Docs issues", slug: "docs-issues" },
             { label: "How AI was used", slug: "how-ai-was-used" },
           ],
         },

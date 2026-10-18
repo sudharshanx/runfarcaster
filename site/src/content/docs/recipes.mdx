@@ -8,13 +8,13 @@ tableOfContents:
 import { Tabs, TabItem } from "@astrojs/starlight/components";
 import RepoLink from "../../components/RepoLink.astro";
 
-Each recipe is one job, with the request in curl and in JavaScript and a trimmed response from a synced mainnet node. Set `NODE` first, as in [Build on your node](../build-on-your-node/#base-url). The examples use two public accounts: `balajis` (FID 37) and `dwr` (FID 3).
+Set `NODE` first, as in [Build on your node](../build-on-your-node/#base-url). Each recipe does one job in curl and JavaScript, with a trimmed response from a synced mainnet node. The examples use two public accounts: `balajis` (FID 37) and `dwr` (FID 3).
 
 <p class="byline">All examples ran against a synced mainnet node (Snapchain v0.14.3) on 18 October 2026, apart from the final post, which ran as a dry run.</p>
 
 ## Look up an FID from a username
 
-Every endpoint takes an FID, the account number. People know each other by username. Your node keeps a signed proof for every fname and ENS name, so it can answer the lookup itself.
+Every endpoint takes an FID, the account number, but people know each other by username. Your node keeps a signed proof for every fname and ENS name, so it can answer the lookup itself.
 
 <Tabs syncKey="lang">
 <TabItem label="curl">
@@ -542,7 +542,7 @@ FID=<your fid> APP_KEY_HEX=<app key, 64 hex characters> DRY_RUN=0 node post.mjs 
 
 **What this returns:** with the default dry run, `/v1/validateMessage` checks the message's format and signature and posts nothing. It does not check that the key is approved, so a random key also passes. With `DRY_RUN=0`, `submitMessage` returns the message as JSON once your node has checked it and passed it on to the validators. A `200` there does not mean the cast is in a block yet: fetch it back with `castById` until it appears. [Where a post goes from a read node](../how-farcaster-works/#where-a-post-goes-from-a-read-node) explains why, and <RepoLink path="client/src/pending.ts" /> does the retries.
 
-Keep the app key out of your code and your logs. The dry run above ran against a synced node with a random key; the real post path ran once on mainnet ([Proof](../proof/#posted-to-mainnet)).
+The app key is a delegated signer, the preferred way to post. Keep it out of your code and your logs. The dry run above ran against a synced node with a random key; the real post path ran once on mainnet ([Proof](../proof/#posted-to-mainnet)).
 
 `submitMessage` must come from the same origin as the node. It needs `Content-Type: application/octet-stream`, and a browser on another origin first sends a CORS preflight (`OPTIONS`) that the node does not answer. A script on a server, or a page served by the Caddy setup from step 3, has no such problem.
 

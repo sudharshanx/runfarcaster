@@ -1,12 +1,14 @@
 ---
 title: Post with an app key
-description: How to add an app key with your recovery phrase and post through your own node. Read it after the Full run or the Instant run, once you want to post from a test account.
+description: Add an app key with your recovery phrase, then post, like and follow through your own node from a test account. Do it after the Full run or the Instant run.
 ---
 
 import RepoLink from "../../components/RepoLink.astro";
 
+Add an app key to a test account from the app on your own computer, then post, like and follow through your node.
+
 :::note[What has been tested]
-Adding an app key and posting a cast have been tested on mainnet. Likes, recasts and follows have been tested against a mock node only. The mainnet test is on [Proof](../proof/#posted-to-mainnet). If you test it yourself, report what happened ([Vouches](../proof/#vouches)).
+Adding an app key and posting a cast ran on mainnet ([Proof](../proof/#posted-to-mainnet)). Likes, recasts and follows ran against a mock node only. If you test them, report what happened ([Vouches](../proof/#vouches)).
 :::
 
 You need:
@@ -15,23 +17,19 @@ You need:
 - Your node from the [Full run](../quickstart/), and the HTTPS address that `deploy-client.sh` printed. On an [Instant run](../instant-run/), use the node address from that page.
 
 :::note[If you started the watchdog]
-If you started the watchdog in step 1 ([A trial server that deletes itself](../quickstart/#try-it)), it deletes the server, the volume and the firewall 24 hours after it started, even if the node is healthy. To keep the node: `touch .provision-state/watchdog.disarm`. Within a minute, `tail -n 1 .provision-state/watchdog.log` should show `disarmed by …`.
-:::
-
-:::danger
-Never paste a recovery phrase into an AI assistant or a chat.
+The watchdog from step 1 ([A trial server that deletes itself](../quickstart/#try-it)) deletes the server, the volume and the firewall 24 hours after it started, even if the node is healthy. To keep the node: `touch .provision-state/watchdog.disarm`. Within a minute, `tail -n 1 .provision-state/watchdog.log` should show `disarmed by …`.
 :::
 
 ## Why run the app on your own computer
 
-Your recovery phrase can do anything with your account. The address `deploy-client.sh` prints is usually `<ip-with-dashes>.sslip.io`. sslip.io is a DNS service someone else runs. Whoever controls that DNS, or the server, could serve a changed page that sends your phrase elsewhere. A page served from `localhost` comes from files on your own disk, built from code you can read.
+Add the key from the app on your own computer at `localhost`. The address `deploy-client.sh` prints is usually `<ip-with-dashes>.sslip.io`, and sslip.io is a DNS service someone else runs. Whoever controls that DNS, or the server, could serve a changed page that sends your recovery phrase elsewhere. A page served from `localhost` comes from files on your own disk, built from code you can read.
 
-So for adding the key, run the app on your own computer at `localhost`. Its dev server passes `/v1` requests on to your node's HTTPS address, so you need no SSH tunnel, and ports 3381 and 3383 stay closed. Only signed messages travel to the node. The phrase never leaves your browser tab. The add-key steps show a **Check the address** warning whenever the app is not on `localhost`.
+The local dev server passes `/v1` requests on to your node's HTTPS address, so you need no SSH tunnel, and ports 3381 and 3383 stay closed. The add-key steps show a **Check the address** warning whenever the app is not on `localhost`.
 
 ## What the app does with your recovery phrase
 
 :::danger[The recovery phrase controls the whole account]
-Use a test account. Only type a recovery phrase into code you have read, or code from people you trust, on your own computer. Never paste it into an AI assistant or a chat. If an app you already trust can give you an app key, use that instead.
+Use a test account, on your own computer. Only paste a seed phrase into software from developers you trust, or code you have read. Delegated signers are preferred: if an app you already trust can give you an app key, use that instead. Never paste the phrase into an AI assistant or a chat.
 :::
 
 The code is in <RepoLink path="client/src/signer.ts" />:
@@ -41,7 +39,7 @@ The code is in <RepoLink path="client/src/signer.ts" />:
 3. Nothing stores, logs or sends the phrase. Only the signed `KEY_ADD` goes to your node.
 4. The app key is saved in this browser's `localStorage`. **Remove from this browser** deletes it there; the key stays valid on the network until it expires.
 
-JavaScript cannot promise that the browser has wiped the phrase from memory. That is one more reason to use your own computer and a test account.
+JavaScript cannot promise that the browser has wiped the phrase from memory.
 
 {/* AUTHOR: a personal tip on recovery-phrase safety, for example how you set up your test account. */}
 
@@ -68,13 +66,13 @@ SNAPCHAIN_NODE_URL=https://<your node> npm run dev
 
 Leave it running. You should see `ready` and `Local: http://localhost:5317/`. Ctrl-C stops it.
 
-`npm ci` installs the exact versions in `package-lock.json`. `--ignore-scripts` stops packages from running their own install scripts; the app builds and its tests pass without them.
+`npm ci` installs the exact versions in `package-lock.json`. `--ignore-scripts` stops packages from running their own install scripts. The app builds and its tests pass without them.
 
 Open http://localhost:5317. The status at the top should say **Connected to your node**; **Details** shows the version and how far behind each shard is. To see your feed, type your FID or username under **Enter your FID to see your feed** and press **Show my feed**.
 
-The app uses port 5317, not Vite's usual 5173. A browser keeps one `localStorage` per address and port, and other Vite projects use 5173. If 5317 is taken, `npm run dev` stops with an error instead of moving to another port.
+The app uses port 5317, not Vite's usual 5173, because a browser keeps one `localStorage` per address and port. If 5317 is taken, `npm run dev` stops with an error instead of moving to another port.
 
-The page carries a Content-Security-Policy: it can only connect to its own address, so a changed library cannot send data elsewhere.
+The page's Content-Security-Policy lets it connect only to its own address, so a changed library cannot send data elsewhere.
 
 ## 2. Add an app key
 
@@ -99,7 +97,7 @@ curl -s "https://<your node>/v1/signersByFid?fid=<your-fid>" | jq '.currentUserN
 
 `currentUserNonce` should be one higher than before, with one more signer in the list.
 
-The app key is saved in the browser for `localhost:5317` only. The copy of the app at your HTTPS address has no key. Post from the local app. To post from the HTTPS copy, you would have to type the phrase into a page served through sslip.io, which [Why run the app on your own computer](#why-run-the-app-on-your-own-computer) advises against. Don't.
+The app key is saved in the browser for `localhost:5317` only, so post from the local app. The copy at your HTTPS address has no key, and adding one there means typing the phrase into a page served through sslip.io ([Why run the app on your own computer](#why-run-the-app-on-your-own-computer)).
 
 ## 3. Cast, follow, like
 
@@ -136,8 +134,7 @@ curl -s "https://<your node>/v1/castsByFid?fid=<your-fid>&pageSize=1&reverse=tru
 
 ## Remove the key
 
-- **Remove from this browser** (Settings, App key) deletes the key from this browser. The network still accepts it until it expires.
-- A key you stop using expires when its lifetime runs out.
-- This app cannot revoke keys yet. When the app says your account's wallet can revoke the key, it means this: a gasless key is cancelled with a `KEY_REMOVE` message signed by your custody address, sent to a node. Removing a key through the KeyRegistry contract does not apply to it. This guide has no tested way to send a `KEY_REMOVE`, so pick a 1-day expiry for a test key and let it run out.
+- **Remove from this browser** (Settings, App key) deletes the key from this browser. The network still accepts it until its lifetime runs out.
+- This app cannot revoke keys yet. When it says your account's wallet can revoke the key, it means a `KEY_REMOVE` message signed by your custody address and sent to a node, which is how a gasless key is cancelled. Removing a key through the KeyRegistry contract does not apply to it. This guide has no tested way to send a `KEY_REMOVE`, so pick a 1-day expiry for a test key and let it run out.
 
 When you are done on `localhost`, press **Remove from this browser**, so no other page on `localhost:5317` can read the key later. Then stop the dev server with Ctrl-C.

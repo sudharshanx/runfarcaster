@@ -6,11 +6,9 @@ description: The Full run rents a server, starts your own node and opens the app
 import CopyPrompt from "../../components/CopyPrompt.astro";
 import RepoLink from "../../components/RepoLink.astro";
 
-Want to test first? The [Instant run](../instant-run/) takes 5 minutes against a node that is already running. This page is the Full run, on your own server. Vouchers do this one.
+Three commands rent a Linux server at Hetzner, start your own Snapchain read node on it, and open a web app on the same machine that shows your feed from that node. With an app key, the app also posts, likes and follows through your node ([Post with an app key](../first-cast/)).
 
-At the end you have your own Snapchain read node, hosted at Hetzner, and a web app on the same machine that shows your feed from it. Add an app key and the app posts, likes and follows through your node too ([Post with an app key](../first-cast/)).
-
-It takes 3 commands: rent a Linux server at Hetzner, start the node on it, and open the app. Terms such as FID, read node, snapshot, `blockDelay`, `KEY_ADD`, custody address, Caddy and sslip.io are explained in the [Glossary](../glossary/). Do the steps in **Set up first** before the first command.
+Vouchers do this Full run. To test first, the [Instant run](../instant-run/) takes 5 minutes against a node that is already running. FID, read node, snapshot, `blockDelay`, `KEY_ADD`, custody address, Caddy and sslip.io are in the [Glossary](../glossary/).
 
 :::note[Set up first]
 - A Hetzner account with an empty project, and an API token for that project. [Server and node](../server-and-node/) shows how. In an empty project the scripts cannot touch a server, volume or firewall that someone else made.
@@ -35,7 +33,7 @@ export NAME=snapchain-read-node SSH_KEY=my-key SERVER_TYPE="" VOLUME_GB=1000 WAT
 
 ## 1. Rent a server
 
-This uses the settings from **Set up first**. If the project already has a server named `$NAME`, or the volume `$NAME-data`, `provision.sh` stops and changes nothing. That server may be someone else's. For a second node, pick another name (for example `export NAME=snapchain-read-node-2`) and keep it for teardown. To continue your own earlier run, use `REUSE=1 ./provision.sh`.
+If the project already has a server named `$NAME`, or the volume `$NAME-data`, `provision.sh` stops and changes nothing. That server may be someone else's. For a second node, pick another name (for example `export NAME=snapchain-read-node-2`) and keep it for teardown. To continue your own earlier run, use `REUSE=1 ./provision.sh`.
 
 ```bash title="your computer"
 IP=$(./provision.sh) && echo "$IP"
@@ -54,7 +52,7 @@ Hetzner bills the server by the hour until you delete it. The tested type, cax31
 
 With `SERVER_TYPE=""`, `provision.sh` tries cx43, cax31, cpx42 and ccx23 in that order and rents the first one for sale in `LOCATION` with at least 16 GB of RAM. It logs `skipping …` for each sold-out type. If none is for sale, it stops with `none of [...] is usable`, lists the types you can rent there, and creates nothing. Run step 1 again with one of them in `SERVER_TYPE`, or with another place in `LOCATION` (fsn1, nbg1, hel1, ash, hil or sin).
 
-To see the pick and the price first, without creating anything: `ESTIMATE_ONLY=1 SERVER_TYPE="" VOLUME_GB=1000 ./provision.sh`. The guide has been tested on cax31 only; times on other types vary.
+To see the pick and the price first, without creating anything: `ESTIMATE_ONLY=1 SERVER_TYPE="" VOLUME_GB=1000 ./provision.sh`.
 
 </details>
 
@@ -67,7 +65,7 @@ Turn the watchdog on and set a price limit and the hours you expect to use:
 IP=$(WATCHDOG=1 MAX_USD=5 EXPECTED_HOURS=16 ./provision.sh) && echo "$IP"
 ```
 
-provision.sh then starts `watchdog.sh` in the background on your computer, before it creates anything. The watchdog deletes the server, the volume and the firewall at the first of these:
+provision.sh then starts `watchdog.sh` in the background on your computer, before it creates anything. It deletes the server, the volume and the firewall at the first of these:
 - 24 hours after it started, even if the node is healthy (`WATCHDOG_MAX_WALL_SECS` changes this, for example `172800` for 48 hours),
 - when the bill would reach `MAX_USD`,
 - when the node has made no progress for 2 hours.
@@ -85,7 +83,7 @@ To keep the node after all, stop the watchdog without deleting anything: `touch 
 <details>
 <summary>A 2 TB volume instead</summary>
 
-Run step 1 as `IP=$(VOLUME_GB=2000 ./provision.sh)`. This needs a Hetzner volume limit above 2000 GB, and the guide has not been tested with it. The price list puts it at about $0.29 an hour.
+Run step 1 as `IP=$(VOLUME_GB=2000 ./provision.sh)`. It needs a Hetzner volume limit above 2000 GB and has not been tested. The price list puts it at about $0.29 an hour.
 
 </details>
 
@@ -121,7 +119,7 @@ To check progress:
 ssh root@$IP 'curl -s 127.0.0.1:3381/v1/info' | jq '.shardInfos[] | {shardId, blockDelay}'
 ```
 
-Synced means every shard shows a `blockDelay` in single digits ([Getting Started](https://snapchain.farcaster.xyz/getting-started)). The API does not answer while the snapshot loads; that is normal.
+Synced means every shard shows a `blockDelay` in single digits ([Getting Started](https://snapchain.farcaster.xyz/getting-started)). The API does not answer while the snapshot loads.
 
 </details>
 
@@ -135,16 +133,16 @@ Synced means every shard shows a `blockDelay` in single digits ([Getting Started
 
 **You will see** `[deploy-client] OK: https://<name> (client) …`. Open that address: the status at the top says **Connected to your node**. **Time:** under a minute with a warm npm cache. The first build takes longer.
 
-Step 3 does not have to wait for step 2 to finish. Run it in a second terminal while the node is still loading its snapshot (set `NAME` and `IP` there as in **Lost `$IP`?**). The script then ends with `[deploy-client] OK: app is up at https://<name>. The node isn't answering yet`, and the app shows **Node still starting** until the node's API answers.
+Step 3 can run before step 2 finishes, in a second terminal, while the node is still loading its snapshot (set `NAME` and `IP` there as in **Lost `$IP`?**). The script then ends with `[deploy-client] OK: app is up at https://<name>. The node isn't answering yet`, and the app shows **Node still starting** until the node's API answers.
 
-To post, add an app key first: see [Post with an app key](../first-cast/). What step 3 does: [Server and node](../server-and-node/#what-step-3-does).
+To post, add an app key: [Post with an app key](../first-cast/). What step 3 does: [Server and node](../server-and-node/#what-step-3-does).
 
 To build your own app, bot or analytics job on the node, start with [Build on your node](../build-on-your-node/).
 
 <details>
 <summary>Use your own domain</summary>
 
-Point the domain at `$IP` and pass it as a second argument: `./deploy-client.sh "$IP" node.example.com`. Without one, the script uses `<ip-with-dashes>.sslip.io`, a free DNS service run by someone else. That is fine for reading. For adding a key with your recovery phrase, use the local copy described in [Post with an app key](../first-cast/).
+Point the domain at `$IP` and pass it as a second argument: `./deploy-client.sh "$IP" node.example.com`. Without one, the script uses `<ip-with-dashes>.sslip.io`, a free DNS service run by someone else. That is fine for reading. To add a key with your recovery phrase, use the local copy from [Post with an app key](../first-cast/).
 
 </details>
 
@@ -155,5 +153,5 @@ Point the domain at `$IP` and pass it as a second argument: `./deploy-client.sh 
 CONFIRM="$NAME" ./teardown.sh
 ```
 
-This deletes the server, the volume and the firewall, with the node's database. Running it twice is safe. It keeps the SSH key you uploaded. If `provision.sh` in this folder recorded a different ID for the server named `$NAME`, `teardown.sh` stops and deletes nothing, because that server is not the one you created; `OTHER_SERVER_OK=1` overrides this. Read the script first: <RepoLink path="teardown.sh" />. `teardown.sh` has been tested only with `DRY_RUN=1` and a fake `hcloud`, not against real servers yet, so check the [Hetzner console](https://console.hetzner.cloud/) afterwards.
+This deletes the server, the volume and the firewall, with the node's database. It keeps the SSH key you uploaded, and running it twice is safe. If `provision.sh` in this folder recorded a different ID for the server named `$NAME`, that server is not the one you created, so `teardown.sh` stops and deletes nothing. `OTHER_SERVER_OK=1` overrides this. Read the script first: <RepoLink path="teardown.sh" />. `teardown.sh` has been tested only with `DRY_RUN=1` and a fake `hcloud`, not against real servers yet, so check the [Hetzner console](https://console.hetzner.cloud/) afterwards.
 :::

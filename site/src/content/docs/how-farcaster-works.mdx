@@ -12,7 +12,7 @@ import RepoLink from "../../components/RepoLink.astro";
 
 {/* AUTHOR: two or three sentences on what confused you most when you started, and what this page will make clear. */}
 
-The [Full run](../quickstart/) gave you a node and an app. This page explains what they do, using commands you can run against your own node. The ideas fall into two groups.
+Each idea below comes with a command to run against the node and app from the [Full run](../quickstart/).
 
 **Reading** needs no account:
 - [Snapchain messages](#some-parts-live-onchain): casts, likes, follows and profile fields, and which parts live onchain instead.
@@ -33,9 +33,9 @@ A read node downloads every block the validators make and keeps a full copy of t
 2. The node checks the message against its own copy of the state. If it is valid and new, the node gossips it to the validators on the `mempool` topic and keeps nothing.
 3. A validator puts the message in a block. Your node gets that block like any other, and the app finds the cast there.
 
-The [Snapchain docs on message submission](https://snapchain.farcaster.xyz/node-types#message-submission-and-the-mempool) describe this path. In the code it is `submit_message_internal` in `src/network/server.rs` and `ReadNodeMempool` in `src/mempool/mempool.rs`. [Your node passes messages on](#your-node-passes-messages-on) covers what an HTTP `200` means and how the app checks that the cast landed.
+[Your node passes messages on](#your-node-passes-messages-on) has the sources, what an HTTP `200` means and how the app checks that the cast landed.
 
-Adding an app key takes the same path and costs no gas. The older way to add an app key is a transaction on OP Mainnet, paid in ETH. Since engine version V16 went live on mainnet on 2026-05-07, a node also accepts a gasless `KEY_ADD` message signed by the custody address. The app sends that message through `submitMessage` like a cast, so you need no ETH and no OP Mainnet connection. [App keys are gasless now](#app-keys-are-gasless-now) lists its three signatures.
+Adding an app key takes the same path. The app sends a gasless `KEY_ADD` message, signed by the custody address, through `submitMessage` like a cast, so you need no ETH and no OP Mainnet connection. [App keys are gasless now](#app-keys-are-gasless-now) has its three signatures and the onchain way it replaced.
 
 ## How the parts connect
 
@@ -58,7 +58,7 @@ Set `NODE` to your app's address. Caddy passes `/v1` to the node:
 export NODE=https://<name>
 ```
 
-Port 3381 is closed to the internet by default. To reach it straight from your computer instead, open an SSH tunnel in another terminal, then use `NODE=http://127.0.0.1:3381`:
+Port 3381 is closed to the internet by default. To reach it from your computer directly, open an SSH tunnel in another terminal, then use `NODE=http://127.0.0.1:3381`:
 
 ```bash
 ssh -N -L 3381:127.0.0.1:3381 root@$IP
@@ -103,16 +103,16 @@ const msg = await makeKeyAdd(body.value, { fid, network: FarcasterNetwork.MAINNE
 Call `makeKeyAddBody`. The older `getSignedKeyRequestMetadata` signs for the onchain contract, and the node rejects that inside a `KEY_ADD`.
 
 :::danger[Your recovery phrase]
-The two EIP-712 signatures need your custody key, which comes from your recovery phrase. Use a test account. Only type the phrase into code you have read, or code from people you trust. Do it on your own computer, as in [Post with an app key](../first-cast/). Never paste it into an AI assistant. How the app handles it: [What the app does with your recovery phrase](../first-cast/#what-the-app-does-with-your-recovery-phrase).
+The two EIP-712 signatures need your custody key, which comes from your recovery phrase. Use a test account, on your own computer, as in [Post with an app key](../first-cast/). Only paste a seed phrase into software from developers you trust, or code you have read, and prefer a delegated signer where you can. Never paste it into an AI assistant. How the app handles it: [What the app does with your recovery phrase](../first-cast/#what-the-app-does-with-your-recovery-phrase).
 :::
 
 <CopyPrompt id="concept" label="Copy prompt: ask an assistant about gasless app keys" question="How does a gasless KEY_ADD work, which three signatures does it carry, and how do nonce and TTL work?" />
 
 ## Your node passes messages on
 
-Send a signed message to `POST /v1/submitMessage` on your read node. The node validates it, then publishes it to the validators on the `mempool` gossip topic. The node does not hold on to it. Sources: [node-types: message submission](https://snapchain.farcaster.xyz/node-types#message-submission-and-the-mempool), and in the code, `submit_message_internal` in `src/network/server.rs` and `ReadNodeMempool` in `src/mempool/mempool.rs`.
+A read node validates each message sent to `POST /v1/submitMessage`, publishes it to the validators on the `mempool` gossip topic, and does not hold on to it. Sources: [node-types: message submission](https://snapchain.farcaster.xyz/node-types#message-submission-and-the-mempool), and in the code, `submit_message_internal` in `src/network/server.rs` and `ReadNodeMempool` in `src/mempool/mempool.rs`.
 
-An HTTP `200` therefore means the node found the message valid and sent it on. It does not mean a validator has put it in a block. To find out, ask for the message back. `/v1/info` on a read node shows `mempoolSize: 4294967295` for shards 1 and 2, a placeholder value.
+An HTTP `200` means the node found the message valid and sent it on, not that a validator has put it in a block. To find out, ask for the message back. `/v1/info` on a read node shows `mempoolSize: 4294967295` for shards 1 and 2, a placeholder value.
 
 This optional check sends 64 random bytes, so the node rejects it and nothing is posted:
 
@@ -142,7 +142,7 @@ How long a valid message takes to appear has not been measured.
 | Messages | Snapchain | Casts, likes and recasts, follows, profile fields, verifications, gasless `KEY_ADD` |
 | Apps | Anywhere | Apps like this one, reading from whichever node they choose |
 
-Validators read the Farcaster contracts on OP Mainnet and put those events in blocks. Your node gets them inside the blocks, together with all messages. It needs no OP Mainnet connection of its own. Your account is not tied to an app. Any app that can reach a node can show your posts, and any app key you approved can post for you.
+Validators read the Farcaster contracts on OP Mainnet and put those events in blocks. Your node gets them inside the blocks, with all messages, so it needs no OP Mainnet connection of its own. Your account is not tied to an app. Any app that can reach a node can show your posts, and any app key you approved can post for you.
 
 ## Account number and owner address
 
@@ -245,7 +245,7 @@ The app builds the feed in 3 parts:
 
 A page loaded over HTTPS cannot call `http://<ip>:3381`; browsers block that as mixed content. GET requests to another address work, because the node sends `Access-Control-Allow-Origin: *`. `submitMessage` does not. Its `Content-Type: application/octet-stream` header makes the browser send an `OPTIONS` request first. The node answers that with 404, so the browser blocks the post.
 
-So Caddy serves the app and passes `/v1/*` to the node, on the same address (<RepoLink path="deploy/Caddyfile" />):
+Caddy therefore serves the app and passes `/v1/*` to the node on the same address (<RepoLink path="deploy/Caddyfile" />):
 
 ```text title="deploy/Caddyfile (excerpt)"
 {$SITE_ADDRESS} {

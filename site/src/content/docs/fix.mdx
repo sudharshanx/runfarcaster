@@ -6,9 +6,7 @@ description: Known problems with the 3 steps, each with the exact message, the c
 import CopyPrompt from "../../components/CopyPrompt.astro";
 import RepoLink from "../../components/RepoLink.astro";
 
-Each entry gives what you see, why it happens and the command that fixes it. Every problem here came up in a real run, a review or a test.
-
-Each entry also says where it was seen:
+Search this page for the exact message you see. Each entry has the cause, the fix, and where the problem came up:
 - **Seen on a mainnet run** means it happened during a full mainnet run of the 3 steps on 18 Oct 2026. The run log has the details: <RepoLink path="run-log.md" />
 - **Found in review** means a tester found it while checking the guide against a live node or the code.
 - **Reproduced in testing** means it was caused on purpose to record the exact message.
@@ -66,9 +64,9 @@ A typo in `LOCATION` gives `unknown LOCATION=…`, followed by the list of valid
 
 **You see:** SSH to the server hangs, then times out. It worked before.
 
-**Why:** The firewall lets SSH in only from the address in `SSH_SOURCE_CIDRS`. Your public address changed. Home connections and some cloud machines do this.
+**Why:** The firewall lets SSH in only from the address in `SSH_SOURCE_CIDRS`, and your public address changed. Home connections and some cloud machines do this.
 
-**Fix:** Run step 1 again with your new address. It updates the firewall and keeps the server. Pass every setting, not only the address.
+**Fix:** Run step 1 again with your new address and every other setting. It updates the firewall and keeps the server.
 
 ```bash
 SSH_KEY=my-key SERVER_TYPE="" VOLUME_GB=1000 WATCHDOG=0 \
@@ -79,9 +77,9 @@ SSH_KEY=my-key SERVER_TYPE="" VOLUME_GB=1000 WATCHDOG=0 \
 
 ### `$IP` is empty
 
-**You see:** `ssh: Could not resolve hostname : Name or service not known` on Linux. The name after `hostname` is empty.
+**You see:** `ssh: Could not resolve hostname : Name or service not known` on Linux, with nothing after `hostname`.
 
-**Why:** `$IP` lives only in the terminal where step 1 ran. A new terminal does not have it.
+**Why:** `$IP` lives only in the terminal where step 1 ran.
 
 **Fix:** Set the name from step 1 again, then get the IP:
 
@@ -100,7 +98,7 @@ This only applies if you left out `WATCHDOG=0` in step 1.
 
 **Why:** The watchdog deletes everything 24 hours after step 1, even if the node is healthy. A sync on cax31 takes about 14 hours. An earlier version would also have deleted it 2 hours into the sync when it had no SSH key file, because it could not see any progress.
 
-**Fix:** To keep the node, stop the watchdog. Nothing is deleted.
+**Fix:** Stop the watchdog to keep the node. Nothing is deleted.
 
 ```bash
 touch .provision-state/watchdog.disarm
@@ -218,7 +216,7 @@ node --version
 
 **You see:** `Error: Port 5317 is already in use` when you run `npm run dev` for the local copy of the app.
 
-**Why:** The local copy always uses port 5317. That keeps its saved app key apart from other apps on your computer. If the port is busy, it stops instead of moving.
+**Why:** The local copy always uses port 5317, which keeps its saved app key apart from other apps on your computer. If the port is busy, it stops instead of moving.
 
 **Fix:** Find the program that uses the port, stop it, then start the app again:
 

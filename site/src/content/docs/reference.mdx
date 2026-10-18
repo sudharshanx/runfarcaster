@@ -70,7 +70,7 @@ import RepoLink from "../../components/RepoLink.astro";
 | 3000/tcp | Grafana (default `admin:admin`) | No. Keep it closed |
 | 8125/udp, 8126/tcp | statsd | No |
 
-Docker publishes 3381, 3383, 3000 and the statsd ports on every interface of the server, so the Hetzner firewall is what keeps them private. The app reaches the node through Caddy on 443. To read the API from your computer, use `https://<name>/v1/...` or `ssh -N -L 3381:127.0.0.1:3381 root@$IP`. An earlier version of provision.sh left 3381 and 3383 open. With them closed, the app keeps working through Caddy.
+Docker publishes 3381, 3383, 3000 and the statsd ports on every interface of the server, so the Hetzner firewall is what keeps them private. The app reaches the node through Caddy on 443. To read the API from your computer, use `https://<name>/v1/...` or `ssh -N -L 3381:127.0.0.1:3381 root@$IP`.
 
 ## HTTP endpoints the client uses
 
