@@ -200,17 +200,53 @@ const right = `<svg aria-hidden="true" width="12" height="12" viewBox="0 0 12 12
       <section class="wrap panel limits" aria-labelledby="limits-title">
         <p class="eyebrow">Cost</p>
         <h2 id="limits-title" class="h-md">What it costs on Hetzner.</h2>
-        <table class="cost-table">
-          <thead><tr><th scope="col">Item</th><th scope="col">Per hour</th><th scope="col">Per month</th></tr></thead>
-          <tbody>
-            <tr><td>Server: cax31 (8 vCPU ARM, 16 GB RAM)</td><td>$0.040</td><td>$24.99</td></tr>
-            <tr><td>Public IPv4 address</td><td>$0.001</td><td>$0.60</td></tr>
-            <tr><td>1000 GB volume for the node's data</td><td>$0.123</td><td>$76.70</td></tr>
-            <tr class="cost-total"><td>Total</td><td>$0.164</td><td>$102.29</td></tr>
-            <tr><td>Our sync from zero: 14 h 6 min at $0.164 an hour</td><td colspan="2">$2.31</td></tr>
-            <tr><td>Total on cpx42, which the script picks if cax31 is sold out (untested)</td><td>$0.255</td><td>$159.29</td></tr>
-          </tbody>
-        </table>
+        <div class="cost-tabs" role="tablist" aria-label="Server type">
+          <button type="button" role="tab" id="tab-cax31" aria-controls="panel-cax31" aria-selected="true">cax31 (tested)</button>
+          <button type="button" role="tab" id="tab-cpx42" aria-controls="panel-cpx42" aria-selected="false" tabindex="-1">cpx42 (if cax31 is sold out)</button>
+        </div>
+        <div role="tabpanel" id="panel-cax31" aria-labelledby="tab-cax31">
+          <table class="cost-table">
+            <thead><tr><th scope="col">Item</th><th scope="col">Per hour</th><th scope="col">Per month</th></tr></thead>
+            <tbody>
+              <tr><td>Server: cax31 (8 vCPU ARM, 16 GB RAM)</td><td>$0.040</td><td>$24.99</td></tr>
+              <tr><td>Public IPv4 address</td><td>$0.001</td><td>$0.60</td></tr>
+              <tr><td>1000 GB volume for the node's data</td><td>$0.123</td><td>$76.70</td></tr>
+              <tr class="cost-total"><td>Total</td><td>$0.164</td><td>$102.29</td></tr>
+              <tr><td>Our sync from zero: 14 h 6 min</td><td colspan="2">$2.31</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div role="tabpanel" id="panel-cpx42" aria-labelledby="tab-cpx42" hidden>
+          <table class="cost-table">
+            <thead><tr><th scope="col">Item</th><th scope="col">Per hour</th><th scope="col">Per month</th></tr></thead>
+            <tbody>
+              <tr><td>Server: cpx42 (8 vCPU x86, 16 GB RAM)</td><td>$0.131</td><td>$81.99</td></tr>
+              <tr><td>Public IPv4 address</td><td>$0.001</td><td>$0.60</td></tr>
+              <tr><td>1000 GB volume for the node's data</td><td>$0.123</td><td>$76.70</td></tr>
+              <tr class="cost-total"><td>Total</td><td>$0.255</td><td>$159.29</td></tr>
+              <tr><td>Sync from zero</td><td colspan="2">Not measured yet</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <script>
+          const tabs = document.querySelectorAll('.cost-tabs [role="tab"]');
+          const pick = (t) => {
+            tabs.forEach((x) => {
+              const on = x === t;
+              x.setAttribute('aria-selected', String(on));
+              x.tabIndex = on ? 0 : -1;
+              document.getElementById(x.getAttribute('aria-controls')).hidden = !on;
+            });
+          };
+          tabs.forEach((t, i) => {
+            t.addEventListener('click', () => pick(t));
+            t.addEventListener('keydown', (e) => {
+              if (e.key !== 'ArrowRight' && e.key !== 'ArrowLeft') return;
+              const n = tabs[(i + (e.key === 'ArrowRight' ? 1 : tabs.length - 1)) % tabs.length];
+              pick(n); n.focus();
+            });
+          });
+        </script>
                 <p><a href={u("server-and-node/#what-it-costs")}>See the full price breakdown</a></p>
       </section>
 

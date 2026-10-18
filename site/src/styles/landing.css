@@ -276,3 +276,10 @@ body.lp { margin: 0; background: #fff; color: var(--text); font-family: var(--sa
 .cost-total td{font-weight:700;border-bottom:2px solid rgba(0,0,0,0.25)}
 @media (max-width:640px){.cost-table{font-size:0.9rem}.cost-table th,.cost-table td{padding:0.6rem 0.4rem}}
 .cost-note{color:#555;margin:0 0 0.5rem}
+
+.cost-tabs{display:flex;gap:0.25rem;margin-top:1.25rem;border-bottom:1px solid rgba(0,0,0,0.12);max-width:760px}
+.cost-tabs button{font:inherit;font-size:0.95rem;background:none;border:0;border-bottom:2px solid transparent;margin-bottom:-1px;padding:0.6rem 0.9rem;color:#666;cursor:pointer}
+.cost-tabs button[aria-selected="true"]{color:#111;font-weight:600;border-bottom-color:#111}
+.cost-tabs button:focus-visible{outline:2px solid #4b6bfb;outline-offset:2px}
+.cost-tabs + [role="tabpanel"] .cost-table,[role="tabpanel"] .cost-table{margin-top:0.25rem}
+@media (max-width:640px){.cost-tabs button{padding:0.55rem 0.5rem;font-size:0.85rem}}
