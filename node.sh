@@ -27,7 +27,7 @@
 #   SYNC_MAX_BLOCK_DELAY        Default 10. Synced = every shard's blockDelay < this ("single digits").
 #   SYNC_STABLE_CHECKS          Default 3 consecutive passing polls.
 #   SYNC_POLL_SECS              Default 60.
-#   SYNC_TIMEOUT_SECS           Default 43200 (12 h). Docs say snapshot download takes hours.
+#   SYNC_TIMEOUT_SECS           Default 86400 (24 h). Our measured sync took 14 h 06 m.
 #   BOOTSTRAP_TIMEOUT_SECS      Default 3600. Max time for bootstrap to reach "Upgrade complete".
 #   MIN_FREE_GB                 Default 1500. Preflight free-disk check for SNAPCHAIN_DIR.
 #   MIN_RAM_GB                  Default 15 (16 GB VMs report slightly less than 16 GiB).
@@ -52,7 +52,7 @@ WAIT_FOR_SYNC="${WAIT_FOR_SYNC:-1}"
 SYNC_MAX_BLOCK_DELAY="${SYNC_MAX_BLOCK_DELAY:-10}"
 SYNC_STABLE_CHECKS="${SYNC_STABLE_CHECKS:-3}"
 SYNC_POLL_SECS="${SYNC_POLL_SECS:-60}"
-SYNC_TIMEOUT_SECS="${SYNC_TIMEOUT_SECS:-43200}"
+SYNC_TIMEOUT_SECS="${SYNC_TIMEOUT_SECS:-86400}"
 BOOTSTRAP_TIMEOUT_SECS="${BOOTSTRAP_TIMEOUT_SECS:-3600}"
 MIN_FREE_GB="${MIN_FREE_GB:-1500}"
 MIN_RAM_GB="${MIN_RAM_GB:-15}"

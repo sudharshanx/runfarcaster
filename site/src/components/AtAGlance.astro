@@ -1,16 +1,16 @@
 ---
-// Numbers from MEASUREMENTS.md (first live run, 2026-10-18). Update both together.
+// Numbers from MEASUREMENTS.md (live run, 2026-10-18). Update both together.
 ---
-<div class="glance not-content" aria-label="At a glance">
+<div class="glance not-content" role="region" aria-label="At a glance">
   <dl>
-    <dt>Commands</dt><dd>3 (plus one teardown). Provision ≈35 s, client deploy ≈35 s (measured).</dd>
-    <dt>Unattended sync</dt><dd>≈14 h 06 m from provision to fully synced (measured, one run)</dd>
-    <dt>Cost to sync</dt><dd>≈$2.31 at ≈$0.164/h (price-list estimate; invoice not checked)</dd>
-    <dt>If left on</dt><dd>≈$120/month (0.164 × 730 h, estimate)</dd>
-    <dt>Server</dt><dd>Hetzner cax31 (ARM64, 8 vCPU, 16 GB RAM) + 1000 GB volume</dd>
-    <dt>Disk</dt><dd>557.86 GB database; 75% peak use of the volume during snapshot restore</dd>
-    <dt>RAM</dt><dd>≈2.5 GB used on the host at tip</dd>
-    <dt>API keys</dt><dd>None. Your node, your client.</dd>
-    <dt>Level</dt><dd>Comfortable with a terminal and SSH</dd>
+    <dt>Steps</dt><dd>3, plus <code>teardown.sh</code> at the end</dd>
+    <dt>Sync time</dt><dd>14 h 06 m from renting the server to fully synced (one run)</dd>
+    <dt>Cost to sync</dt><dd>About $2.31 at $0.164 an hour (Hetzner price list; we have not seen the invoice)</dd>
+    <dt>Left running</dt><dd>About $120 a month (0.164 × 730 hours)</dd>
+    <dt>Server</dt><dd>Hetzner cax31 (ARM64, 8 vCPU, 16 GB RAM) and a 1000 GB volume, Ubuntu 24.04</dd>
+    <dt>Disk</dt><dd>557.86 GB database. The volume peaked at 75% full while the snapshot loaded.</dd>
+    <dt>Memory</dt><dd>About 2.5 GB in use once synced</dd>
+    <dt>Hands-on time</dt><dd>Renting the server took 35 s. Deploying the app took 35 s with a warm npm cache; the first run takes longer.</dd>
+    <dt>You need</dt><dd>A terminal, SSH and a Hetzner account</dd>
   </dl>
 </div>

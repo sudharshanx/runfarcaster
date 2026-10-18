@@ -6,13 +6,17 @@
   "type": "module",
   "scripts": {
     "dev": "astro dev",
-    "build": "astro build",
+    "build": "astro build && node scripts/check-placeholders.mjs",
     "preview": "astro preview",
-    "screenshots": "node scripts/screenshots.mjs"
+    "screenshots": "node scripts/screenshots.mjs",
+    "originality": "python3 scripts/originality-check.py"
   },
   "dependencies": {
     "@astrojs/starlight": "^0.42.6",
     "astro": "^7.4.0",
     "sharp": "^0.35.5"
+  },
+  "devDependencies": {
+    "@astrojs/markdown-remark": "^7.3.3"
   }
 }

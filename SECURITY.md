@@ -1,45 +1,50 @@
 # Security
 
-This is a developer tutorial. Treat seed phrases the way a Unix tutorial treats `rm -rf`.
+This is a guide for developers. A recovery phrase deserves the care you give `rm -rf /`.
 
-## Seed phrases
+## The recovery phrase
 
-- **Only paste a seed phrase into software from developers you trust**, after reading the code. It controls the whole Farcaster account and any funds in that wallet.
-- **Use a test account** when trying this tutorial.
-- **Prefer a delegated signer**: approve an app key from the wallet or app that already holds your custody key, so the phrase never leaves it.
-- **Never paste a seed phrase into an AI assistant**, chat, issue or screenshot.
+- It controls the whole Farcaster account and anything else in that wallet. Use a test account for this guide.
+- Only type it into code you have read, on your own computer. For the key step, run the app on `localhost`
+  (`ssh -N -L 3381:127.0.0.1:3381 root@$IP`, then `cd client && npm run dev`). A page served from
+  `<ip>.sslip.io` depends on DNS that someone else runs; the app shows a warning there.
+- If the wallet or app that holds your custody key can approve an app key itself, use that. Then the phrase stays put.
+- Keep it out of AI assistants, chats, issues and screenshots.
 
-What the client does if you paste a phrase (`client/src/signer.ts`):
+What the app does with the phrase (`client/src/signer.ts`):
 
-1. Generates a new ed25519 app key in the browser (`crypto.getRandomValues` via `@noble/curves`).
-2. Derives the custody account locally (`m/44'/60'/0'/0/0`) and signs exactly two EIP-712 payloads through `makeKeyAddBody`: the gasless `SignedKeyRequest` and the `KeyAdd` authorisation (key, scopes, TTL, nonce, deadline).
-3. Clears the input field and drops its references to the phrase and the derived account. The phrase is never stored, logged or sent. Only the signed `KEY_ADD` message goes to your node.
+1. Makes a new ed25519 app key in the browser (`crypto.getRandomValues` via `@noble/curves`).
+2. Derives the custody account on your computer (`m/44'/60'/0'/0/0`) and signs exactly two EIP-712 payloads with
+   `makeKeyAddBody`: the gasless `SignedKeyRequest` and the `KeyAdd` approval (key, scopes, lifetime, nonce, deadline).
+3. Empties the input field and drops its references to the phrase and the derived account. Nothing stores, logs or
+   sends the phrase. Only the signed `KEY_ADD` goes to your node.
 
-JavaScript cannot guarantee memory is wiped (strings are immutable and garbage-collected). Use a trusted device.
+In JavaScript a string stays in memory until the garbage collector frees it, and code cannot force that. That is another reason to use your own computer.
 
 ## The app key
 
 | Can | Cannot |
 |---|---|
-| Sign `CAST_ADD`, `REACTION_ADD`, `LINK_ADD` for your FID | Move funds or sign transactions |
-| Work until its TTL ends (default 7 days, max 90, sliding on use) | Remove casts, unfollow, edit your profile, add or remove keys |
-| | Survive revocation by your custody address |
+| Sign `CAST_ADD`, `REACTION_ADD`, `LINK_ADD` for your FID | Move money or sign transactions |
+| Keep working for its lifetime (7 days by default, 90 at most, renewed on each use) | Delete casts, unfollow, edit your profile, approve or cancel keys |
+| | Keep working after your custody address cancels it |
 
-It is stored in the browser's `localStorage` (`appKey.v1`). Anyone with access to that browser profile can use it until it expires or is revoked. "Forget app key" deletes it locally; it does not revoke it onchain.
+The app saves it in the page's `localStorage` (`appKey.v1`). Anyone who can use that browser profile can post with it
+until the lifetime runs out or the custody address cancels it. "Forget app key" deletes the local copy only.
 
 ## What is stored where
 
 | Item | Where | Notes |
 |---|---|---|
-| Seed phrase | Nowhere | Used once in memory |
+| Recovery phrase | Nowhere | Used once in memory |
 | App key (private) | Browser `localStorage` | Delete with "Forget app key" |
 | Filters, settings, outgoing messages | Browser `localStorage` | `filters.v1`, `settings.v1`, `pending.v1` |
 | `HCLOUD_TOKEN` | Your shell environment | Scripts never print it (`set +x`) |
-| SSH private key | Your machine | Only the public key is uploaded to Hetzner |
+| SSH private key | Your computer | Only the public key is uploaded to Hetzner |
 
 ## Server
 
-- The Hetzner firewall opens 22/tcp, 80/tcp, 443/tcp, 3381/tcp, 3382/udp, 3383/tcp. Narrow SSH with `SSH_SOURCE_CIDRS`.
+- The Hetzner firewall opens 22/tcp (limit it with `SSH_SOURCE_CIDRS`), 80/tcp, 443/tcp and 3382/udp. The node's API ports 3381/tcp and 3383/tcp stay closed unless you set `NODE_API_CIDRS`; Caddy reaches the node on 127.0.0.1.
 - Grafana (3000, default `admin:admin`) and statsd (8125/8126) are published by the official compose file on all interfaces but are **not** opened in the firewall. Keep it that way; Docker-published ports bypass `ufw`.
 - Caddy serves the client with `Content-Security-Policy: ... connect-src 'self'`, HSTS, `nosniff`, and blocks `/v1/mesh`.
 

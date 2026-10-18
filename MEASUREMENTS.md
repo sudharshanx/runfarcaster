@@ -38,6 +38,7 @@ Measured on the **first live run**, 2026-10-18 (all times IST, UTC+5:30). Hetzne
 | Peers | **5 connected, all mainnet validators** (`/v1/mesh`, node-local); 3 of them in our `mempool` mesh |
 | `InsufficientPeers ("read-node-peers")` | ≈**18/min** (540 in 30 min, 6364 in 6 h). No connected peer subscribes to the `read-node-peers` topic, so publishes on it fail; sync is unaffected. Two bootstrap peers (34.195.157.114, 44.197.255.20) fail with QUIC `HandshakeTimedOut` every 30 s. |
 | Ports truly required | **Partly measured.** Removing inbound 3382/udp for 2 min (16:07–16:09) changed nothing: peers 5/5, blockDelay 0–2 (stateful firewall, node dials out). Long-term effect of no inbound 3382/udp (discovery, new peers) **unmeasured**. 3381/3383 are only needed if clients outside the VM read from the node; the web client goes through Caddy on 443. Rule restored. |
+| 3381/3383 closed (2026-10-18 17:36 IST) | Removed the public 3381/tcp and 3383/tcp rules from the live firewall. Afterwards: `https://<name>/v1/info` 200 through Caddy (blockDelay 1, 2, 0), the app page 200, `castsByFid` 200; direct 3381 and 3383 from outside time out. This is now the default in `deploy/hetzner/firewall-rules.json`. |
 
 ## Cost
 

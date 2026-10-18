@@ -1,8 +1,6 @@
 [
   {"direction": "in", "protocol": "tcp", "port": "22",   "source_ips": ["0.0.0.0/0", "::/0"], "description": "SSH (narrow with SSH_SOURCE_CIDRS)"},
   {"direction": "in", "protocol": "udp", "port": "3382", "source_ips": ["0.0.0.0/0", "::/0"], "description": "Snapchain gossip, libp2p QUIC (managing-a-node Ports table; compose 3382/udp)"},
-  {"direction": "in", "protocol": "tcp", "port": "3381", "source_ips": ["0.0.0.0/0", "::/0"], "description": "Snapchain HTTP API (docs: 3381-3383 must be reachable)"},
-  {"direction": "in", "protocol": "tcp", "port": "3383", "source_ips": ["0.0.0.0/0", "::/0"], "description": "Snapchain gRPC API (docs: 3381-3383 must be reachable)"},
   {"direction": "in", "protocol": "tcp", "port": "80",   "source_ips": ["0.0.0.0/0", "::/0"], "description": "Caddy: ACME HTTP-01 + redirect to HTTPS (web client)"},
   {"direction": "in", "protocol": "tcp", "port": "443",  "source_ips": ["0.0.0.0/0", "::/0"], "description": "Caddy: HTTPS web client + same-origin /v1 proxy"}
 ]

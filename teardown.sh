@@ -9,6 +9,7 @@
 # Required: HCLOUD_TOKEN (env; never printed). Confirm by typing the server name, or set
 #           CONFIRM=<NAME> for non-interactive use.
 # Optional: NAME=snapchain-read-node (must match provision.sh), DRY_RUN=1.
+# Safe to run twice: things already deleted are reported as not found (works on bash 3.2, macOS).
 
 set -euo pipefail
 set +x  # never trace: keeps HCLOUD_TOKEN out of any xtrace output
@@ -78,7 +79,7 @@ delete_server() {
 
 delete_volumes() {
   local v
-  for v in "${VOLUME_IDS[@]}"; do
+  for v in ${VOLUME_IDS[@]+"${VOLUME_IDS[@]}"}; do
     if [[ "$DRY_RUN" == "1" ]] || exists volume "$v"; then
       retry hc volume delete "$v" || die "could not delete volume $v"
     fi
@@ -101,7 +102,7 @@ verify() {
   echo "--- firewalls"; hcloud firewall list
   echo "--- primary IPs (unassigned ones are still billed)"; hcloud primary-ip list
   if exists server "$NAME"; then log "STILL PRESENT: server $NAME"; left=1; fi
-  for v in "${VOLUME_IDS[@]}" "$VOLUME_NAME"; do
+  for v in ${VOLUME_IDS[@]+"${VOLUME_IDS[@]}"} "$VOLUME_NAME"; do
     if exists volume "$v"; then log "STILL PRESENT: volume $v"; left=1; fi
   done
   if exists firewall "$FIREWALL_NAME"; then log "STILL PRESENT: firewall $FIREWALL_NAME"; left=1; fi

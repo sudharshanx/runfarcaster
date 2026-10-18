@@ -30,13 +30,19 @@
 #   VOLUME_GB=$REQUIRED_DISK_GB   Volume size (alias: VOLUME_SIZE_GB). Hetzner volumes: 10 GB .. 10 TB,
 #                              BUT new Hetzner accounts have an account-wide volume quota of 1024 GB
 #                              (console.hetzner.cloud/limits) and may not be allowed to raise it yet.
-#                              VOLUME_GB=1000 fits that quota; it is below the documented 1.5-2 TB, an
-#                              experiment (a synced DB example in the docs showed ~549 GB). Pair it with
-#                              disk-guard.sh, which stops the node at 90% full.
+#                              VOLUME_GB=1000 fits that quota and worked in our live run (557.86 GB DB,
+#                              75% peak). node.sh installs disk-guard.sh and snapshot-space-saver.sh
+#                              itself on disks under 1500 GB (DISK_HELPERS=auto).
 #   MIN_RAM_GB=16
-#   SSH_SOURCE_CIDRS=0.0.0.0/0,::/0    Comma list allowed to reach port 22. Narrow this to your IP.
-#   PORT_PROFILE=docs          "docs": 3381/tcp, 3382/udp, 3383/tcp (+22, 80, 443).
-#                              "readme": additionally 3381-3383 on the other protocol (README text).
+#   SSH_SOURCE_CIDRS=0.0.0.0/0,::/0    Comma list allowed to reach port 22. Narrow this to your IP
+#                              (find it with: curl -4 https://ifconfig.me).
+#   NODE_API_CIDRS=""          Comma list allowed to reach the node's own HTTP (3381/tcp) and gRPC
+#                              (3383/tcp) APIs. Default: closed. The web client reaches the node
+#                              through Caddy on 443 (/v1/*), and you can use an SSH tunnel:
+#                              ssh -N -L 3381:127.0.0.1:3381 root@$IP. Set 0.0.0.0/0,::/0 to make
+#                              the raw API public (anyone can then read it and submit messages).
+#   PORT_PROFILE=docs          "docs": 3382/udp gossip (+22, 80, 443, and 3381/3383 if NODE_API_CIDRS).
+#                              "readme": additionally 3381/udp, 3382/tcp and 3383/udp, public (README text).
 #   DRY_RUN=1                  Print the hcloud commands instead of running them (needs no token).
 #
 # Idempotent: existing firewall/volume/server with the same names are reused, not duplicated.
@@ -55,6 +61,7 @@ VOLUME_SIZE_GB="${VOLUME_GB:-${VOLUME_SIZE_GB:-$REQUIRED_DISK_GB}}"
 MIN_RAM_GB="${MIN_RAM_GB:-16}"
 SSH_SOURCE_CIDRS="${SSH_SOURCE_CIDRS:-0.0.0.0/0,::/0}"
 PORT_PROFILE="${PORT_PROFILE:-docs}"
+NODE_API_CIDRS="${NODE_API_CIDRS:-}"
 DRY_RUN="${DRY_RUN:-0}"
 MAX_USD="${MAX_USD:-2}"
 EXPECTED_HOURS="${EXPECTED_HOURS:-6}"
@@ -85,7 +92,7 @@ preflight() {
   [[ "$PORT_PROFILE" == "docs" || "$PORT_PROFILE" == "readme" ]] || die "PORT_PROFILE must be docs or readme"
   (( VOLUME_SIZE_GB >= 10 && VOLUME_SIZE_GB <= 10240 )) || die "VOLUME_SIZE_GB must be 10..10240 (Hetzner volume limits)"
   if [[ "$SSH_SOURCE_CIDRS" == "0.0.0.0/0,::/0" ]]; then
-    log "NOTE: SSH (22/tcp) open to the whole internet. Set SSH_SOURCE_CIDRS=<your-ip>/32 to narrow it."
+    log "NOTE: SSH (22/tcp) open to the whole internet. Set SSH_SOURCE_CIDRS=YOUR_IP/32 to narrow it (curl -4 https://ifconfig.me)."
   fi
 }
 
@@ -177,8 +184,12 @@ cost_guard() {
 firewall_rules() {
   local files=("$HERE/deploy/hetzner/firewall-rules.json")
   [[ "$PORT_PROFILE" == "readme" ]] && files+=("$HERE/deploy/hetzner/firewall-rules-readme-superset.json")
-  jq -s --arg ssh "$SSH_SOURCE_CIDRS" '
+  jq -s --arg ssh "$SSH_SOURCE_CIDRS" --arg api "$NODE_API_CIDRS" '
     add | map(if .port == "22" and .protocol == "tcp" then .source_ips = ($ssh | split(",")) else . end)
+    + (if $api == "" then [] else [
+        {"direction": "in", "protocol": "tcp", "port": "3381", "source_ips": ($api | split(",")), "description": "Snapchain HTTP API (NODE_API_CIDRS)"},
+        {"direction": "in", "protocol": "tcp", "port": "3383", "source_ips": ($api | split(",")), "description": "Snapchain gRPC API (NODE_API_CIDRS)"}
+      ] end)
   ' "${files[@]}"
 }
 
@@ -248,8 +259,10 @@ print_ip() {
   local ip
   if [[ "$DRY_RUN" == "1" ]]; then ip="203.0.113.10 (dry-run placeholder)"
   else ip="$(hcloud server ip "$NAME")"; fi
-  log "done. Next:"
-  log "  ssh root@${ip%% *} \"SNAPCHAIN_AGREE_NO_REWARDS=yes bash -s\" < node.sh"
+  local free_env=""
+  (( NEED_VOLUME == 1 && VOLUME_SIZE_GB < 1500 )) && free_env=" MIN_FREE_GB=$(( VOLUME_SIZE_GB * 9 / 10 ))"
+  log "done. Next (in a new terminal, get the IP back with: IP=\$(hcloud server ip $NAME)):"
+  log "  ssh root@${ip%% *} \"SNAPCHAIN_AGREE_NO_REWARDS=yes${free_env} bash -s\" < node.sh"
   log "  ./deploy-client.sh ${ip%% *}"
   # The IP is the only thing on stdout, so `IP=$(./provision.sh)` works.
   printf '%s\n' "${ip%% *}"

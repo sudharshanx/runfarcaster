@@ -9,15 +9,15 @@ import RepoLink from "../../components/RepoLink.astro";
 
 | Script | Runs on | Does |
 |---|---|---|
-| <RepoLink path="provision.sh" /> | your machine | Creates firewall, volume, server on Hetzner (`hcloud`); cost guard; prints the IPv4 |
-| <RepoLink path="node.sh" /> | VM (`ssh … bash -s < node.sh`) | `all` (default): preflight, Docker, official bootstrap, wait for sync, health. Also `wait`, `health` |
-| <RepoLink path="deploy-client.sh" /> | your machine | Builds the client, deploys Caddy + client to `/opt/snapchain-client` |
-| <RepoLink path="teardown.sh" /> | your machine | Deletes server, volume, firewall; lists what remains |
-| <RepoLink path="watchdog.sh" /> | your machine | Tears down before spend reaches `MAX_USD`, on no progress, or at a wall-clock cap |
-| <RepoLink path="disk-guard.sh" /> | VM (systemd timer) | `install`/`check`/`status`/`uninstall`; stops the node at 90% disk |
-| <RepoLink path="snapshot-space-saver.sh" /> | VM (systemd) | `install`/`run`/`once`/`uninstall`; frees restore space; exits when the restore is done |
+| <RepoLink path="provision.sh" /> | your machine | Creates the firewall, volume and server on Hetzner with `hcloud`. Checks the price first. Prints the IPv4 address |
+| <RepoLink path="node.sh" /> | VM (`ssh … bash -s < node.sh`) | `all` (default): checks, Docker, disk helpers on small disks, official bootstrap, wait for sync, health check. Also `wait`, `health`, `helpers` |
+| <RepoLink path="deploy-client.sh" /> | your machine | Builds the app on your computer, copies it and Caddy to `/opt/snapchain-client` |
+| <RepoLink path="teardown.sh" /> | your machine | Deletes the server, volume and firewall; lists what is left. Safe to run twice |
+| <RepoLink path="watchdog.sh" /> | your machine | Runs `teardown.sh` before the bill reaches `MAX_USD`, after `MAX_WALL_SECS`, or after `HANG_SECS` with no progress |
+| <RepoLink path="disk-guard.sh" /> | VM (systemd timer; `node.sh` installs it) | `install`, `check`, `status`, `uninstall`. Stops the node at 90% disk |
+| <RepoLink path="snapshot-space-saver.sh" /> | VM (systemd; `node.sh` installs it) | `install`, `run`, `once`, `uninstall`. Deletes snapshot files the node has finished with; stops when the restore is done |
 
-`provision.sh`, `node.sh`, `deploy-client.sh`, `teardown.sh` and the two VM helpers accept `DRY_RUN=1` (print or log, change nothing); `watchdog.sh` does not. Tokens are read from the environment and never printed.
+`provision.sh`, `node.sh`, `deploy-client.sh`, `teardown.sh` and the two VM helpers take `DRY_RUN=1`: they print what they would do and change nothing. `watchdog.sh` does not. Tokens come from the environment and are never printed.
 
 ## Environment variables
 
@@ -29,36 +29,43 @@ import RepoLink from "../../components/RepoLink.astro";
 | `SERVER_TYPE_CANDIDATES` | provision | `cx43 cax31 cpx42 ccx23` | Cheapest first |
 | `VOLUME_GB` | provision | `2000` (`REQUIRED_DISK_GB`) | `1000` fits a new account's quota |
 | `LOCATION` | provision | `fsn1` | |
-| `MAX_USD` | provision, watchdog | `2` / `5` | Spend cap |
+| `MAX_USD` | provision, watchdog | `2` / `5` | Spending cap, in your Hetzner account's currency |
 | `EXPECTED_HOURS` | provision | `6` | Cost guard horizon; use `16` |
 | `ESTIMATE_ONLY` | provision | `0` | `1` = price check only, creates nothing |
-| `SSH_SOURCE_CIDRS` | provision | `0.0.0.0/0,::/0` | Narrow to your IP |
+| `SSH_SOURCE_CIDRS` | provision | `0.0.0.0/0,::/0` | Set to `"$MY_IP/32"` (from `curl -4 -s https://ifconfig.me`) |
+| `NODE_API_CIDRS` | provision | empty | Addresses allowed to reach 3381 and 3383. Empty keeps both closed |
 | `PORT_PROFILE` | provision | `docs` | `readme` also opens the README's TCP+UDP superset |
 | `NAME` | provision, teardown, watchdog | `snapchain-read-node` | Volume `$NAME-data`, firewall `$NAME-fw` |
 | `CONFIRM` | teardown | (prompt) | Must equal `NAME` |
 | `SNAPCHAIN_AGREE_NO_REWARDS` | node.sh | (prompt) | `yes` records the no-rewards agreement |
 | `OPERATOR_FID` | node.sh | unset | Enables the weekly auto-upgrade cron; unset = `SKIP_CRONTAB=true` |
 | `MIN_FREE_GB` | node.sh | `1500` | `900` for a 1000 GB volume |
-| `SYNC_TIMEOUT_SECS` | node.sh | `43200` | `86400` covers a 14 h sync |
+| `SYNC_TIMEOUT_SECS` | node.sh | `86400` | 24 hours; our sync took 14 |
+| `DISK_HELPERS` | node.sh | `auto` | `auto` installs disk-guard and the space saver when the disk is under `DISK_HELPERS_BELOW_GB`; `1` always; `0` never |
+| `DISK_HELPERS_BELOW_GB` | node.sh | `1500` | |
+| `SPACE_SAVER_WAIT_SECS` | node.sh | `7200` | How long the space saver waits for the snapshot folder to appear |
 | `SYNC_MAX_BLOCK_DELAY` / `SYNC_STABLE_CHECKS` / `SYNC_POLL_SECS` | node.sh | `10` / `3` / `60` | Sync criterion |
 | `NODE_UPGRADE` | node.sh | `0` | `1` re-runs the official bootstrap (upgrade) |
 | `SSH_OPTS` | deploy-client | empty | Extra ssh/scp options, e.g. `-i key` |
 | `LIMIT_PCT` | disk-guard | `90` | |
-| `HANG_SECS` / `MAX_WALL_SECS` | watchdog | `7200` / `86400` | |
+| `HANG_SECS` / `MAX_WALL_SECS` | watchdog | `7200` / `86400` | No-progress limit; total time limit |
+| `SSH_KEY_FILE` | watchdog | empty | Private key for the progress check. Empty turns the check off |
+| `PROGRESS_MIN_BYTES` | watchdog | `1048576` | Database growth that counts as progress; any block height increase also counts |
+| `UNREACHABLE_IS_HANG` | watchdog | `0` | `1` counts lost SSH as no progress |
 
 ## Ports
 
 | Port | Purpose | Open in our firewall |
 |---|---|---|
-| 3381/tcp | Snapchain HTTP API | Yes |
+| 3381/tcp | Snapchain HTTP API | No, unless you set `NODE_API_CIDRS`. Caddy reaches it on 127.0.0.1 |
 | 3382/udp | Gossip (libp2p QUIC) | Yes |
-| 3383/tcp | Snapchain gRPC API | Yes |
+| 3383/tcp | Snapchain gRPC API | No, unless you set `NODE_API_CIDRS` |
 | 80/tcp, 443/tcp | Caddy: Let's Encrypt and the HTTPS client | Yes |
 | 22/tcp | SSH | Yes, limit with `SSH_SOURCE_CIDRS` |
-| 3000/tcp | Grafana (default `admin:admin`) | **No, keep closed** |
+| 3000/tcp | Grafana (default `admin:admin`) | No. Keep it closed |
 | 8125/udp, 8126/tcp | statsd | No |
 
-3381 and 3383 only need to be public if something outside the VM reads from the node; the client goes through Caddy on 443.
+Docker publishes 3381, 3383, 3000 and the statsd ports on every interface of the server, so the Hetzner firewall is what keeps them private. The app reaches the node through Caddy on 443. To read the API from your computer, use `https://<name>/v1/...` or `ssh -N -L 3381:127.0.0.1:3381 root@$IP`. During our run 3381 and 3383 were open. We closed them on the live server afterwards, and the app kept working through Caddy.
 
 ## HTTP endpoints the client uses
 
@@ -68,18 +75,18 @@ import RepoLink from "../../components/RepoLink.astro";
 
 | Path | What |
 |---|---|
-| `client/` | Vite + TypeScript web client (`@farcaster/core` 0.20.0) |
+| `client/` | The web app: Vite and TypeScript, `@farcaster/core` 0.20.0 |
 | `deploy/` | `Caddyfile`, Caddy compose file, Hetzner firewall rules |
-| `test/`, `e2e/` | Script tests; headless-browser tests (mock node and live node) |
+| `test/`, `e2e/` | Tests for the scripts; browser tests against a mock node and the live node |
 | `site/` | This site (Astro Starlight) |
-| `MEASUREMENTS.md`, `run-log.md` | Live-run numbers and log |
-| `DOCS_ISSUES.md`, `SOURCES.md` | Docs audit; every fact with its source |
-| `SECURITY.md`, `VOUCHER.md` | Key handling; vouch checklist |
+| `MEASUREMENTS.md`, `run-log.md` | Numbers and log from our live run |
+| `DOCS_ISSUES.md`, `SOURCES.md` | Problems we found in the docs; the source for each fact |
+| `SECURITY.md`, `VOUCHER.md` | How keys are handled; the checklist for vouching |
 
 ## Sources
 
 - Snapchain v0.14.3, commit `fc87f26`: [github.com/farcasterxyz/snapchain](https://github.com/farcasterxyz/snapchain)
 - Gasless app keys: [writing-messages](https://snapchain.farcaster.xyz/guides/writing-messages), [PR #989](https://github.com/farcasterxyz/snapchain/pull/989)
-- Read nodes relay writes: [node-types](https://snapchain.farcaster.xyz/node-types#message-submission-and-the-mempool), [PR #1034](https://github.com/farcasterxyz/snapchain/pull/1034)
+- Read nodes pass messages on: [node-types](https://snapchain.farcaster.xyz/node-types#message-submission-and-the-mempool), [PR #1034](https://github.com/farcasterxyz/snapchain/pull/1034)
 - [Getting Started](https://snapchain.farcaster.xyz/getting-started), [managing-a-node](https://snapchain.farcaster.xyz/guides/managing-a-node)
 - Full list: <RepoLink path="SOURCES.md" />

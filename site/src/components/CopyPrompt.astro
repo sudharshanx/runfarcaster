@@ -10,7 +10,7 @@ const text = question ? prompts[id].replace("<my question>", question) : prompts
   <span class="sr-only" role="status" aria-live="polite" data-copy-status></span>
   <details open={show}>
     <summary>Show prompt</summary>
-    <pre>{text}</pre>
+    <pre tabindex="0" aria-label="Prompt text">{text}</pre>
   </details>
 </div>
 <script>

@@ -37,6 +37,15 @@ function h<K extends keyof HTMLElementTagNameMap>(tag: K, props: Partial<HTMLEle
   return el;
 }
 const $ = (id: string) => document.getElementById(id)!;
+const lab = (forId: string, text: string) => h("label", { htmlFor: forId, class: "lbl" }, text);
+// The one-time KEY_ADD step should run from a page on your own computer, so no DNS name you do not
+// control (e.g. *.sslip.io) is in the trust path for your recovery phrase.
+function originNote() {
+  const host = location.hostname;
+  if (host === "localhost" || host === "127.0.0.1" || host === "[::1]") return "";
+  return h("div", { class: "warn" }, h("strong", {}, "Address check. "),
+    `This page is served from ${host}. Before you paste a recovery phrase, open this app on your own computer instead (http://localhost:5173, see the guide's "Your first cast" page). Then no DNS name you do not control can swap the page.`);
+}
 const setText = (id: string, t: string) => { $(id).textContent = t; };
 
 const reconciler = new Reconciler(api, kv, Date.now, undefined, () => { renderPending(); renderFeed(); });
@@ -49,6 +58,7 @@ app.append(
     h("h2", {}, "Node"),
     h("div", { id: "node-status", class: "muted" }, "checking…"),
     h("div", { class: "row" },
+      lab("node-url", "Node API URL"),
       h("input", { id: "node-url", placeholder: "Node HTTP API URL (empty = same origin, recommended)", value: settings.nodeUrl }),
       h("button", { id: "save-node" }, "Save")),
     h("div", { class: "muted" }, "Served over HTTPS by Caddy on the node, /v1/* is proxied on the same origin. A different URL only works in development (CSP connect-src 'self')."),
@@ -59,9 +69,11 @@ app.append(
   ),
   h("section", {},
     h("h2", {}, "Post"),
+    lab("compose", "Cast text"),
     h("textarea", { id: "compose", rows: 3, maxLength: 320, placeholder: "What's happening? (max 320 bytes)" }),
     h("button", { id: "post" }, "Cast"),
-    h("div", { class: "row" }, h("input", { id: "follow-fid", placeholder: "FID to follow" }), h("button", { id: "follow" }, "Follow")),
+    lab("follow-fid", "FID to follow"),
+    h("div", { class: "row" }, h("input", { id: "follow-fid", placeholder: "FID to follow", inputMode: "numeric" }), h("button", { id: "follow" }, "Follow")),
     h("div", { id: "action-msg", class: "muted" }),
   ),
   h("section", {}, h("h2", {}, "Outgoing messages"), h("div", { id: "pending" })),
@@ -72,7 +84,9 @@ app.append(
   h("section", {},
     h("h2", {}, "Feed"),
     h("div", { class: "row" },
-      h("input", { id: "viewer-fid", placeholder: "Your FID (feed = people you follow)", value: settings.viewerFid ? String(settings.viewerFid) : "" }),
+      lab("viewer-fid", "Your FID"),
+      h("input", { id: "viewer-fid", inputMode: "numeric", placeholder: "Your FID (feed = people you follow)", value: settings.viewerFid ? String(settings.viewerFid) : "" }),
+      lab("watch-fids", "Extra FIDs"),
       h("input", { id: "watch-fids", placeholder: "Extra FIDs, comma separated", value: settings.watchFids.join(",") }),
       h("button", { id: "refresh" }, "Refresh")),
     h("div", { id: "feed-meta", class: "muted" }),
@@ -117,8 +131,10 @@ function renderSigner() {
       h("strong", {}, "Read this first. "),
       "Your seed phrase controls your whole Farcaster account (and any funds in that wallet). Only paste a seed phrase into software from developers you trust. Prefer delegated signers (approving an app key from the wallet that holds your custody key) wherever possible. ",
       "Here the phrase is used once, locally in this tab, to sign a single gasless KEY_ADD (EIP-712, from your custody address) for a new app key. It is then discarded: never stored, never logged, never sent. Only the signed KEY_ADD goes to your node."),
+    originNote(),
+    lab("seed", "Recovery phrase (test account)"),
     h("textarea", { id: "seed", rows: 2, placeholder: "12-24 word recovery phrase (custody wallet)", autocomplete: "off", spellcheck: false } as Partial<HTMLTextAreaElement>),
-    h("div", { class: "row" }, h("label", {}, "App key lifetime (sliding, max 90 days): "), ttlSel),
+    h("div", { class: "row" }, lab("ttl", "App key lifetime (sliding, max 90 days)"), ttlSel),
     h("button", { id: "add-key" }, "Sign one KEY_ADD, then forget the phrase"),
     h("div", { id: "signer-msg", class: "muted" }),
   );
@@ -223,7 +239,7 @@ function renderFilters() {
   const box = $("filters");
   box.replaceChildren(h("div", { class: "muted" }, "Saved in this browser (localStorage). Exclude rules win over include rules."));
   for (const [key, title, ph] of LISTS) {
-    const input = h("input", { placeholder: ph });
+    const input = h("input", { id: `filter-${key}`, placeholder: ph });
     const add = h("button", {}, "Add");
     add.addEventListener("click", () => {
       const r = addToList(filters, key, input.value);
@@ -232,7 +248,7 @@ function renderFilters() {
     });
     const chips = (filters[key] as Array<string | number>).map((v) =>
       h("span", { class: "chip" }, String(v), " ", h("button", { onclick: () => { filters = removeFromList(filters, key, v); saveFilters(kv, filters); renderFilters(); renderFeed(); } }, "×")));
-    box.append(h("div", {}, h("strong", {}, title), h("div", { class: "row" }, input, add), h("div", {}, ...chips)));
+    box.append(h("div", {}, lab(`filter-${key}`, title), h("div", { class: "row" }, input, add), h("div", {}, ...chips)));
   }
 }
 

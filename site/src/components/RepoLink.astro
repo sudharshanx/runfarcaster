@@ -1,8 +1,8 @@
 ---
-// Link to a file in the GitHub repo. Set REPO_URL at build time (see astro.config.mjs).
+// Link to a file in the GitHub repo. The repo URL comes from src/config.mjs (REPO_URL at build time).
+import { REPO } from "../config.mjs";
 interface Props { path: string; label?: string }
 const { path, label } = Astro.props;
-const repo = (process.env.REPO_URL ?? "https://github.com/OWNER/snapchain-tutorial").replace(/\/+$/, "");
 const kind = path.endsWith("/") ? "tree" : "blob";
 ---
-<a href={path ? `${repo}/${kind}/main/${path}` : repo}><code>{label ?? path}</code></a>
+<a href={path ? `${REPO}/${kind}/main/${path}` : REPO}><code>{label ?? path}</code></a>

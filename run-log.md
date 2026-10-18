@@ -92,3 +92,6 @@
 - 2026-10-18 17:07 IST watch: watchdog pid 29229 alive; spend ~$2.57 of $5 (next ~$2.62); /v1/info OK, blockDelay 2/1/0 (heights 48311512/48986562/48822110), 914.2M msgs; HTTPS client 200. No action.
 - 2026-10-18 17:10 IST watch: watchdog pid 29229 alive, spend ~$2.58 of $5 (next ~$2.62), /v1/info OK (blockDelay 0/1/1, 914.2M msgs), HTTPS client 200. No action.
 - 2026-10-18 17:12:04 IST progress: du=556G df=60% mem_used=3801MiB no-snapshot-progress-line info=[{"s":0,"h":48311812,"d":2},{"s":1,"h":48986858,"d":1},{"s":2,"h":48822411,"d":1}] disk_full=no
+- 2026-10-18 17:22:13 IST progress: du=556G df=60% mem_used=3757MiB no-snapshot-progress-line info=[{"s":0,"h":48312410,"d":1},{"s":1,"h":48987457,"d":2},{"s":2,"h":48823008,"d":0}] disk_full=no
+- 2026-10-18 17:32:22 IST progress: du=556G df=60% mem_used=3775MiB no-snapshot-progress-line info=[{"s":0,"h":48313010,"d":1},{"s":1,"h":48988055,"d":1},{"s":2,"h":48823607,"d":2}] disk_full=no
+- 2026-10-18 17:36 IST: firewall: removed public 3381/tcp and 3383/tcp rules (kept 22, 80, 443, 3382/udp). Checked after: /v1/info through Caddy 200 (blockDelay 1/2/0), app page 200, castsByFid 200; direct 3381/3383 from outside time out.

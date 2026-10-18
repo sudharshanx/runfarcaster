@@ -1,0 +1,131 @@
+---
+title: Do it on Hetzner
+description: From no Hetzner account to a running node and back to nothing. Account, project, API token, SSH key, server choice, cost, the 3 steps and cleanup.
+---
+
+import RepoLink from "../../components/RepoLink.astro";
+
+Hetzner Cloud is the only provider we have run this on. The scripts call Hetzner's own `hcloud` command-line tool, so other clouds would need different scripts.
+
+Where Hetzner's console changes over time, this page links to Hetzner's own instructions instead of describing buttons.
+
+## 1. Make an account
+
+Sign up at Hetzner and verify your email. Hetzner asks for contact and billing details. Their guide: [Hetzner Account Getting Started](https://docs.hetzner.com/general/billing-and-account-management/account-getting-started/).
+
+## 2. Create a project
+
+In the [Hetzner Cloud console](https://console.hetzner.cloud/), create a new project just for this, for example `snapchain`. A separate project keeps the token's reach small and makes cleanup easy to check: when you are done, the project should be empty. Hetzner explains projects in its [Cloud FAQ](https://docs.hetzner.com/cloud/general/faq/).
+
+## 3. Create an API token
+
+Inside the project, create an API token with Read & Write permission. Hetzner's steps: [Generating an API token](https://docs.hetzner.com/cloud/api/getting-started/generating-api-token/). Hetzner shows the token only once.
+
+Put it in your shell without typing it into the command line, so it stays out of your shell history:
+
+```bash title="your computer"
+read -rsp 'Hetzner token: ' HCLOUD_TOKEN && export HCLOUD_TOKEN && echo
+```
+
+:::danger[Keep the token secret]
+Anyone with this token can create servers on your bill. Do not commit it, paste it into a chat or an AI assistant, or put it in a file inside the repo. The scripts read it from the environment and never print it. If it leaks, delete it in the console and create a new one.
+:::
+
+You need to run that `read` line again in every new terminal.
+
+## 4. Install the tools
+
+| Tool | Why | Install |
+|---|---|---|
+| `hcloud` | Talks to Hetzner | [hetznercloud/cli](https://github.com/hetznercloud/cli) (macOS: `brew install hcloud`) |
+| `jq` | Reads JSON in the scripts | `brew install jq` or `sudo apt install jq` |
+| `ssh`, `curl` | Reach the server | Already on macOS and most Linux systems |
+| Node.js 22.12 or later, npm | Builds the app | [nodejs.org](https://nodejs.org/) |
+
+```bash title="check"
+hcloud version && jq --version && node --version && ssh -V
+hcloud server list        # works once HCLOUD_TOKEN is set; an empty list is fine
+```
+
+## 5. Add your SSH key
+
+If you do not have a key yet, make one, then upload the public half to the project:
+
+```bash title="your computer"
+ssh-keygen -t ed25519 -f ~/.ssh/id_ed25519      # skip if the file exists
+hcloud ssh-key create --name my-key \
+  --public-key-from-file ~/.ssh/id_ed25519.pub
+hcloud ssh-key list
+```
+
+`my-key` is the name you pass as `SSH_KEY=my-key` in step 1 of the Quickstart. Keys belong to one project, so upload it to the project you made above. The `hcloud ssh-key create` command is from the [hcloud CLI tutorial](https://github.com/hetznercloud/cli/blob/main/docs/tutorials/create-a-server.md).
+
+## 6. Check your volume limit
+
+New accounts can rent at most 1024 GB of volumes in total. The node needs a bigger disk than the server has, so this limit decides the volume size. You can see your limits at [console.hetzner.cloud/limits](https://console.hetzner.cloud/limits). With the 1024 GB limit, use `VOLUME_GB=1000`, which is what we ran.
+
+## 7. Pick the server
+
+| Setting | What we used | Why |
+|---|---|---|
+| Server type | `cax31`: ARM64, 8 vCPU, 16 GB RAM, 160 GB disk | The node needs 16 GB of RAM. The x86 type `cx43` was sold out in fsn1, nbg1 and hel1 on 2026-10-18. The Snapchain, statsd and Grafana images all have ARM64 builds. |
+| Volume | 1000 GB | Fits the new-account limit. The database reached 557.86 GB. |
+| Location | `fsn1` (Falkenstein) | The script's default. Server and volume must be in the same location. |
+| Image | Ubuntu 24.04 | The script's default. |
+
+## 8. What it cost us
+
+From Hetzner's price list on 2026-10-18, in USD:
+
+| Item | Price |
+|---|---|
+| cax31 | $0.040 an hour |
+| Public IPv4 | $0.001 an hour |
+| 1000 GB volume | $0.0767 per GB per month, about $0.123 an hour |
+| Total | About $0.164 an hour, or $120 a month if you leave it on |
+
+Our run took 14 h 06 m from renting the server to a synced node, about $2.31. We worked these out from the price list; we have not seen an invoice yet. To see the price before creating anything:
+
+```bash
+ESTIMATE_ONLY=1 SERVER_TYPE=cax31 VOLUME_GB=1000 EXPECTED_HOURS=16 ./provision.sh
+```
+
+## 9. Run the 3 steps
+
+Follow the [Quickstart](../quickstart/). In short:
+
+```bash title="your computer"
+MY_IP=$(curl -4 -s https://ifconfig.me)
+IP=$(SSH_KEY=my-key SERVER_TYPE=cax31 VOLUME_GB=1000 \
+  MAX_USD=5 EXPECTED_HOURS=16 SSH_SOURCE_CIDRS="$MY_IP/32" \
+  ./provision.sh)
+ssh root@$IP "SNAPCHAIN_AGREE_NO_REWARDS=yes MIN_FREE_GB=900 bash -s" < node.sh
+./deploy-client.sh "$IP"
+```
+
+## Find your server's IP again
+
+```bash
+IP=$(hcloud server ip snapchain-read-node)
+```
+
+Use this in any new terminal. It needs `HCLOUD_TOKEN` set.
+
+## 10. Delete everything
+
+```bash title="your computer"
+CONFIRM=snapchain-read-node ./teardown.sh
+```
+
+`teardown.sh` deletes the server, its volume and the firewall, then lists what is left. Afterwards, check these yourself, either in the console or with the CLI:
+
+```bash
+hcloud server list
+hcloud volume list         # volumes bill even when no server uses them
+hcloud firewall list
+hcloud primary-ip list     # an unassigned primary IP still bills
+hcloud ssh-key list        # teardown keeps your key; delete it if you like:
+# hcloud ssh-key delete my-key
+```
+
+When all lists are empty you pay nothing more. Then delete the API token in the console if you no longer need it. Review the script before running it: <RepoLink path="teardown.sh" />

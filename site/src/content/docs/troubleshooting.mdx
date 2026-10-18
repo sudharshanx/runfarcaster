@@ -1,38 +1,60 @@
 ---
 title: Troubleshooting
-description: Symptoms, causes and fixes, taken from our live run and the docs audit.
+description: What you see, why, and what to do. From our live run, the tests and our read of the docs.
 ---
 
 import CopyPrompt from "../../components/CopyPrompt.astro";
 
-| Symptom | Cause | Fix |
-|---|---|---|
-| `volumes size limit exceeded (resource_limit_exceeded)` from `provision.sh` | Hetzner account-wide volume quota; new accounts get 1024 GB total | `VOLUME_GB=1000`, plus `disk-guard.sh` and `snapshot-space-saver.sh` ([Quickstart](../quickstart/)). Or request a higher limit at console.hetzner.cloud/limits |
-| `provision.sh` refuses `cx43` | cx43 reported `available: false` in fsn1, nbg1, hel1 | `SERVER_TYPE=cax31`, or `SERVER_TYPE=` to auto-pick the cheapest available type |
-| `projected cost exceeds MAX_USD=2. Nothing was created.` | Default guard is $2 for `EXPECTED_HOURS=6`; a real sync takes ≈14 h | `MAX_USD=5 EXPECTED_HOURS=16` (what we used). Preview with `ESTIMATE_ONLY=1` |
-| `node.sh` stops: `only N GB free ... need >= 1500 GB` | 1000 GB volume shows ≈984 GB | `MIN_FREE_GB=900` |
-| Disk climbs fast during the restore | The official restore keeps chunks + an uncompressed tar + the DB until the end | `snapshot-space-saver.sh install` once `.rocks.snapshot` exists. Our peak with it: 699 GB (75%) of 984 GB. Its tar hole-punching had no effect; deleting used chunks and tars was enough |
-| Node stopped, file `/root/snapchain-DISK-FULL` exists | `disk-guard.sh` hit 90% | Do not restart on the same disk. Use a bigger volume, or tear down |
-| `HTTP API not answering yet` for hours | Normal during the snapshot restore (≈8 h 34 m for us) | Wait. Watch `df -h /root/snapchain` grow |
-| `not in sync after 43200s` | `node.sh` default wait is 12 h; our sync took ≈14 h | Harmless. `ssh root@$IP 'bash -s wait' < node.sh`, or set `SYNC_TIMEOUT_SECS=86400` |
-| `InsufficientPeers` warnings mentioning `read-node-peers`, ≈18/min | No connected validator subscribes to that topic | Harmless; sync is unaffected. Check peers and `blockDelay` instead |
-| `HandshakeTimedOut` to two bootstrap peers every 30 s | Remote side | Harmless if `blockDelay` keeps falling |
-| `/v1/info` shows `mempoolSize: 4294967295` | Read nodes have no mempool | Expected |
-| `castsByFid ... reverse=1` returns 400 `provided string was not true or false` | Query parser only accepts `true`/`false` | `reverse=true` |
-| `requesterFids=1&requesterFids=2` returns "Multiple values for one key" | Same parser | `requesterFids[]=1&requesterFids[]=2` |
-| SSH to the VM times out | `SSH_SOURCE_CIDRS` does not include your current IP (we hit this from a machine with rotating egress IPs) | Update the firewall rule for 22/tcp, or re-run `provision.sh` with the right CIDR |
-| `deploy-client.sh` ends `not reachable yet` | Let's Encrypt needs ports 80/443 and a DNS name that resolves to the VM | Check `docker compose logs caddy` in `/opt/snapchain-client`. Without your own name the script uses `<ip-with-dashes>.sslip.io`, a third-party DNS service |
-| `/v1/mesh` returned 200 through Caddy | A bare `respond` loses to `handle` in Caddy's ordering (found and fixed in our run) | Use the current `deploy/Caddyfile` (`handle @admin { respond 404 }`) |
-| Client says `Node not reachable` | A node URL is saved in the client, or the CSP blocks it | Leave the node URL empty (same origin) and Save |
-| A cast stays `[relayed]`, then `[failed]` | Relay gossip was lost; read nodes keep no mempool | **Retry** in Outgoing messages resubmits the same bytes |
-| Bootstrap fails with `/dev/tty: No such device or address` | The official bootstrap needs a TTY | Use `node.sh`; it runs the bootstrap under `script` |
+## When things go wrong
 
-:::note[AUTHOR]
-Add any problem you hit that is not in this table, in your own words.
-:::
+| What you see | Why | What to do |
+|---|---|---|
+| `HCLOUD_TOKEN is not set` (or `HCLOUD_TOKEN not set` from `watchdog.sh`) | The token is set per terminal and this one does not have it | `read -rsp 'Hetzner token: ' HCLOUD_TOKEN && export HCLOUD_TOKEN && echo`, then run the command again |
+| `ssh: connect to host … port 22: Connection refused` right after step 1 | The server is still booting | Wait a minute and run step 2 again. `node.sh` is safe to run twice |
+| SSH drops while Docker installs or the bootstrap starts | Network or laptop sleep | Run the step 2 command again. `node.sh` skips what is done and does not start a second node |
+| SSH times out, now or hours later | Your public IP is no longer in `SSH_SOURCE_CIDRS` (home IPs change) | Check `curl -4 -s https://ifconfig.me`, then run `provision.sh` again with the new `SSH_SOURCE_CIDRS`; it updates the firewall and keeps the server |
+| `$IP` is empty, or `ssh root@` has no address | `$IP` was set in a different terminal | `IP=$(hcloud server ip snapchain-read-node)` |
+| `KEY_ADD failed: no FID is registered to custody address 0x…` | The recovery phrase belongs to a different wallet, or has a typo | Check the words and their order. The phrase must be the one for the account's custody address |
+| A message fails with `Rejected by the node: …` right after adding the key | The node does not list the key yet, or the account's storage is full; the text after the colon is the node's reason | Wait until the key box shows `(active)`, then press **Retry**. For storage, check `curl -s https://<name>/v1/storageLimitsByFid?fid=<your-fid>` |
+| Casts fail with `Rejected by the node: …` after working for days | The app key expired (no use within its lifetime) or was cancelled | **Forget app key**, then add a new one ([Your first cast](../first-cast/)) |
+| `teardown.sh` says `server snapchain-read-node not found (already deleted?)` | It already ran, or the watchdog ran it | Nothing. A second run is safe. Check with `hcloud server list` and `hcloud volume list` |
+| `confirmation did not match; nothing deleted` | `CONFIRM` was not exactly `snapchain-read-node` | `CONFIRM=snapchain-read-node ./teardown.sh` |
+| The app shows **Address check** above the phrase box | The page is not served from `localhost` | Run the app on your computer for the key step ([Your first cast](../first-cast/)) |
+
+## Server and sync
+
+| What you see | Why | What to do |
+|---|---|---|
+| `volumes size limit exceeded (resource_limit_exceeded)` | New Hetzner accounts may rent at most 1024 GB of volumes in total | `VOLUME_GB=1000`, as in the [Quickstart](../quickstart/). Or ask Hetzner for a higher limit at console.hetzner.cloud/limits |
+| `provision.sh` refuses `cx43` | cx43 showed `available: false` in fsn1, nbg1 and hel1 | `SERVER_TYPE=cax31`, or `SERVER_TYPE=` to pick the cheapest type for sale |
+| `projected cost exceeds MAX_USD=2. Nothing was created.` | The default is $2 for `EXPECTED_HOURS=6`; our sync took about 14 h | `MAX_USD=5 EXPECTED_HOURS=16`, as we ran. Check first with `ESTIMATE_ONLY=1` |
+| `node.sh` stops with `only N GB free ... need >= 1500 GB` | A 1000 GB volume shows about 984 GB | Add `MIN_FREE_GB=900` |
+| The disk fills fast while the snapshot loads | The official restore keeps the chunks, an unpacked tar and the database until the end | On disks under 1500 GB, `node.sh` installs `snapshot-space-saver.sh` for this. Our peak with it was 699 GB (75%) of 984 GB. Check with `ssh root@$IP systemctl status snapchain-space-saver` |
+| The node stopped and `/root/snapchain-DISK-FULL` exists | `disk-guard.sh` saw the disk at 90% | Do not start it again on the same disk. Use a bigger volume, or run `teardown.sh` |
+| `HTTP API not answering yet` for hours | Normal while the snapshot loads; that took us 8 h 34 m | Wait. `df -h /root/snapchain` on the server should keep growing |
+| `not in sync after 86400s` | 24 hours passed without sync | `ssh root@$IP 'bash -s wait' < node.sh` to keep waiting; check `blockDelay` is falling |
+| About 18 `InsufficientPeers` warnings a minute mentioning `read-node-peers` | None of the connected validators listen on that topic | Ignore. Sync works. Watch the peer count and `blockDelay` instead |
+| `HandshakeTimedOut` to two bootstrap peers every 30 s | Those peers do not answer | Ignore while `blockDelay` keeps falling |
+| `/v1/info` shows `mempoolSize: 4294967295` | Read nodes have no mempool; this is a placeholder | Nothing |
+| `.provision-state/watchdog.log` says `WARNING: progress probe cannot reach the VM over SSH` | It cannot reach the server, usually because your IP changed | It keeps the server and only warns. Fix SSH access as above |
+
+## API and app
+
+| What you see | Why | What to do |
+|---|---|---|
+| `castsByFid ... reverse=1` returns 400 `provided string was not true or false` | The node only accepts `true` or `false` | `reverse=true` |
+| `requesterFids=1&requesterFids=2` returns "Multiple values for one key" | Same parser | `requesterFids[]=1&requesterFids[]=2` |
+| `curl http://<ip>:3381` times out | 3381 is closed to the internet by default | Use `https://<name>/v1/...`, or an SSH tunnel: `ssh -N -L 3381:127.0.0.1:3381 root@$IP` |
+| `deploy-client.sh` ends with `not reachable yet` | Let's Encrypt needs ports 80 and 443 and a name that points at the server | On the server, `cd /opt/snapchain-client && docker compose logs caddy` |
+| `/v1/mesh` answers 200 through Caddy | An older Caddyfile; a bare `respond` loses to `handle` in Caddy's order. We found and fixed this during our run | Use the current `deploy/Caddyfile` |
+| The app says `Node not reachable` | A node URL is saved in the app, or the CSP blocks it | Empty the node URL field (same address) and press Save |
+| A cast stays `[relayed]`, then shows `[failed]` | The message got lost on its way to the validators; read nodes keep no copy | Press **Retry** in Outgoing messages. It sends the identical message again |
+| Bootstrap fails with `/dev/tty: No such device or address` | The official bootstrap needs a terminal | Run it through `node.sh`, which gives it one with `script` |
+
+{/* AUTHOR: add any problem you hit that is not in these tables, in your own words. */}
 
 ## Ask an assistant
 
-Paste your exact command and output (remove tokens, IPs and hostnames first):
+Paste your exact command and its output, after removing tokens, IPs and hostnames:
 
 <CopyPrompt id="debug" label="Copy debugging prompt" show />

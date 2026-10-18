@@ -1,58 +1,90 @@
 ---
 title: Your first cast
-description: Add an app key with one gasless KEY_ADD, then cast, follow and like from your own node. Not yet tested end-to-end on mainnet.
+description: Add an app key with one gasless KEY_ADD, then cast, follow and like through your own node. Run the app on your own computer for this. Not yet tested on mainnet.
 ---
 
 :::caution[Not yet tested on mainnet]
-This flow is covered by unit tests and a local mock node only. Nobody has yet added a key or posted a cast on mainnet through it. If you try it, use a test account and tell us what happened ([Vouches](../receipts/#vouches)).
+Only unit tests and a local mock node have run this part. We have not added a key or posted a cast on mainnet with it. If you try it, use a test account and tell us what happened ([Vouches](../proof/#vouches)).
 :::
 
-You need: the client open at your `https://<name>` URL, a **test** Farcaster account with an FID and storage, and its recovery phrase. Read [Seed phrases and app keys](../before-you-start/#seed-phrases-and-app-keys) first.
+You need:
+- A **test** Farcaster account and its recovery phrase. Read [Seed phrases and app keys](../before-you-start/#seed-phrases-and-app-keys) first.
+- Node.js 22.12 or later and this repo on your computer.
+- Your node from the [Quickstart](../quickstart/).
 
 :::danger
-Never paste a recovery phrase into an AI assistant, a chat, or a site you did not deploy yourself from code you have read.
+Never paste a recovery phrase into an AI assistant or a chat.
 :::
 
-## 1. Add an app key
+## Why run the app on your own computer
 
-1. Open **Signer (app key)**. Choose a lifetime (1, 7, 30 or 90 days; default 7).
-2. Paste the test account's recovery phrase (12 to 24 words) and press **Sign one KEY_ADD, then forget the phrase**.
-3. The client finds your FID from the custody address, reads `currentUserNonce` from `/v1/signersByFid`, signs one gasless `KEY_ADD` and submits it to your node. The phrase field is cleared.
-4. The box shows `App key for FID <n>: 0x… (waiting for the node to show it)`, then `(active)` once `GET /v1/signer` returns the key.
+Your recovery phrase can do anything with your account. The address `deploy-client.sh` prints is usually `<ip-with-dashes>.sslip.io`. sslip.io is a DNS service someone else runs. Whoever controls that DNS, or the server, could serve a changed page that sends your phrase elsewhere. A page served from `localhost` comes from files on your own disk, built from code you can read.
 
-Verify it worked:
+So for adding the key, run the app locally and reach the node through an SSH tunnel. Port 3381 stays closed to the internet. The app shows an **Address check** warning whenever it is not on `localhost`.
 
-```bash
-curl -s "https://<name>/v1/signersByFid?fid=<your-fid>" | jq '.currentUserNonce, [.signers[] | .source]'
+## 1. Run the app locally
+
+In one terminal, open the tunnel and leave it running:
+
+```bash title="your computer, terminal 1"
+IP=$(hcloud server ip snapchain-read-node)
+ssh -N -L 3381:127.0.0.1:3381 root@$IP
 ```
 
-`currentUserNonce` should have gone up by one and a new signer should be listed.
+In a second terminal, start the app. Its dev server passes `/v1` to `http://127.0.0.1:3381`, which is the tunnel:
 
-## 2. Cast, follow, like
+```bash title="your computer, terminal 2"
+cd client
+npm ci
+npm run dev
+```
+
+Open http://localhost:5173. The status line should start with `Connected.`
+
+## 2. Add an app key
+
+1. Go to **Signer (app key)**. Pick how long the key lasts: 1, 7, 30 or 90 days. The default is 7.
+2. Paste the test account's recovery phrase (12 to 24 words). Press **Sign one KEY_ADD, then forget the phrase**.
+3. The app empties the phrase field. From the phrase it works out your custody address, asks the node which FID that address owns, and reads `currentUserNonce`. Then it signs one gasless `KEY_ADD` and submits it.
+4. You see `App key for FID <n>: 0x… (waiting for the node to show it)`. That changes to `(active)` when `GET /v1/signer` returns the key.
+
+Check it from the terminal:
+
+```bash
+curl -s "http://127.0.0.1:3381/v1/signersByFid?fid=<your-fid>" | jq '.currentUserNonce, [.signers[] | .source]'
+```
+
+`currentUserNonce` should be one higher than before, with one more signer in the list.
+
+The app key is saved in the browser for `localhost:5173` only. The copy of the app at your HTTPS address does not have it. Post from the local app, or add a second key there later, without the phrase leaving your computer.
+
+## 3. Cast, follow, like
 
 | Action | Where | Message type |
 |---|---|---|
-| Cast | **Post** box, then **Cast** (max 320 bytes) | `CAST_ADD` |
-| Follow | **FID to follow**, then **Follow** | `LINK_ADD` (type `follow`) |
-| Like / recast | Buttons under a cast in **Feed** | `REACTION_ADD` |
+| Cast | Type in **Post**, press **Cast** (up to 320 bytes) | `CAST_ADD` |
+| Follow | Type an FID in **FID to follow**, press **Follow** | `LINK_ADD` (type `follow`) |
+| Like, recast | Buttons under each cast in **Feed** | `REACTION_ADD` |
 
-Each one appears in **Outgoing messages** with a status: `[sending]`, `[relayed]` (accepted for relay), `[retrying]`, `[confirmed]` (the node returns it) or `[failed]` with a reason and a **Retry** button. See [Step 2 of the tutorial](../tutorial/#step-2-read-nodes-take-writes-and-relay-them) for why.
+Each one shows up in **Outgoing messages** with its state: `[sending]`, `[relayed]` (the node accepted it and sent it on), `[retrying]`, `[confirmed]` (the node returns it) or `[failed]`, with the reason and a **Retry** button. [Tutorial step 2](../tutorial/#step-2-your-node-passes-messages-on) explains these states.
 
-## 3. Check it from another client
+The app can only add. It has no button to delete a cast, unfollow or unlike.
 
-Open your profile in any other Farcaster client and look for the cast. The client does not display hashes; get it from your node:
+## 4. Look for it in another app
+
+Open your profile in any other Farcaster app. Our app does not show hashes; ask your node:
 
 ```bash
-curl -s "https://<name>/v1/castsByFid?fid=<your-fid>&pageSize=1&reverse=true" \
+curl -s "http://127.0.0.1:3381/v1/castsByFid?fid=<your-fid>&pageSize=1&reverse=true" \
   | jq '.messages[0] | {hash, text: .data.castAddBody.text}'
 ```
 
-:::note[AUTHOR]
-After your own first mainnet cast: paste the cast link here and note how long it took to show up.
-:::
+{/* AUTHOR: after your own first mainnet cast, paste the cast link here and note how long it took to show up. */}
 
-## Revoke or forget the key
+## Remove the key
 
-- **Forget app key** deletes it from this browser. It does not revoke it.
-- An unused key expires when its TTL runs out.
-- To revoke it now, remove it with your custody wallet (a `KEY_REMOVE` or the app you use to manage keys). The client does not do this.
+- **Forget app key** deletes the key from this browser. The network still accepts it until it expires.
+- A key you stop using expires when its lifetime runs out.
+- To cancel it now, send a `KEY_REMOVE` from your custody wallet, or use the app you manage keys with. Our app cannot do this.
+
+When you are done, stop the tunnel and the dev server with Ctrl-C.

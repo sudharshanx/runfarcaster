@@ -1,0 +1,7 @@
+---
+// Light only: replaces Starlight's ThemeProvider so the site never switches to dark.
+---
+<script is:inline>
+	document.documentElement.dataset.theme = 'light';
+	window.StarlightThemeProvider = { updatePickers() {} };
+</script>
