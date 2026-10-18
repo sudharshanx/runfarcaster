@@ -58,11 +58,18 @@ nav.sidebar a[aria-current="page"] { background: var(--sl-color-accent-low); col
 .glance dd { margin: 0; }
 @media (max-width: 30rem) { .glance dl { grid-template-columns: 1fr; } .glance dd { margin-bottom: 0.4rem; } }
 
-/* Screenshots */
-.shots { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; align-items: start; }
-.shots figure { margin: 0; }
+/* Screenshots: phone shots two to a row, a desktop shot (.shot-wide) on a row of its own so its text
+   stays readable. On phones every shot is one column and phone shots stop at 18rem. */
+.shots { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1.5rem 1rem; align-items: start; }
+.shots figure { margin: 0; min-width: 0; }
+.shots .shot-wide { grid-column: 1 / -1; }
+@media (max-width: 36rem) {
+  .shots { grid-template-columns: minmax(0, 1fr); }
+  .shots .shot-phone { max-width: 18rem; }
+}
+.shots a { display: block; }
 .shots img { border: 1px solid var(--sl-color-hairline); border-radius: 0.5rem; width: 100%; height: auto; }
-.shots figcaption { font-size: var(--sl-text-sm); color: var(--sl-color-gray-3); }
+.shots figcaption { margin-top: 0.4rem; font-size: var(--sl-text-sm); line-height: 1.45; color: var(--sl-color-gray-3); }
 
 /* Video placeholder, 9:16 */
 .video-slot { aspect-ratio: 9 / 16; max-width: 240px; border: 1px dashed var(--sl-color-gray-4); border-radius: 0.5rem; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; color: var(--sl-color-gray-3); }
@@ -95,5 +102,20 @@ pre.diagram { font-size: var(--sl-text-xs); line-height: 1.4; overflow-x: auto; 
 /* Wide tables scroll inside a focusable region (see rehypeTableScroll in src/config.mjs). */
 .table-scroll { overflow-x: auto; max-width: 100%; }
 .table-scroll > table { display: table; margin: 0; }
+/* Code in table cells is not broken mid-word,
+   so `test/teardown_test.sh` stays whole; a table that gets too wide scrolls in its region. */
+.sl-markdown-content :is(td, th) code { overflow-wrap: normal; word-break: normal; }
+/* On phones, tables with three or more columns keep readable columns and scroll sideways. The
+   shadow on the right edge shows there is more; it disappears once scrolled to the end. */
+@media (max-width: 36rem) {
+  .table-scroll > table:has(th:nth-child(3)) { min-width: 34rem; }
+  .table-scroll {
+    background:
+      linear-gradient(to right, #fff 30%, rgb(255 255 255 / 0)) left / 1.5rem 100% no-repeat local,
+      linear-gradient(to left, #fff 30%, rgb(255 255 255 / 0)) right / 1.5rem 100% no-repeat local,
+      radial-gradient(farthest-side at 0 50%, rgb(21 25 31 / 0.14), transparent) left / 0.6rem 100% no-repeat scroll,
+      radial-gradient(farthest-side at 100% 50%, rgb(21 25 31 / 0.14), transparent) right / 0.6rem 100% no-repeat scroll;
+  }
+}
 .table-scroll:focus-visible, .copy-prompt pre:focus-visible, pre.diagram:focus-visible { outline: 2px solid var(--sl-color-text-accent); outline-offset: 2px; }
 .copy-prompt summary { min-height: 44px; display: flex; align-items: center; }
