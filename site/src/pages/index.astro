@@ -198,16 +198,14 @@ const right = `<svg aria-hidden="true" width="12" height="12" viewBox="0 0 12 12
       </section>
 
       <section class="wrap panel limits" aria-labelledby="limits-title">
-        <p class="eyebrow">Limits</p>
-        <h2 id="limits-title" class="h-md">What it costs, and what it does not do.</h2>
+        <p class="eyebrow">Cost</p>
+        <h2 id="limits-title" class="h-md">What it costs on Hetzner.</h2>
         <dl class="limits-grid">
-          <div><dt>Cost</dt><dd>About $0.164 an hour on a Hetzner cax31 with a 1000 GB volume, $2.31 until synced. The server bills until <code>teardown.sh</code> deletes it. cax31 was sold out on 18 Oct 2026; the script then picks cpx42, about $0.255 an hour and untested.</dd></div>
-          <div><dt>Time</dt><dd>About 14 hours from renting the server to synced, measured once on cax31. Other server types: not measured.</dd></div>
-          <div><dt>Writes</dt><dd>A read node makes no blocks. It checks your cast and passes it to the validators. HTTP 200 means sent on, not in a block, so the app checks that the cast landed.</dd></div>
-          <div><dt>Your recovery phrase</dt><dd>Adding the app key needs it once, typed into the app on your own computer. Use a test account. Never paste it into an AI assistant.</dd></div>
-          <div><dt>Tested</dt><dd>Adding a key and one cast ran on mainnet. Likes, recasts and follows ran against a mock node only.</dd></div>
-          <div><dt>Rewards</dt><dd>A read node earns none. Step 2 sets <code>SNAPCHAIN_AGREE_NO_REWARDS=yes</code> to say you accept that.</dd></div>
+          <div><dt>About $2.31</dt><dd>to get your node synced. That took about 14 hours on our test server.</dd></div>
+          <div><dt>About $0.16 an hour</dt><dd>while the server runs. Billing stops when you delete it with one command.</dd></div>
+          <div><dt>About $102 a month</dt><dd>if you leave it on all month.</dd></div>
         </dl>
+        <p><a href={u("server-and-node/#what-it-costs")}>See the full price breakdown</a></p>
       </section>
 
       <section class="wrap closing" aria-labelledby="close-title">
