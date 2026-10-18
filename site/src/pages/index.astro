@@ -206,7 +206,9 @@ const right = `<svg aria-hidden="true" width="12" height="12" viewBox="0 0 12 12
           <p class="eyebrow">With your AI assistant</p>
           <h2 id="ai-title" class="h-md">Or let your AI assistant do it.</h2>
           <p>Copy one prompt into Claude Code, Codex or Cursor. It does one step at a time and asks before each one.</p>
-          <a class="textlink" href={u("ai-assistant/")}>All prompts<Fragment set:html={right} /></a>
+          <p>Or install the RunFarcaster skill:</p>
+          <pre class="skill-cmd" tabindex="0" aria-label="Skill install command"><code>npx skills add sudharshanx/runfarcaster --skill runfarcaster</code></pre>
+          <a class="textlink" href={u("ai-assistant/")}>All prompts and the skill<Fragment set:html={right} /></a>
         </div>
         <div class="card">
           <p class="eyebrow">Prompt for a coding assistant</p>

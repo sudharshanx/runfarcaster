@@ -31,6 +31,7 @@ If a server type is sold out, provision.sh says so and lists the types available
 
 Repo (MIT): ${REPO}
 Full text: ${base}llms-full.txt
+Agent skill: npx skills add sudharshanx/runfarcaster --skill runfarcaster (files in skills/runfarcaster)
 
 ## Pages
 

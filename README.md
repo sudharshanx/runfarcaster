@@ -139,6 +139,18 @@ The node's HTTP API is plain HTTP on 3381. It has no OPTIONS route, and `submitM
 `npm run dev` in `client/` does the same with Vite's proxy (`SNAPCHAIN_NODE_URL`, default
 `http://127.0.0.1:3381`). The node URL can also be set in the app; leave it empty for the same address.
 
+## Agent skill
+
+`skills/runfarcaster/` is an [Agent Skill](https://agentskills.io/) for coding agents: the 3 steps, the fixes and
+the safety rules, with details in `references/`. Install it with:
+
+```bash
+npx skills add sudharshanx/runfarcaster --skill runfarcaster
+```
+
+`site/scripts/check-skill.mjs` runs in the site build. It checks the skill's frontmatter and that its commands match
+`site/src/prompts.ts` and its error texts match the Fix a problem page.
+
 ## The guide website
 
 `site/` is Astro Starlight. Building it needs Node.js 22.22 or later (Astro 7). Build it with:
@@ -180,6 +192,7 @@ shares with a set of other pages, to catch copied text.
 | `SOURCES.md` | Every fact and where it came from: URLs and SHAs |
 | `DOCS_ISSUES.md` | Outdated or wrong official docs found along the way |
 | `MEASUREMENTS.md` | Numbers from the live run, plus cost estimates |
+| `skills/runfarcaster/` | Agent Skill for coding agents (`SKILL.md` plus `references/`) |
 | `site/` | The guide website |
 
 ## Tests

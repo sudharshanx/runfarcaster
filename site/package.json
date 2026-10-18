@@ -6,7 +6,7 @@
   "type": "module",
   "scripts": {
     "dev": "astro dev",
-    "build": "astro build && node scripts/check-placeholders.mjs",
+    "build": "astro build && node scripts/check-placeholders.mjs && node scripts/check-skill.mjs",
     "preview": "astro preview",
     "screenshots": "node scripts/screenshots.mjs",
     "originality": "python3 scripts/originality-check.py"

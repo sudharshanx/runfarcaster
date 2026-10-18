@@ -4,6 +4,7 @@ description: A prompt that lets a coding assistant walk you through the 3 steps,
 ---
 
 import CopyPrompt from "../../components/CopyPrompt.astro";
+import RepoLink from "../../components/RepoLink.astro";
 
 Use these with a coding assistant that can run shell commands on your computer, or that tells you what to run. They use the script names and variables from this repo.
 
@@ -24,5 +25,21 @@ Fill in the angle brackets. Take tokens, IP addresses and hostnames out of the o
 ## Ask about an idea
 
 <CopyPrompt id="concept" label="Copy the question prompt" show />
+
+## Install the skill
+
+The RunFarcaster skill gives a coding agent the 3 steps, the fixes and the safety rules. It uses the open [Agent Skills](https://agentskills.io/) format, so Claude Code, Cursor, Codex and other agents can load it. Run this in your project folder:
+
+```bash
+npx skills add sudharshanx/runfarcaster --skill runfarcaster
+```
+
+Add `-g` to install it for every project. Or ask your coding agent:
+
+```text
+Install the RunFarcaster skill from github.com/sudharshanx/runfarcaster
+```
+
+The files are in <RepoLink path="skills/runfarcaster/" />. Read them before you install: a skill runs with your agent's permissions.
 
 The whole site as plain text, for assistants: [`llms.txt`](../llms.txt) (summary) and [`llms-full.txt`](../llms-full.txt) (every page in Markdown).

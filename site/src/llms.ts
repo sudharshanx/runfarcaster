@@ -55,13 +55,13 @@ export function toMarkdown(body: string): string {
       if (q) t = t.replace("<my question>", q);
       return "Prompt for a coding assistant:\n\n```text\n" + t + "\n```";
     })
-    .replace(/<RepoLink path="([^"]*)"(?: label="([^"]*)")? \/>/g, (_m, p: string, l?: string) => `[${l ?? p}](${p ? `${REPO}/blob/main/${p}` : REPO})`)
+    .replace(/<RepoLink path="([^"]*)"(?: label="([^"]*)")? \/>/g, (_m, p: string, l?: string) => `[${l ?? p}](${p ? `${REPO}/${p.endsWith("/") ? "tree" : "blob"}/main/${p}` : REPO})`)
     .replace(/<Image [^>]*alt="([^"]*)"[^>]*\/>/g, "[screenshot: $1]")
     .replace(/<\/?(Tabs|TabItem|div|section|figure|figcaption|details|summary|CardGrid|LinkCard)[^>]*>/g, "")
     .replace(/<p class="label">(.*?)<\/p>/g, "$1")
     .replace(/<p class="claim">(.*?)<\/p>/g, "**$1**")
     .replace(/<br \/>/g, "\n")
-    .replace(/<\/?p[^>]*>/g, "\n")
+    .replace(/<\/?p(?:\s[^>]*)?>/g, "\n")
     .replace(/<a href="([^"]*)">(.*?)<\/a>/g, "[$2]($1)")
     .replace(/<\/?(strong|code)>/g, (m) => (m.includes("strong") ? "**" : "`"))
     .replace(/<pre class="diagram"[^>]*>\{`([\s\S]*?)`\}<\/pre>/g, "```text\n$1\n```")
