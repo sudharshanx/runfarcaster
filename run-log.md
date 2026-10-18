@@ -99,3 +99,4 @@
 - 2026-10-18 17:47 IST: tests re-run on 8ef1bb8 + docs edits: node_sh 42/42, space_saver 14/14, watchdog 15/15, teardown 7/7, vitest 34/34, e2e/run.sh 20/20, shellcheck clean.
 - 2026-10-18 17:52:40 IST progress: du=556G df=60% mem_used=3781MiB no-snapshot-progress-line info=[{"s":0,"h":48314201,"d":1},{"s":1,"h":48989256,"d":0},{"s":2,"h":48824798,"d":1}] disk_full=no
 - 2026-10-18 18:02:49 IST progress: du=556G df=60% mem_used=3811MiB no-snapshot-progress-line info=[{"s":0,"h":48314795,"d":3},{"s":1,"h":48989856,"d":0},{"s":2,"h":48825400,"d":1}] disk_full=no
+- 2026-10-18 18:05 IST: client redeployed with deploy-client.sh (dev port 5317, CSP meta, feed race fix). Checked after: app page 200, /v1/info through Caddy 200, /v1/mesh 404; e2e/real-node.mjs 17/17 (read-only), screenshots retaken with the address replaced.
