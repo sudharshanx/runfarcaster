@@ -128,7 +128,9 @@ img, svg { max-width: 100%; }
 @media (min-width: 640px) { body { background: var(--bg-faded); } }
 @media (min-width: 960px) {
   .wrap { padding-inline: 32px; }
-  .layout { grid-template-columns: minmax(0, 1fr) 320px; grid-template-areas: "compose side" "feed side"; grid-template-rows: auto 1fr; align-items: start; gap: 20px 40px; padding-top: 32px; }
+  .layout { grid-template-columns: minmax(0, 1fr) 300px; grid-template-areas: "compose side" "feed side"; grid-template-rows: auto 1fr; align-items: start; gap: 20px 40px; padding-top: 32px; }
+  /* No post box in the main column (no app key yet): the feed starts at the top. */
+  .layout:not(:has(> .compose)) { grid-template-areas: "feed side"; grid-template-rows: auto; }
   .compose { grid-area: compose; }
   .feed { grid-area: feed; }
   .side { grid-area: side; position: sticky; top: 88px; max-height: calc(100vh - 104px); overflow: auto; padding: 2px; }
@@ -413,3 +415,11 @@ a.embed:hover { border-color: var(--field-line-hover); background: var(--bg); }
   *, *::before, *::after, *::backdrop { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; }
   .loader, .skel-avatar, .skel-line { animation: none !important; }
 }
+
+/* ---------- right column (wide) / below the feed (phones): add-app-key prompt and explainer */
+.info { display: grid; gap: 12px; align-content: start; min-width: 0; }
+.feed > .info { margin-top: 20px; }
+.info > .compose { grid-area: auto; }
+.info > .compose.empty { padding: 20px 18px; }
+.info > .intro { margin: 0; }
+@media (min-width: 960px) { .info > .compose.empty .empty-title { font-size: 16px; } }

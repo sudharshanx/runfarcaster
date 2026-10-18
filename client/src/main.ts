@@ -255,9 +255,11 @@ function renderComposer() {
       h("button", { id: "open-add-key", class: "btn" }, "Add app key"),
     );
     $("open-add-key").addEventListener("click", openAddKey);
+    placeInfo();
     return;
   }
   box.classList.remove("empty");
+  placeInfo();
   const ta = attr(h("textarea", { id: "compose", rows: 3, maxLength: MAX_CAST_BYTES }), { "aria-describedby": "compose-count" });
   const count = h("span", { id: "compose-count", class: "hint" });
   const meter = attr(h("meter", { min: 0, max: MAX_CAST_BYTES, value: 0 }), { "aria-hidden": "true" });
@@ -895,11 +897,27 @@ for (const id of ["viewer-fid", "watch-fids"]) $(id).addEventListener("keydown",
 // ---------- first-run explainer ("How this works")
 function showIntro(open: boolean) {
   $("intro").hidden = !open;
-  $("intro-open").hidden = open;
+  // On phones the explainer sits below the feed, so the button stays as a short way to reach it.
+  $("intro-open").hidden = open && WIDE.matches;
 }
 $("intro-done").addEventListener("click", () => { settings.introDone = true; writeJSON(kv, SETTINGS_KEY, settings); showIntro(false); $("intro-open").focus(); });
 $("intro-open").addEventListener("click", () => { showIntro(true); $("intro-done").focus(); });
-showIntro(!settings.introDone);
+
+
+// ---------- layout: the feed comes first. The add-app-key prompt and the explainer go in the
+// right column on wide screens and below the feed on phones, never above the casts.
+const WIDE = matchMedia("(min-width: 960px)");
+const info = h("div", { id: "info", class: "info" });
+function placeInfo() {
+  const box = $("compose-box"), intro = $("intro");
+  if (appKey) { if (box.parentElement !== app.querySelector("main")) app.querySelector("main")!.prepend(box); }
+  else if (box.parentElement !== info) info.prepend(box);
+  if (intro.parentElement !== info) info.append(intro);
+  if (WIDE.matches) { if (info.parentElement !== $("side")) $("side").prepend(info); }
+  else if (info.parentElement !== app.querySelector(".feed")) app.querySelector(".feed")!.append(info);
+  showIntro(!$("intro").hidden);
+}
+WIDE.addEventListener("change", placeInfo);
 
 // ---------- mobile tab bar (hidden on wide screens, where the side column is always shown)
 type View = "feed" | "settings";
@@ -924,7 +942,8 @@ $("tab-settings").addEventListener("click", () => { setView("settings"); window.
 setView("feed");
 
 // ---------- boot
-renderSigner(); renderFilters(); renderPending();
+showIntro(!settings.introDone);
+renderSigner(); renderFilters(); renderPending(); // renderSigner places the prompt and explainer (placeInfo)
 if (appKey) void loadWrite(); // you can post, so fetch the signing code now rather than on the first Post
 void refreshStatus(); void refreshFeed(); void waitForKey();
 setInterval(() => void reconciler.tick(), 2000);
