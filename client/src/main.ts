@@ -248,16 +248,22 @@ function renderComposer() {
   box.classList.remove("empty");
   const ta = attr(h("textarea", { id: "compose", rows: 3, maxLength: MAX_CAST_BYTES }), { "aria-describedby": "compose-count" });
   const count = h("span", { id: "compose-count", class: "hint" });
+  const meter = attr(h("meter", { min: 0, max: MAX_CAST_BYTES, value: 0 }), { "aria-hidden": "true" });
+  const ring = h("span", { class: "char-counter" }, meter);
   const post = h("button", { id: "post", class: "btn" }, "Post");
   const update = () => {
     const left = bytesLeft(ta.value, MAX_CAST_BYTES);
+    const used = MAX_CAST_BYTES - left;
     count.textContent = `${left} bytes left`;
     count.classList.toggle("over", left < 0);
+    meter.value = Math.min(used, MAX_CAST_BYTES);
+    meter.className = left <= 0 ? "danger" : left <= 40 ? "warning" : "";
+    ring.style.setProperty("--percentage", String(Math.min(100, (used / MAX_CAST_BYTES) * 100)));
     post.disabled = left < 0;
   };
   ta.addEventListener("input", update);
   update();
-  box.append(lab("compose", `New cast as FID ${appKey.fid}`), ta, h("div", { class: "compose-foot" }, count, post));
+  box.append(lab("compose", `New cast as FID ${appKey.fid}`), ta, h("div", { class: "compose-foot" }, h("span", { class: "compose-count" }, ring, count), post));
   post.addEventListener("click", onPost);
 }
 
@@ -268,7 +274,7 @@ function stepHeader(n: number, title: string) {
   return [
     h("div", { class: "sheet-head" },
       h("h2", { id: "add-key-title", tabIndex: -1 }, title),
-      attr(h("button", { id: "close-add-key", class: "icon-btn" }, "×"), { "aria-label": "Close" })),
+      attr(h("button", { id: "close-add-key", class: "icon-btn sheet-close" }, "×"), { "aria-label": "Close" })),
     attr(h("ol", { class: "stepper" }, ...STEPS.map((label, i) =>
       attr(h("li", { class: i < n - 1 ? "done" : "" }, h("span", { class: "step-n" }, String(i + 1)), h("span", { class: "step-label" }, label)),
         i === n - 1 ? { "aria-current": "step" } : {}))), { "aria-label": `Step ${n} of ${STEPS.length}` }),
@@ -578,6 +584,13 @@ function embedChip(e: NonNullable<FeedCast["embeds"]>[number], allowThumb = true
 function actionBtn(name: IconName, label: string, onclick: () => void, cls = "") {
   return attr(h("button", { class: `act ${cls}`.trim(), onclick, title: label }, icon(name)), { "aria-label": label });
 }
+/** Likes and recasts sent from this browser (and not failed), so the buttons can show them. */
+function sentReactions() {
+  const out = new Set<string>();
+  for (const p of reconciler.list()) if ((p.kind === "like" || p.kind === "recast") && p.status !== "failed" && p.target?.hash) out.add(`${p.kind}:${p.target.hash.toLowerCase()}`);
+  return out;
+}
+let reacted = new Set<string>();
 function appName(app: number) {
   const p = profiles.get(app);
   return p?.username ? `@${p.username}` : `app FID ${app}`;
@@ -604,7 +617,7 @@ function castCard(c: FeedCast) {
   const p = profiles.get(c.fid) ?? {};
   const name = p.displayName ?? p.username ?? `FID ${c.fid}`;
   const date = fcTimeToDate(c.timestamp);
-  const card = attr(h("article", { class: "cast" },
+  const card = attr(h("article", { class: c.parent ? "cast is-reply" : "cast" },
     avatar(c.fid, name, p.pfp),
     h("div", { class: "cast-body" },
       h("div", { class: "cast-head" },
@@ -619,8 +632,8 @@ function castCard(c: FeedCast) {
       c.pending
         ? pendingFoot(c.pending)
         : h("div", { class: "cast-actions" },
-          actionBtn("heart", `Like cast by ${name}`, () => void react("like", c), "act-like"),
-          actionBtn("repeat", `Recast cast by ${name}`, () => void react("recast", c), "act-recast"),
+          reacted.has(`like:${c.hash.toLowerCase()}`) ? actionBtn("heart", `Liked cast by ${name}`, () => say("You already liked this cast."), "act-like checked") : actionBtn("heart", `Like cast by ${name}`, () => void react("like", c), "act-like"),
+          reacted.has(`recast:${c.hash.toLowerCase()}`) ? actionBtn("repeat", `Recast cast by ${name}`, () => say("You already recast this cast."), "act-recast checked") : actionBtn("repeat", `Recast cast by ${name}`, () => void react("recast", c), "act-recast"),
           appLabel(c),
           actionBtn("mute", `Mute FID ${c.fid}`, () => { filters = addToList(filters, "mutedFids", String(c.fid)) as Filters; saveFilters(kv, filters); renderFilters(); renderFeed(); say(`Muted FID ${c.fid}. Undo under Filters.`); }, "act-mute")),
     )), { "data-fid": String(c.fid) });
@@ -671,11 +684,12 @@ function renderFeed() {
   const older = $("load-older") as HTMLButtonElement;
   older.hidden = loading || !view || !timeline || !hasOlder(timeline) || problem === "node-down" || problem === "unknown-fid";
   older.disabled = loadingOlder;
-  older.textContent = loadingOlder ? "Loading older casts…" : "Load older casts";
+  older.replaceChildren(...(loadingOlder ? [attr(h("span", { class: "loader" }), { "aria-hidden": "true" }), "Loading older casts…"] : ["Load older casts"]));
   // First run without an app key: the FID prompt is the only thing to do, so the post box waits.
   $("compose-box").hidden = isFirstRun() && !appKey;
   if (isFirstRun()) { setText("feed-meta", ""); box.append(firstRun()); return; }
-  if (loading) return;
+  if (loading) { box.append(...skeletons(4)); return; }
+  reacted = sentReactions();
   if (problem === "node-down") {
     setText("feed-meta", "");
     box.append(notice("feed-down", "Can't reach your node.",
@@ -710,6 +724,13 @@ function renderFeed() {
     return;
   }
   for (const c of shown.slice(0, 300)) box.append(castCard(c));
+}
+
+/** Grey placeholder casts shown while the feed loads (hidden from screen readers; #feed-meta says Loading). */
+function skeletons(n: number) {
+  return Array.from({ length: n }, () => attr(h("div", { class: "skel" },
+    h("div", { class: "skel-avatar" }),
+    h("div", { class: "skel-lines" }, h("div", { class: "skel-line" }), h("div", { class: "skel-line" }), h("div", { class: "skel-line" }), h("div", { class: "skel-line" }))), { "aria-hidden": "true" }));
 }
 
 // ---------- first run and sample feed

@@ -52,10 +52,3 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ```
-
-## Phanpy and Elk
-
-The feed layout (avatar on the left, name, handle and time on one line, a quiet icon row, hairline
-separators, a bottom tab bar on phones) follows visual patterns seen in Phanpy
-(https://github.com/cheeaun/phanpy, MIT) and Elk (https://github.com/elk-zone/elk, MIT).
-No code or CSS was copied from either project.
