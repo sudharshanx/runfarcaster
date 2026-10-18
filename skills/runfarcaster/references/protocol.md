@@ -13,6 +13,8 @@
 | Read node | A node that copies finished blocks from its peers, answers the API and sends on messages it receives. It has no mempool and earns nothing. |
 | blockDelay | How many seconds a shard's newest block is behind the clock. Single digits on every shard means synced. |
 | Snapshot | A compressed copy of the database that a new node downloads first. |
+| fname | A free offchain username like `@alice` (`alice.fcast.id`), issued by the Fname Registry. Farcaster can reclaim it. `.eth` names are onchain ENS names the wallet controls. Nodes store a signed username proof for each: `/v1/userNameProofByName?name=<name>`. |
+| Storage rent | Yearly units bought onchain. When full, the oldest message of that kind is pruned. After expiry there is a 30-day grace period, then messages may be lost. `/v1/storageLimitsByFid?fid=<fid>` shows limits and use. |
 
 ## Sending a message through a read node
 

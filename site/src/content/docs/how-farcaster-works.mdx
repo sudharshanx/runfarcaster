@@ -99,13 +99,13 @@ head -c 64 /dev/urandom | curl -s -X POST "$NODE/v1/submitMessage" \
 # HTTP 400: Invalid protobuf data: Unable to decode message
 ```
 
-What the app does after you press Cast, Like, Recast or Follow (<RepoLink path="client/src/pending.ts" />):
+What the app does after you press Post, Like, Recast or Follow (<RepoLink path="client/src/pending.ts" />):
 
-1. Shows it right away, marked *sending*.
-2. Sends the signed message. On `200` it shows *Accepted by the node for relay. Waiting to see it in a block.*
+1. Shows it right away, marked **Sending**.
+2. Sends the signed message. On `200` it shows **Waiting for a block**.
 3. Every 4 seconds, asks the node for it by hash (`castById`, `reactionById`, `linkById`).
 4. If the node still does not have it 30 seconds after the last send, sends the identical message again. It has the same hash, so it cannot appear twice.
-5. After 4 sends it marks the message *failed* and says why. A `4xx` answer fails it at once, since an invalid message stays invalid.
+5. After 4 sends it marks the message **Failed** and says why. A `4xx` answer fails it at once, since an invalid message stays invalid.
 
 How long a valid message takes to appear has not been measured.
 
@@ -121,20 +121,53 @@ How long a valid message takes to appear has not been measured.
 
 Validators read the Farcaster contracts on OP Mainnet and put those events in blocks. Your node gets them inside the blocks, together with all messages. It needs no OP Mainnet connection of its own. Your account is not tied to an app. Any app that can reach a node can show your posts, and any app key you approved can post for you.
 
-## Account number, owner address, storage
+## Account number and owner address
 
 - **FID** is your account number. It is registered onchain. Profiles, casts and follows all refer to it.
 - **Custody address** is the Ethereum address that owns the FID. It approves and revokes app keys, and can move the FID to another address. The app derives it from the recovery phrase at the path `m/44'/60'/0'/0/0`.
-- **Storage** is paid for onchain, in units. Each unit holds a fixed number of each kind of message. Past that, the node deletes the oldest ([docs: Messages](https://docs.farcaster.xyz/learn/what-is-farcaster/messages)). Registering an FID and buying storage still cost gas. This guide does neither.
 
-The per-unit numbers in the official docs are out of date ([Docs issues #20](../docs-issues/)). Your node has the current ones:
+Registering an FID costs gas on OP Mainnet. This guide does not do it.
+
+## Usernames: fnames and ENS names
+
+An FID is a number. The `@name` people see is a separate username, and it comes in two kinds ([docs: Usernames](https://docs.farcaster.xyz/learn/what-is-farcaster/usernames), [ENS names](https://docs.farcaster.xyz/learn/architecture/ens-names)):
+
+| Kind | Issued by | Cost | Who controls it |
+|---|---|---|---|
+| Offchain name (fname), like `@alice` | The Fname Registry, a server run by the Farcaster team, as `alice.fcast.id` | Free | Farcaster can reclaim it, for example after 60 days unused. One per account; it can change once every 28 days. |
+| Onchain ENS name, like `@alice.eth` | ENS, on Ethereum L1 | A registration fee | Your wallet. Farcaster cannot revoke it. |
+
+Both kinds are at most 16 characters: lowercase letters, numbers and hyphens.
+
+Your node keeps a **username proof** for each name: the name, the FID, the owner address, a timestamp and a signature. For an fname the Fname Registry signs the proof. An ENS proof needs the FID to have verified the address that owns the name. The profile then points at one valid proof with a `USERNAME` field in its user data.
 
 ```bash
-curl -s "$NODE/v1/storageLimitsByFid?fid=3" | jq
+curl -s "$NODE/v1/userNameProofByName?name=dwr" | jq '{name, fid, type}'
+curl -s "$NODE/v1/userNameProofsByFid?fid=2" | jq '[.proofs[] | {name, type}]'
+```
+
+`type` is `USERNAME_TYPE_FNAME` for an fname and `USERNAME_TYPE_ENS_L1` for a `.eth` name ([Username Proofs API](https://snapchain.farcaster.xyz/reference/httpapi/usernameproof)).
+
+## Storage rent
+
+Messages take space on every node, so an account pays rent for it ([docs: Messages](https://docs.farcaster.xyz/learn/what-is-farcaster/messages), [Contracts](https://docs.farcaster.xyz/learn/architecture/contracts)):
+
+- Storage is rented in **units**, paid in ETH to the Storage Registry contract on OP Mainnet. Prices are set in USD and change with demand.
+- A unit **lasts one year**. Each unit allows a fixed number of casts, reactions, follows, profile fields, verifications and username proofs.
+- **When an account is full** for one kind of message, the node prunes the oldest message of that kind to make room for the new one. Posting keeps working.
+- **When storage expires**, there is a 30-day grace period. An account that does not renew in time may lose all its messages.
+- A deleted message still counts toward the limit until newer messages push it out.
+
+The per-unit numbers in the official docs are out of date ([Docs issues #20](../docs-issues/)). Your node returns the current limits, how much is used and how many units the account has:
+
+```bash
+curl -s "$NODE/v1/storageLimitsByFid?fid=3" | jq '{units, limits: [.limits[] | {name, limit, used}]}'
 curl -s "$NODE/v1/userDataByFid?fid=3" | jq '.messages[].data.userDataBody'
 ```
 
-<CopyPrompt id="concept" label="Copy prompt: ask about FIDs and custody" question="What is the difference between an FID, a custody address and an app key, and what can each one do?" />
+Buying storage costs gas. This guide does not do it; a test account needs at least one unit before it can post.
+
+<CopyPrompt id="concept" label="Copy prompt: ask about FIDs and custody" question="What is the difference between an FID, a custody address, an fname and an app key, and how does storage rent work?" />
 
 ## Shards, validators and your node
 

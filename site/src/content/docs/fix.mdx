@@ -31,7 +31,7 @@ VOLUME_GB=1000
 
 ### The server type is sold out
 
-**You see:** `server type cax31: not available in fsn1 right now.` The same error lists the types you can rent there, cheapest first.
+**You see:** `server type cax31: not available in fsn1 right now.` when you set a type, or `none of [cx43 cax31 cpx42 ccx23] is usable in fsn1.` with `SERVER_TYPE=""`. Both list the types you can rent there, cheapest first.
 
 **Why:** Hetzner sells out of server types. On 18 Oct 2026, cx43 was sold out in the morning, and by evening cax31 was sold out in every location that offers it.
 
@@ -50,16 +50,16 @@ A typo in `LOCATION` gives `unknown LOCATION=…`, followed by the list of valid
 
 **You see:** SSH to the server hangs, then times out. It worked before.
 
-**Why:** The firewall lets SSH in only from the address in `SSH_SOURCE_CIDRS`. Your public address changed. Home connections do this.
+**Why:** The firewall lets SSH in only from the address in `SSH_SOURCE_CIDRS`. Your public address changed. Home connections and some cloud machines do this.
 
 **Fix:** Run step 1 again with your new address. It updates the firewall and keeps the server. Pass every setting, not only the address.
 
 ```bash
-SSH_KEY=my-key SERVER_TYPE=cax31 VOLUME_GB=1000 WATCHDOG=0 \
+SSH_KEY=my-key SERVER_TYPE="" VOLUME_GB=1000 WATCHDOG=0 \
   SSH_SOURCE_CIDRS="$(curl -4 -s https://ifconfig.me)/32" ./provision.sh
 ```
 
-**Where:** Seen on a mainnet run, on a home connection whose address kept changing. Opening SSH to every address, with key-only login, is the other way out.
+**Where:** Seen on a mainnet run: the machine running the steps kept getting new public IPs. Opening SSH to every address, with key-only login, is the other way out.
 
 ### `$IP` is empty
 

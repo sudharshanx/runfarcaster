@@ -15,7 +15,10 @@ description: The Farcaster and Snapchain words used on this site, one line each.
 | Nonce | A counter per FID, shared by `KEY_ADD` and custody-signed `KEY_REMOVE`. Each one must use a number above `currentUserNonce`. |
 | Message | One signed piece of Farcaster data: a cast, like, recast, follow, profile field, verification, or key change. |
 | Cast | A post. A standard cast holds up to 320 bytes of text. Long casts allow up to 1,024 bytes, and Pro accounts up to 10,000. The RunFarcaster app sends standard casts. |
-| Storage | Space paid for onchain. It sets how many messages of each kind an FID keeps; past that, the oldest go. |
+| Storage rent | Space rented onchain in yearly units. It sets how many messages of each kind an FID keeps; past that, the oldest go. After a unit expires there is a 30-day grace period. |
+| fname | A free offchain username like `@alice`, issued by the Fname Registry as `alice.fcast.id`. Farcaster can reclaim it. |
+| ENS name | An onchain username like `@alice.eth`, registered on Ethereum L1 and controlled by your wallet. |
+| Username proof | A signed record that ties a username to an FID and an owner address. Nodes store them. |
 | Snapchain | The network that puts Farcaster messages in order and stores them, split into shards. |
 | Shard | One part of Snapchain's data. Shard 0 holds network-wide data, including gasless `KEY_ADD` messages. Shards 1 and 2 split the accounts. |
 | Validator | A Snapchain node that makes blocks and votes on them. |

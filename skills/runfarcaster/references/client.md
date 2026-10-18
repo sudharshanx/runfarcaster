@@ -10,7 +10,7 @@ A DNS name of the user's that points at `$IP` can go as the 2nd argument. Withou
 
 Expected last line: `[deploy-client] OK: https://<name> (client) and https://<name>/v1/info (node, proxied)`. Under a minute with a warm npm cache.
 
-The user then opens the address. The status line should start with `Connected. version`.
+The user then opens the address. The status at the top should say **Connected to your node**.
 
 If it fails: ports 80 and 443 must be open (`provision.sh` opens them). Look at:
 
@@ -43,13 +43,13 @@ npm ci --ignore-scripts
 npm run dev
 ```
 
-The user opens http://localhost:5317. The status line should start with `Connected.`
+The user opens http://localhost:5317. The status at the top should say **Connected to your node**.
 
 Then the user, not you:
 
-1. Goes to **Signer (app key)** and picks how long the key lasts: 1, 7, 30 or 90 days.
-2. Types the test account's recovery phrase into that page and presses **Sign one KEY_ADD, then forget the phrase**.
-3. Sees `App key for FID <n>: 0x… (waiting for the node to show it)`, which changes to `(active)`.
+1. Presses **Add app key**. A dialog has 4 steps: About, Before you start, Sign, Done.
+2. On **Sign**, types the test account's recovery phrase into that page, picks **Key expires after** (1, 7, 30 or 90 days) and presses **Add app key**.
+3. Sees **Done**. In **Settings**, the **App key** card shows **Waiting for your node**, then **Active**.
 
 Never ask for the phrase, and never offer to type or paste it for them.
 
@@ -63,16 +63,16 @@ curl -s "http://127.0.0.1:3381/v1/signersByFid?fid=<your-fid>" | jq '.currentUse
 
 ## Cast, follow, like
 
-Post from the local app. Each message shows a state in **Outgoing messages**:
+Post from the local app. Each message shows a state under **Settings**, **Sent**:
 
 | State | Meaning |
 |---|---|
-| `[sending]` | The app is sending it to the node |
-| `[relayed]` | The node accepted it and sent it on |
-| `[retrying]` | Not seen yet, so the app sent it again |
-| `[confirmed]` | The node returns it |
-| `[failed]` | Still missing after 4 sends, or the node rejected it |
+| **Sending** | The app is sending it to the node |
+| **Waiting for a block** | The node accepted it and sent it on |
+| **Retrying** | Not seen yet, so the app sent it again |
+| **Confirmed** | The node returns it |
+| **Failed** | Still missing after 4 sends, or the node rejected it |
 
 The app can only add. It cannot delete a cast, unfollow or unlike.
 
-When done, the user presses **Forget app key**, then stops the tunnel and the dev server with Ctrl-C.
+When done, the user presses **Remove from this browser**, then stops the tunnel and the dev server with Ctrl-C.

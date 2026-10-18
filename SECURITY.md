@@ -33,10 +33,10 @@ In JavaScript a string stays in memory until the garbage collector frees it, and
 | | Keep working after your custody address cancels it |
 
 The app saves it in the page's `localStorage` (`appKey.v1`). Anyone who can use that browser profile can post with it
-until the lifetime runs out or the custody address cancels it. "Forget app key" deletes the local copy only.
+until the lifetime runs out or the custody address cancels it. "Remove from this browser" deletes the local copy only.
 
 `localStorage` belongs to one address and port. The dev server uses port 5317 with `strictPort`, not Vite's default
-5173, so other Vite projects on your computer do not share this storage. Press "Forget app key" when you finish on
+5173, so other Vite projects on your computer do not share this storage. Press "Remove from this browser" when you finish on
 `localhost` anyway.
 
 `client/index.html` gets a Content-Security-Policy `<meta>` from `client/vite.config.ts`. The build gets the same
@@ -49,7 +49,7 @@ address.
 | Item | Where | Notes |
 |---|---|---|
 | Recovery phrase | Nowhere | Used once in memory |
-| App key (private) | Browser `localStorage` | Delete with "Forget app key" |
+| App key (private) | Browser `localStorage` | Delete with "Remove from this browser" |
 | Filters, settings, outgoing messages | Browser `localStorage` | `filters.v1`, `settings.v1`, `pending.v1` |
 | `HCLOUD_TOKEN` | Your shell environment | Scripts never print it (`set +x`) |
 | SSH private key | Your computer | Only the public key is uploaded to Hetzner |

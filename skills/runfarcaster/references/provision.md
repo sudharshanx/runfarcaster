@@ -19,17 +19,17 @@ echo "$MY_IP"
 This creates nothing:
 
 ```bash
-ESTIMATE_ONLY=1 SERVER_TYPE=cax31 VOLUME_GB=1000 ./provision.sh
+ESTIMATE_ONLY=1 SERVER_TYPE="" VOLUME_GB=1000 ./provision.sh
 ```
 
-For cax31 with the 1000 GB volume it is about $0.164 an hour.
+It prints the type it would pick. With cpx42 and the 1000 GB volume it is about $0.255 an hour (cax31: about $0.164). cpx42 has not been tested.
 
 ## Rent the server
 
 Ask first. Then run (add `LOCATION=<location>` if the user picked one):
 
 ```bash
-IP=$(SSH_KEY=<key-name> SERVER_TYPE=cax31 VOLUME_GB=1000 WATCHDOG=0 SSH_SOURCE_CIDRS="$MY_IP/32" ./provision.sh)
+IP=$(SSH_KEY=<key-name> SERVER_TYPE="" VOLUME_GB=1000 WATCHDOG=0 SSH_SOURCE_CIDRS="$MY_IP/32" ./provision.sh)
 ```
 
 Expected: `[provision] cost guard OK`, then `[provision] WATCHDOG=0: no watchdog started`, then a `[provision] done. Next` line on stderr, and the IPv4 address on stdout. It takes under a minute.
@@ -39,7 +39,7 @@ Tell the user: the server keeps running, and Hetzner bills it by the hour, until
 ## Server type and location
 
 - The guide has been tested on `cax31` (ARM64, 8 vCPU, 16 GB RAM) only. Times on other types vary.
-- Hetzner sells out of server types. If the type is sold out, `provision.sh` stops with `server type cax31: not available in fsn1 right now.` and lists the types available there, cheapest first. Show the user that list and ask which `SERVER_TYPE`, and which `LOCATION` if they want another place.
+- `SERVER_TYPE=""` rents the first type for sale in `LOCATION` from cx43, cax31, cpx42 and ccx23 (16 GB RAM or more), logging `skipping …` for sold-out ones. If none is for sale, it stops with `none of [...] is usable in fsn1.` and lists the types available there, cheapest first. A type set by hand that is sold out gives `server type cax31: not available in fsn1 right now.` Show the user the list and ask which `SERVER_TYPE`, and which `LOCATION` if they want another place.
 - Locations: `fsn1`, `nbg1`, `hel1`, `ash`, `hil`, `sin`. A typo gives `unknown LOCATION=…` and the list of valid names.
 
 ## WATCHDOG=0 and the trial option

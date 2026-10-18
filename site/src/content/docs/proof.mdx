@@ -42,7 +42,7 @@ Problems we hit on the way, all on 2026-10-18, IST. Each has a fix on [Fix a pro
 |---|---|
 | 01:20 | cx43 was sold out, so we rented cax31 |
 | 01:23 | The 2000 GB volume went over the new-account limit; we used 1000 GB |
-| 01:35 | SSH was refused because our home address changed |
+| 01:35 | SSH was refused: the machine running the steps kept getting new public IPs, so the firewall no longer matched |
 | 01:44 | The disk was filling during the restore; we installed the two disk helpers by hand |
 | 01:38 to 10:11 | The HTTP API did not answer while the snapshot loaded |
 | 13:39 | `node.sh` stopped waiting at its old 12-hour limit; the node kept syncing |
@@ -106,16 +106,16 @@ Taken by `e2e/real-node.mjs` in headless Chrome against the live node on 2026-10
 | Suite | Result | What it covers |
 |---|---|---|
 | `e2e/real-node.mjs` on the live node | 17 of 17 | Listed below the table |
-| `e2e/run.sh` (the real Caddyfile, a mock node, headless Chrome) | 21 of 21 | The same app and proxy on one machine, including the CSP `<meta>` |
-| Client unit tests (`vitest`) | 34 of 34, 6 files | Messages, signer, feed, filters, retry logic, storage |
+| `e2e/run.sh` (the real Caddyfile, a mock node, headless Chrome) | 60 of 60 | The same app and proxy on one machine, including the CSP `<meta>` |
+| Client unit tests (`vitest`) | 62 of 62, 8 files | Messages, key adding, feed, filters, timeline, retry logic, formatting |
 | `test/node_sh_test.sh` | 42 of 42 | Sync rules, bootstrap under a fake terminal, `.env` answers, the new disk-helper install and re-run |
 | `test/space_saver_test.sh` | 14 of 14 | Chunk and tar clean-up, hole punching, waiting for the snapshot folder |
 | `test/watchdog_test.sh` | 16 of 16 | Progress check during a sync, a stuck node, SSH loss, money cap, macOS without `timeout`, a missing token written to the log |
 | `test/teardown_test.sh` | 7 of 7 | Running twice, missing token, wrong confirmation |
-| `test/provision_test.sh` | 10 of 10 | `SSH_SOURCE_CIDRS` check, the watchdog start (with a stand-in watchdog), no second watchdog, a loud stop when it cannot start |
+| `test/provision_test.sh` | 19 of 19 | `SSH_SOURCE_CIDRS` check, the watchdog start (with a stand-in watchdog), no second watchdog, a loud stop when it cannot start, sold-out types and the `SERVER_TYPE=""` auto-pick (with a fake `hcloud`) |
 | `shellcheck` | No warnings | Every shell script |
 
-We ran the suites again on 2026-10-18 at 18:05 IST, with the watchdog start, the CIDR check, the dev port and the CSP `<meta>` in place. `e2e/real-node.mjs` ran during the live run and again at 18:07 IST, after we redeployed the current app.
+We ran the shell suites, shellcheck, the client unit tests and `e2e/run.sh` again on 2026-10-18 at about 20:45 IST, on commit `b53f450`. The client is still changing, so these counts will move. `e2e/real-node.mjs` ran during the live run and again at 18:07 IST, against the app as it was then.
 
 What `e2e/real-node.mjs` checked:
 

@@ -20,12 +20,12 @@ Task: step 1, rent the server on Hetzner Cloud.
 1. Check: hcloud version, jq --version, ssh -V, curl --version, and that HCLOUD_TOKEN is set without printing it: [ -n "$HCLOUD_TOKEN" ] && echo set. Run hcloud ssh-key list and ask me which key name to use.
 2. Find my public IP: MY_IP=$(curl -4 -s https://ifconfig.me) and show it with echo "$MY_IP". If it is empty, stop.
 3. Show the price, creating nothing:
-   ESTIMATE_ONLY=1 SERVER_TYPE=cax31 VOLUME_GB=1000 ./provision.sh
-   If it says "not available in fsn1 right now", show me the types it lists and ask me which SERVER_TYPE (and LOCATION, if I want another place) to use. The guide has been tested on cax31 only.
+   ESTIMATE_ONLY=1 SERVER_TYPE="" VOLUME_GB=1000 ./provision.sh
+   Tell me which server type it picked and the price. If it says "none of [...] is usable", show me the types it lists and ask me which SERVER_TYPE (and LOCATION, if I want another place) to use. The guide has been tested on cax31 only; cpx42, the likely pick, has not been tested.
 4. When I say yes, run (add LOCATION=<location> if I picked one):
-   IP=$(SSH_KEY=<key-name> SERVER_TYPE=cax31 VOLUME_GB=1000 WATCHDOG=0 SSH_SOURCE_CIDRS="$MY_IP/32" ./provision.sh)
+   IP=$(SSH_KEY=<key-name> SERVER_TYPE="" VOLUME_GB=1000 WATCHDOG=0 SSH_SOURCE_CIDRS="$MY_IP/32" ./provision.sh)
 Expected: "[provision] cost guard OK", then "[provision] WATCHDOG=0: no watchdog started", then a "[provision] done. Next" line on stderr, and the IPv4 address on stdout. It takes under a minute.
-Known errors: "volumes size limit exceeded (resource_limit_exceeded)" means the account's volume limit (1024 GB for new accounts); keep VOLUME_GB=1000. "not available in <location> right now" means Hetzner has sold out of that type there; the error lists what is available. "unknown LOCATION" lists the valid names.
+Known errors: "volumes size limit exceeded (resource_limit_exceeded)" means the account's volume limit (1024 GB for new accounts); keep VOLUME_GB=1000. "not available in <location> right now" or "none of [...] is usable" means Hetzner has sold out of those types there; the error lists what is available. "unknown LOCATION" lists the valid names.
 Tell me: the server keeps running, and Hetzner bills it by the hour, until I delete it with teardown.sh.
 If I say I only want to try it: run step 1 without WATCHDOG=0 and with MAX_USD=5 EXPECTED_HOURS=16. Then provision.sh starts watchdog.sh, which deletes everything after 24 h, when the bill would pass MAX_USD, or after 2 h without progress. To keep the node after all: touch .provision-state/watchdog.disarm. Its log: .provision-state/watchdog.log.
 
@@ -51,7 +51,7 @@ Task: step 3, put the web app in front of the node.
 Needs Node.js 22.12+ (22.x), 24.x or 26+ on my computer.
 Run: ./deploy-client.sh "$IP"   (a DNS name of mine that points at $IP can go as the 2nd argument; without it the script uses <ip-with-dashes>.sslip.io)
 Expected last line: "[deploy-client] OK: https://<name> (client) and https://<name>/v1/info (node, proxied)". Under a minute with a warm npm cache.
-Then I open the address. The status line should start with "Connected. version".
+Then I open the address. The status at the top should say "Connected to your node".
 If I started the watchdog in step 1, remind me that it deletes the node 24 h after step 1. To keep it: touch .provision-state/watchdog.disarm.
 If it fails: ports 80 and 443 must be open (provision.sh opens them). Look at: ssh root@$IP 'cd /opt/snapchain-client && docker compose logs caddy'. For a specific SSH key: SSH_OPTS="-i <keyfile>" ./deploy-client.sh "$IP".
 
@@ -83,9 +83,9 @@ Goal: take me from an empty Hetzner Cloud project to a synced Snapchain read nod
 
 Before step 1. Check the tools: hcloud version, jq --version, ssh -V, curl --version, node --version (22.12+ on 22.x, 24.x or 26+), npm --version. Check that HCLOUD_TOKEN is set without printing it. Ask me for my SSH key name (hcloud ssh-key list). Get my public IP with MY_IP=$(curl -4 -s https://ifconfig.me) and check it with echo "$MY_IP".
 Keeping it: step 1 uses WATCHDOG=0, so the server runs until I delete it. Ask me before step 1 whether I only want to try it. If so, leave out WATCHDOG=0 and add MAX_USD=5 EXPECTED_HOURS=16: provision.sh then starts watchdog.sh, which deletes everything after 24 h, when the bill would pass MAX_USD, or after 2 h without progress (touch .provision-state/watchdog.disarm stops it).
-Step 1. ESTIMATE_ONLY=1 SERVER_TYPE=cax31 VOLUME_GB=1000 ./provision.sh   -> show me the price (about 0.164 USD an hour for cax31 with the 1000 GB volume).
+Step 1. ESTIMATE_ONLY=1 SERVER_TYPE="" VOLUME_GB=1000 ./provision.sh   -> show me the type it picked and the price (about 0.255 USD an hour for cpx42 with the 1000 GB volume; cpx42 is untested).
         If it says the type is not available, show me the types it lists and ask me which SERVER_TYPE and LOCATION to use.
-        Then: IP=$(SSH_KEY=<key> SERVER_TYPE=cax31 VOLUME_GB=1000 WATCHDOG=0 SSH_SOURCE_CIDRS="$MY_IP/32" ./provision.sh)
+        Then: IP=$(SSH_KEY=<key> SERVER_TYPE="" VOLUME_GB=1000 WATCHDOG=0 SSH_SOURCE_CIDRS="$MY_IP/32" ./provision.sh)
 Step 2. ssh root@$IP "SNAPCHAIN_AGREE_NO_REWARDS=yes MIN_FREE_GB=900 bash -s" < node.sh
         On cax31 this takes about 14 h. To report progress: ssh root@$IP 'curl -s 127.0.0.1:3381/v1/info' | jq '.shardInfos[] | {shardId, blockDelay}'
 Step 3. ./deploy-client.sh "$IP"  -> give me the https address it prints.

@@ -26,7 +26,7 @@ Never paste a recovery phrase into an AI assistant or a chat.
 
 Your recovery phrase can do anything with your account. The address `deploy-client.sh` prints is usually `<ip-with-dashes>.sslip.io`. sslip.io is a DNS service someone else runs. Whoever controls that DNS, or the server, could serve a changed page that sends your phrase elsewhere. A page served from `localhost` comes from files on your own disk, built from code you can read.
 
-So for adding the key, run the app locally and reach the node through an SSH tunnel. Port 3381 stays closed to the internet. The app shows an **Address check** warning whenever it is not on `localhost`.
+So for adding the key, run the app locally and reach the node through an SSH tunnel. Port 3381 stays closed to the internet. The add-key steps show a **Check the address** warning whenever the app is not on `localhost`.
 
 ## What the app does with your recovery phrase
 
@@ -39,7 +39,7 @@ The code is in <RepoLink path="client/src/signer.ts" />:
 1. Your browser makes a new ed25519 app key.
 2. The browser uses the phrase once to sign one gasless `KEY_ADD` with your custody address. There is no transaction and no gas.
 3. Nothing stores, logs or sends the phrase. Only the signed `KEY_ADD` goes to your node.
-4. The app key is saved in this browser's `localStorage`. **Forget app key** deletes it there; the key stays valid on the network until it expires.
+4. The app key is saved in this browser's `localStorage`. **Remove from this browser** deletes it there; the key stays valid on the network until it expires.
 
 JavaScript cannot promise that the browser has wiped the phrase from memory. That is one more reason to use your own computer and a test account.
 
@@ -75,7 +75,7 @@ npm run dev
 
 `npm ci` installs the exact versions in `package-lock.json`. `--ignore-scripts` stops packages from running their own install scripts; the app builds and its tests pass without them.
 
-Open http://localhost:5317. The status line should start with `Connected.`
+Open http://localhost:5317. The status at the top should say **Connected to your node**; **Details** shows the version and how far behind each shard is.
 
 The app uses port 5317, not Vite's usual 5173. A browser keeps one `localStorage` per address and port, and other Vite projects use 5173. If 5317 is taken, `npm run dev` stops with an error instead of moving to another port.
 
@@ -83,10 +83,12 @@ The page carries a Content-Security-Policy: it can only connect to its own addre
 
 ## 2. Add an app key
 
-1. Go to **Signer (app key)**. Pick how long the key lasts: 1, 7, 30 or 90 days. The default is 7.
-2. Type the test account's recovery phrase (12 to 24 words). If you paste it instead, clear your clipboard afterwards: clipboard history and sync tools can keep a copy, and the app cannot clear it. Press **Sign one KEY_ADD, then forget the phrase**.
+Press **Add app key**. A dialog walks you through 4 steps: **About**, **Before you start**, **Sign** and **Done**.
+
+1. **About** and **Before you start** explain what an app key can do and what happens to the phrase. Press **I understand, continue**.
+2. On **Sign**, type the test account's recovery phrase (12 to 24 words). If you paste it instead, clear your clipboard afterwards: clipboard history and sync tools can keep a copy, and the app cannot clear it. Under **Key expires after**, pick 1, 7, 30 or 90 days. The default is 7. Press **Add app key**.
 3. The app empties the phrase field. From the phrase it works out your custody address, asks the node which FID that address owns, and reads `currentUserNonce`. Then it signs one gasless `KEY_ADD` and submits it.
-4. You see `App key for FID <n>: 0x… (waiting for the node to show it)`. That changes to `(active)` when `GET /v1/signer` returns the key.
+4. **Done** says the node accepted the key. In **Settings**, the **App key** card shows **Waiting for your node**, then **Active** when `GET /v1/signer` returns the key.
 
 Check it from the terminal:
 
@@ -102,19 +104,19 @@ The app key is saved in the browser for `localhost:5317` only. The copy of the a
 
 | Action | Where | Message type |
 |---|---|---|
-| Cast | Type in **Post**, press **Cast** (a standard cast, up to 320 bytes) | `CAST_ADD` |
-| Follow | Type an FID in **FID to follow**, press **Follow** | `LINK_ADD` (type `follow`) |
-| Like, recast | Buttons under each cast in **Feed** | `REACTION_ADD` |
+| Cast | Type in the box at the top of the feed, press **Post** (a standard cast, up to 320 bytes) | `CAST_ADD` |
+| Follow | In **Settings**, **Follow someone**: type an FID in **FID to follow**, press **Follow** | `LINK_ADD` (type `follow`) |
+| Like, recast | The heart and repeat buttons under each cast | `REACTION_ADD` |
 
-Each one shows up in **Outgoing messages** with a state:
+Each one shows up under **Settings**, **Sent** with a state:
 
 | State | Meaning |
 |---|---|
-| `[sending]` | The app is sending it to your node |
-| `[relayed]` | The node accepted it and sent it on |
-| `[retrying]` | Not seen yet, so the app sent it again |
-| `[confirmed]` | The node returns it |
-| `[failed]` | Still missing after 4 sends, or the node rejected it |
+| **Sending** | The app is sending it to your node |
+| **Waiting for a block** | The node accepted it and sent it on |
+| **Retrying** | Not seen yet, so the app sent it again |
+| **Confirmed** | The node returns it |
+| **Failed** | Still missing after 4 sends, or the node rejected it |
 
 A failed message shows the reason and a **Retry** button. [Your node passes messages on](../how-farcaster-works/#your-node-passes-messages-on) explains these states.
 
@@ -133,8 +135,8 @@ curl -s "http://127.0.0.1:3381/v1/castsByFid?fid=<your-fid>&pageSize=1&reverse=t
 
 ## Remove the key
 
-- **Forget app key** deletes the key from this browser. The network still accepts it until it expires.
+- **Remove from this browser** (Settings, App key) deletes the key from this browser. The network still accepts it until it expires.
 - A key you stop using expires when its lifetime runs out.
 - To cancel it now, send a `KEY_REMOVE` from your custody wallet, or use the app you manage keys with. The RunFarcaster app cannot do this.
 
-When you are done on `localhost`, press **Forget app key**, so no other page on `localhost:5317` can read the key later. Then stop the tunnel and the dev server with Ctrl-C.
+When you are done on `localhost`, press **Remove from this browser**, so no other page on `localhost:5317` can read the key later. Then stop the tunnel and the dev server with Ctrl-C.

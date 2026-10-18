@@ -11,6 +11,9 @@ const site = process.env.SITE_URL ?? "https://sudharshanx.github.io";
 const base = process.env.BASE_PATH ?? "/runfarcaster/";
 // The repo URL lives in src/config.mjs (REPO_URL env). CI sets it from the GitHub repository.
 const repo = REPO;
+// Social preview (public/og.png, 1200x630), on every docs page and the landing page.
+const OG_IMAGE = new URL(`${base.replace(/\/?$/, "/")}og.png`, site).href;
+const OG_ALT = "RunFarcaster: Run your own Farcaster node in 3 simple steps. 01 Rent a server, 02 Start the node, 03 Open the app.";
 
 export default defineConfig({
   site,
@@ -30,6 +33,14 @@ export default defineConfig({
       description:
         "Run your own Farcaster node in 3 simple steps: a Snapchain read node and a web app on Hetzner. Measured time and cost, what we tested, and how it works.",
       editLink: { baseUrl: `${repo}/edit/main/site/` },
+      head: [
+        { tag: "meta", attrs: { property: "og:image", content: OG_IMAGE } },
+        { tag: "meta", attrs: { property: "og:image:width", content: "1200" } },
+        { tag: "meta", attrs: { property: "og:image:height", content: "630" } },
+        { tag: "meta", attrs: { property: "og:image:alt", content: OG_ALT } },
+        { tag: "meta", attrs: { name: "twitter:image", content: OG_IMAGE } },
+        { tag: "meta", attrs: { name: "twitter:image:alt", content: OG_ALT } },
+      ],
       // Self-hosted fonts (no font CDN), the same as the landing page in src/pages/index.astro.
       customCss: ["@fontsource-variable/dm-sans", "@fontsource/ibm-plex-mono/400.css", "./src/styles/custom.css"],
       // Light only (white page, dark text). Starlight's dark default and theme picker are replaced.

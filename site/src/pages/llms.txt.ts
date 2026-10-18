@@ -8,7 +8,7 @@ export const GET: APIRoute = async ({ site }) => {
   const list = home + "\n" + (await pages()).map((e) => `- [${e.data.title}](${base}${e.id === "index" ? "" : `${e.id}/`}): ${e.data.description ?? ""}`).join("\n");
   const body = `# Run your own Farcaster node in 3 simple steps
 
-> Rent a Hetzner server. Start a Snapchain read node on it with the official bootstrap. Open a small web app served from the same server over HTTPS. You need no API keys. On a Hetzner cax31 with a 1000 GB volume, expect about 14 hours from renting the server to synced, about $2.31 at $0.164 an hour, and a database of about 560 GB. Writes (gasless KEY_ADD, casts) have not been tried on mainnet.
+> Rent a Hetzner server. Start a Snapchain read node on it with the official bootstrap. Open a small web app served from the same server over HTTPS. You need no API keys. On a Hetzner cax31 with a 1000 GB volume, expect about 14 hours from renting the server to synced, about $2.31 at $0.164 an hour, and a database of about 560 GB. cax31 was sold out on 2026-10-18; with SERVER_TYPE="" the script rents the first 16 GB type for sale, likely cpx42 (about $0.255 an hour with the volume, untested). Writes (gasless KEY_ADD, casts) have not been tried on mainnet.
 
 Key facts:
 - An app key is added with a KEY_ADD message that the custody address signs (EIP-712). It needs no transaction on OP Mainnet. Mainnet has accepted it since engine version V16 on 2026-05-07 (https://snapchain.farcaster.xyz/guides/writing-messages; snapchain src/version/version.rs).
@@ -19,7 +19,7 @@ Key facts:
 The 3 steps (from the repo folder on your computer):
 \`\`\`bash
 MY_IP=$(curl -4 -s https://ifconfig.me)
-IP=$(SSH_KEY=my-key SERVER_TYPE=cax31 VOLUME_GB=1000 WATCHDOG=0 SSH_SOURCE_CIDRS="$MY_IP/32" ./provision.sh)
+IP=$(SSH_KEY=my-key SERVER_TYPE="" VOLUME_GB=1000 WATCHDOG=0 SSH_SOURCE_CIDRS="$MY_IP/32" ./provision.sh)
 ssh root@$IP "SNAPCHAIN_AGREE_NO_REWARDS=yes MIN_FREE_GB=900 bash -s" < node.sh
 ./deploy-client.sh "$IP"
 # when done:
@@ -27,7 +27,7 @@ CONFIRM=snapchain-read-node ./teardown.sh
 \`\`\`
 In a new terminal: IP=$(hcloud server ip snapchain-read-node)
 WATCHDOG=0 keeps the server until you delete it. For a trial run, leave it out and add MAX_USD=5 EXPECTED_HOURS=16: watchdog.sh then deletes everything after 24 h.
-If a server type is sold out, provision.sh says so and lists the types available in LOCATION; set SERVER_TYPE and/or LOCATION.
+SERVER_TYPE="" picks the first type for sale from cx43, cax31, cpx42, ccx23. If none is for sale, provision.sh lists the types available in LOCATION; set SERVER_TYPE and/or LOCATION.
 
 Repo (MIT): ${REPO}
 Full text: ${base}llms-full.txt

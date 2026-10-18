@@ -26,8 +26,8 @@ for (const m of skill.matchAll(/\]\(references\/([^)#]+)/g)) if (!refs.includes(
 const prompts = readFileSync(join(root, "site/src/prompts.ts"), "utf8");
 const all = [skill, ...refs.map((r) => read(`references/${r}`))].join("\n");
 const shared = [
-  'SSH_KEY=<key-name> SERVER_TYPE=cax31 VOLUME_GB=1000 WATCHDOG=0 SSH_SOURCE_CIDRS="$MY_IP/32" ./provision.sh',
-  "ESTIMATE_ONLY=1 SERVER_TYPE=cax31 VOLUME_GB=1000 ./provision.sh",
+  'SSH_KEY=<key-name> SERVER_TYPE="" VOLUME_GB=1000 WATCHDOG=0 SSH_SOURCE_CIDRS="$MY_IP/32" ./provision.sh',
+  'ESTIMATE_ONLY=1 SERVER_TYPE="" VOLUME_GB=1000 ./provision.sh',
   'ssh root@$IP "SNAPCHAIN_AGREE_NO_REWARDS=yes MIN_FREE_GB=900 bash -s" < node.sh',
   "ssh root@$IP 'bash -s wait' < node.sh",
   "ssh root@$IP 'curl -s 127.0.0.1:3381/v1/info' | jq '.shardInfos[] | {shardId, blockDelay}'",

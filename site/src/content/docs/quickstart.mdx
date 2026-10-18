@@ -26,12 +26,12 @@ read -rsp 'Hetzner token: ' HCLOUD_TOKEN && export HCLOUD_TOKEN && echo
 
 ## 1. Rent a server
 
-Replace `my-key` with your SSH key's name.
+Replace `my-key` with your SSH key's name. `SERVER_TYPE=""` lets the script pick the server type for you.
 
 ```bash title="your computer"
 MY_IP=$(curl -4 -s https://ifconfig.me)
 IP=$(SSH_KEY=my-key \
-  SERVER_TYPE=cax31 \
+  SERVER_TYPE="" \
   VOLUME_GB=1000 \
   WATCHDOG=0 \
   SSH_SOURCE_CIDRS="$MY_IP/32" \
@@ -39,18 +39,20 @@ IP=$(SSH_KEY=my-key \
 echo "$IP"
 ```
 
-**You will see** `[provision] done. Next …`, then the server's IP address. **Time:** under a minute.
+**You will see** `[provision] server type …` with the type it picked, then `[provision] done. Next …` and the server's IP address. **Time:** under a minute.
 
-Hetzner bills the server by the hour until you delete it: about $0.164 an hour for cax31 with the 1000 GB volume, or about $102 a month. What step 1 does: [Server and node](../server-and-node/#what-step-1-does).
+Hetzner bills the server by the hour until you delete it. The tested type, cax31, was sold out on 18 Oct 2026, so expect cpx42 (x86, 16 GB RAM): about $0.255 an hour with the 1000 GB volume, or about $159 a month. **cpx42 has not been tested.** What step 1 does: [Server and node](../server-and-node/#what-step-1-does).
 
 :::tip[Lost `$IP`?]
 `$IP` only lives in the terminal where you set it. In a new terminal, run `IP=$(hcloud server ip snapchain-read-node)`.
 :::
 
 <details>
-<summary>The server type is sold out</summary>
+<summary>How the server type is picked</summary>
 
-Server types sell out. If step 1 stops with `not available in fsn1 right now`, the error lists the types with at least 16 GB of RAM that you can rent there, cheapest first. Run step 1 again with one of them in `SERVER_TYPE`, or with another place in `LOCATION` (fsn1, nbg1, hel1, ash, hil or sin). The guide has been tested on cax31 only; times on other types vary.
+With `SERVER_TYPE=""`, `provision.sh` tries cx43, cax31, cpx42 and ccx23 in that order and rents the first one for sale in `LOCATION` with at least 16 GB of RAM. It logs `skipping …` for each sold-out type. If none is for sale, it stops with `none of [...] is usable`, lists the types you can rent there, and creates nothing. Run step 1 again with one of them in `SERVER_TYPE`, or with another place in `LOCATION` (fsn1, nbg1, hel1, ash, hil or sin).
+
+To see the pick and the price first, without creating anything: `ESTIMATE_ONLY=1 SERVER_TYPE="" VOLUME_GB=1000 ./provision.sh`. The guide has been tested on cax31 only; times on other types vary.
 
 </details>
 
@@ -61,7 +63,7 @@ Leave out `WATCHDOG=0` and set a price limit and the hours you expect to use:
 
 ```bash title="your computer"
 IP=$(SSH_KEY=my-key \
-  SERVER_TYPE=cax31 \
+  SERVER_TYPE="" \
   VOLUME_GB=1000 \
   MAX_USD=5 \
   EXPECTED_HOURS=16 \
@@ -102,7 +104,7 @@ ssh root@$IP \
   < node.sh
 ```
 
-**You will see** `[node.sh] Node is in sync.`, then a health check with `sync: SYNCED`. **Time:** on a server with 8 cores and 16 GB of RAM (Hetzner cax31), expect loading the snapshot to take about 8 to 9 hours and catching up about 5 more. A faster disk or network shortens both. What step 2 does: [Server and node](../server-and-node/#what-step-2-does).
+**You will see** `[node.sh] Node is in sync.`, then a health check with `sync: SYNCED`. **Time:** on a server with 8 cores and 16 GB of RAM (Hetzner cax31), expect loading the snapshot to take about 8 to 9 hours and catching up about 5 more. A faster disk or network shortens both. Times on cpx42 and other types have not been measured. What step 2 does: [Server and node](../server-and-node/#what-step-2-does).
 
 Right after step 1, SSH can refuse the connection for a minute while the server boots. Wait and run it again. On the first connection SSH asks you to confirm the server's fingerprint; type `yes`.
 
@@ -134,7 +136,7 @@ Synced means every shard shows a `blockDelay` in single digits ([Getting Started
 ./deploy-client.sh "$IP"
 ```
 
-**You will see** `[deploy-client] OK: https://<name> (client) …`. Open that address: the status line starts with `Connected.` **Time:** under a minute with a warm npm cache. The first build takes longer.
+**You will see** `[deploy-client] OK: https://<name> (client) …`. Open that address: the status at the top says **Connected to your node**. **Time:** under a minute with a warm npm cache. The first build takes longer.
 
 To post, add an app key first: see [Post with an app key](../first-cast/). What step 3 does: [Server and node](../server-and-node/#what-step-3-does).
 

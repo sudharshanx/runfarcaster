@@ -39,8 +39,8 @@ Then the 3 steps:
 MY_IP=$(curl -4 -s https://ifconfig.me)
 echo "$MY_IP"                       # must print your address
 
-# 1. Rent a server: cax31 (ARM64, 16 GB RAM), a 1000 GB volume and a firewall. Prints the IP. Under a minute.
-IP=$(SSH_KEY=my-key SERVER_TYPE=cax31 VOLUME_GB=1000 WATCHDOG=0 \
+# 1. Rent a server: the first 16 GB type for sale, a 1000 GB volume and a firewall. Prints the IP. Under a minute.
+IP=$(SSH_KEY=my-key SERVER_TYPE="" VOLUME_GB=1000 WATCHDOG=0 \
   SSH_SOURCE_CIDRS="$MY_IP/32" ./provision.sh)
 
 # 2. Start the node: Docker, disk helpers (disk < 1500 GB), the official bootstrap, then wait up to 24 h for sync.
@@ -54,8 +54,9 @@ In a new terminal, get the IP back with `IP=$(hcloud server ip snapchain-read-no
 
 `WATCHDOG=0` keeps the server until you delete it. If you only want to try it, leave it out and add
 `MAX_USD=5 EXPECTED_HOURS=16`: `provision.sh` then starts `watchdog.sh`, which deletes everything
-after 24 hours. Server types sell out: if `cax31` is not available, `provision.sh` lists the types available in
-`LOCATION`, cheapest first. Set `SERVER_TYPE` and/or `LOCATION` (fsn1, nbg1, hel1, ash, hil, sin) and run it again.
+after 24 hours. `SERVER_TYPE=""` makes `provision.sh` rent the first type for sale in `LOCATION` from cx43, cax31,
+cpx42 and ccx23 (16 GB RAM or more). If none is for sale, it lists what is and creates nothing. Set `SERVER_TYPE`
+and/or `LOCATION` (fsn1, nbg1, hel1, ash, hil, sin) and run it again.
 
 When you no longer need the node, delete the server, the volume and the firewall. Safe to run twice:
 
@@ -73,9 +74,10 @@ Notes:
 - If SSH drops during step 2, the node keeps going. Wait again with `ssh root@$IP 'bash -s wait' < node.sh`.
 - `SNAPCHAIN_AGREE_NO_REWARDS=yes` answers the official bootstrap's question: a read node earns no rewards.
   Read it first: https://snapchain.farcaster.xyz/getting-started
-- `ESTIMATE_ONLY=1 SERVER_TYPE=cax31 VOLUME_GB=1000 ./provision.sh` shows the price and creates nothing.
-- On 2026-10-18 at 18:48 IST, Hetzner listed cx43 and cax31 as sold out in fsn1, nbg1 and hel1. cax31 is ARM64 and
-  every image has an ARM64 build. The guide has been tested on cax31 only; times on other types vary.
+- `ESTIMATE_ONLY=1 SERVER_TYPE="" VOLUME_GB=1000 ./provision.sh` shows the price and creates nothing.
+- On 2026-10-18 at 18:48 IST, Hetzner listed cx43 and cax31 as sold out in fsn1, nbg1 and hel1, so the pick is likely
+  cpx42 (x86, 16 GB RAM): about $0.255 an hour with the volume, about $159 a month. **cpx42 has not been tested.**
+  The guide has been tested on cax31 (ARM64) only; times on other types vary.
 - Ports 3381 (HTTP API) and 3383 (gRPC) are closed to the internet. The app reaches the node through Caddy.
   Set `NODE_API_CIDRS` in `provision.sh` to open them to chosen addresses.
 - Optional: without `WATCHDOG=0`, `provision.sh` starts `watchdog.sh` in the background before it creates anything (output in
@@ -88,6 +90,8 @@ Notes:
 
 ## The recovery phrase and app keys
 
+> **Only paste a seed phrase into software from developers you trust. Delegated signers are preferred wherever possible.**
+>
 > Use a test account. Only type a recovery phrase into code you have read, on your own computer. Never paste
 > it into an AI assistant or a chat. If an app you trust can give you an app key, use that instead.
 
@@ -100,7 +104,7 @@ cd client && npm ci --ignore-scripts && npm run dev   # terminal 2: open http://
 
 Port 5317 is fixed (`strictPort`), so the app's `localStorage` is not shared with other Vite projects on 5173.
 The page has a Content-Security-Policy that only lets it connect to its own address. Type the phrase, or clear
-the clipboard after pasting it. Press "Forget app key" when you are done.
+the clipboard after pasting it. Press "Remove from this browser" when you are done.
 
 A page on `localhost` comes from files on your disk. A page on `<ip>.sslip.io` depends on a DNS service someone
 else runs, so the app warns before you type a phrase there.
@@ -115,7 +119,7 @@ What the app does with the phrase (`client/src/signer.ts`):
    (snapchain `src/version/version.rs`). Guide: https://snapchain.farcaster.xyz/guides/writing-messages.
 4. Drops the phrase. Nothing stores, logs or sends it; only the signed `KEY_ADD` goes to the node. JavaScript
    cannot promise the browser wiped it from memory.
-5. Saves the app key in that page's `localStorage`. "Forget app key" deletes it there. The network accepts the key
+5. Saves the app key in that page's `localStorage`. "Remove from this browser" deletes it there. The network accepts the key
    until it expires or your custody address cancels it.
 
 ## How a read node handles your messages
@@ -126,7 +130,7 @@ and in the code `submit_message_internal` (`src/network/server.rs`) and `ReadNod
 
 So HTTP 200 means "sent on", not "in a block". The app shows each cast, like or follow at once, then asks the node
 for it by hash every 4 seconds. If it has not appeared 30 seconds after the last send, the app sends the
-identical message again. After 4 sends it marks it **failed**, and you can retry or dismiss it.
+identical message again. After 4 sends it marks it **Failed**, and you can retry or dismiss it.
 
 ## Why the app and the node share one address
 
