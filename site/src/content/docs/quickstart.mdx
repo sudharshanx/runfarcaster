@@ -13,30 +13,27 @@ You rent a Linux server at Hetzner, run a Snapchain read node on it, and open a 
 - An SSH key uploaded to Hetzner. `hcloud ssh-key list` shows its name.
 - A computer with bash, `hcloud`, `jq`, `ssh`, `curl` and Node.js 22.12 or later (22.x, 24.x or 26+).
 
-Get the code, then set the token. The prompt hides what you type.
+Get the code, set the token, then set the server options. The token prompt hides what you type. Replace `my-key` with your SSH key's name.
 
 ```bash title="your computer"
 git clone {{REPO_URL}}
 cd runfarcaster
 read -rsp 'Hetzner token: ' HCLOUD_TOKEN && export HCLOUD_TOKEN && echo
+MY_IP=$(curl -4 -s https://ifconfig.me) && echo "$MY_IP"
+export SSH_KEY=my-key SERVER_TYPE="" VOLUME_GB=1000 WATCHDOG=0 SSH_SOURCE_CIDRS="$MY_IP/32"
 ```
+
+`SERVER_TYPE=""` lets the script pick the server type. `WATCHDOG=0` keeps the server until you delete it. `SSH_SOURCE_CIDRS` lets only your address reach SSH. These settings last for this terminal only; in a new terminal, run the last 3 lines again.
 :::
 
 {/* AUTHOR: one sentence on how long the hands-on part took you, and what you did while the node synced. */}
 
 ## 1. Rent a server
 
-Replace `my-key` with your SSH key's name. `SERVER_TYPE=""` lets the script pick the server type for you.
+This uses the settings from **Before you start**.
 
 ```bash title="your computer"
-MY_IP=$(curl -4 -s https://ifconfig.me)
-IP=$(SSH_KEY=my-key \
-  SERVER_TYPE="" \
-  VOLUME_GB=1000 \
-  WATCHDOG=0 \
-  SSH_SOURCE_CIDRS="$MY_IP/32" \
-  ./provision.sh)
-echo "$IP"
+IP=$(./provision.sh) && echo "$IP"
 ```
 
 **You will see** `[provision] server type …` with the type it picked, then `[provision] done. Next …` and the server's IP address. **Time:** under a minute.
@@ -59,16 +56,10 @@ To see the pick and the price first, without creating anything: `ESTIMATE_ONLY=1
 <details id="try-it">
 <summary>Only trying it? Let the server delete itself</summary>
 
-Leave out `WATCHDOG=0` and set a price limit and the hours you expect to use:
+Turn the watchdog on and set a price limit and the hours you expect to use:
 
 ```bash title="your computer"
-IP=$(SSH_KEY=my-key \
-  SERVER_TYPE="" \
-  VOLUME_GB=1000 \
-  MAX_USD=5 \
-  EXPECTED_HOURS=16 \
-  SSH_SOURCE_CIDRS="$MY_IP/32" \
-  ./provision.sh)
+IP=$(WATCHDOG=1 MAX_USD=5 EXPECTED_HOURS=16 ./provision.sh) && echo "$IP"
 ```
 
 provision.sh then starts `watchdog.sh` in the background on your computer, before it creates anything. The watchdog deletes the server, the volume and the firewall at the first of these:
@@ -89,7 +80,7 @@ To keep the node after all, stop the watchdog without deleting anything: `touch 
 <details>
 <summary>A 2 TB volume instead</summary>
 
-Leave out `VOLUME_GB=1000`. This needs a Hetzner volume limit above 2000 GB, and the guide has not been tested with it. The price list puts it at about $0.29 an hour.
+Run step 1 as `IP=$(VOLUME_GB=2000 ./provision.sh)`. This needs a Hetzner volume limit above 2000 GB, and the guide has not been tested with it. The price list puts it at about $0.29 an hour.
 
 </details>
 
