@@ -78,6 +78,16 @@ for (const vp of [{ width: 360, height: 740, isMobile: true, hasTouch: true }, {
   }));
   check(`no horizontal overflow at ${vp.width}px`, m.sw <= m.cw, `scrollWidth=${m.sw} clientWidth=${m.cw}`);
   if (vp.hasTouch) check("touch targets >= 44px on mobile", m.minBtn >= 44, `min button height=${m.minBtn}`);
+  check(`secondary panels start collapsed at ${vp.width}px`, await p.evaluate(() => [...document.querySelectorAll("details.panel")].every((d) => !d.open)));
+  if (vp.hasTouch) {
+    const before = await p.evaluate(() => ({ tabbar: getComputedStyle(document.querySelector(".tabbar")).display !== "none", side: !!document.getElementById("side")?.offsetParent }));
+    await p.click("#tab-settings");
+    const after = await p.evaluate(() => ({ side: !!document.getElementById("side")?.offsetParent, feed: !!document.getElementById("feed")?.offsetParent,
+      tabs: Math.min(...[...document.querySelectorAll(".tabbar button")].map((b) => b.getBoundingClientRect().height)) }));
+    check("mobile tab bar: Settings swaps the feed for the side panels", before.tabbar && !before.side && after.side && !after.feed && after.tabs >= 44, JSON.stringify({ before, after }));
+  } else {
+    check("no tab bar on desktop; side column visible", await p.evaluate(() => getComputedStyle(document.querySelector(".tabbar")).display === "none" && !!document.getElementById("side")?.offsetParent));
+  }
   await ctx.close();
 }
 await browser.close();

@@ -36,3 +36,18 @@ export function linkLabel(raw: string, maxPath = 24): { href: string; label: str
   const path = u.pathname === "/" ? "" : u.pathname;
   return { href: u.href, label: path.length <= maxPath ? host + path : `${host}/…` };
 }
+
+export type EmbedKind = "image" | "video" | "link";
+const IMAGE_HOSTS = ["imagedelivery.net", "i.imgur.com"];
+const VIDEO_HOSTS = ["stream.warpcast.com", "stream.farcaster.xyz"];
+/** Guess what a link points at from its file extension or a few well-known media hosts. Nothing is fetched. */
+export function embedKind(raw: string): EmbedKind {
+  let u: URL;
+  try { u = new URL(raw); } catch { return "link"; }
+  const host = u.hostname.replace(/^www\./, "");
+  if (/\.(png|jpe?g|gif|webp|avif)$/i.test(u.pathname) || IMAGE_HOSTS.includes(host)) return "image";
+  if (/\.(mp4|webm|mov|m3u8)$/i.test(u.pathname) || VIDEO_HOSTS.includes(host)) return "video";
+  return "link";
+}
+/** Host without "www.", for chip labels. */
+export const hostOf = (raw: string) => { try { return new URL(raw).hostname.replace(/^www\./, ""); } catch { return ""; } };

@@ -64,3 +64,15 @@ describe("embeds", () => {
     expect(linkLabel(`https://imagedelivery.net/${"x".repeat(40)}/original`)!.label).toBe("imagedelivery.net/…");
   });
 });
+
+describe("embedKind", () => {
+  it("spots images by extension or known image host", async () => {
+    const { embedKind, hostOf } = await import("../src/format");
+    expect(embedKind("https://imagedelivery.net/abc/def/original")).toBe("image");
+    expect(embedKind("https://example.com/cat.JPG")).toBe("image");
+    expect(embedKind("https://stream.warpcast.com/v1/video/x.m3u8")).toBe("video");
+    expect(embedKind("https://example.com/post")).toBe("link");
+    expect(embedKind("nonsense")).toBe("link");
+    expect(hostOf("https://www.example.com/a")).toBe("example.com");
+  });
+});

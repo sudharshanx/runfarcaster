@@ -15,7 +15,8 @@ import { NodeApi } from "./api";
 import { forgetAppKey, generateAppKey, loadAppKey, privateKeyBytes, saveAppKey, toStored, type StoredAppKey } from "./appkey";
 import { fcTimeToDate, loadFeed, loadProfiles, mergeFeed, type FeedCast, type Profile } from "./feed";
 import { addToList, hiddenReason, loadFilters, removeFromList, saveFilters, type Filters } from "./filters";
-import { bytesLeft, linkLabel, nodeHealth, sentence, timeAgo } from "./format";
+import { bytesLeft, embedKind, hostOf, linkLabel, nodeHealth, sentence, timeAgo } from "./format";
+import { icon, type IconName } from "./icons";
 import { buildCast, buildFollow, buildReaction, signerFromPrivateKey } from "./messages";
 import { Reconciler, type PendingItem } from "./pending";
 import { DEFAULT_TTL_SECONDS, buildKeyAdd, isKeyActive } from "./signer";
@@ -93,7 +94,8 @@ app.append(
     )),
   h("main", { class: "wrap layout" },
     h("section", { id: "compose-box", class: "card compose" }),
-    attr(h("aside", { class: "side" },
+    attr(h("aside", { class: "side", id: "side" },
+      h("h1", { class: "side-title", id: "side-title", tabIndex: -1 }, "Settings"),
       h("section", { id: "appkey-card", class: "card" }),
       h("div", { class: "side-group" },
       panel("follow-panel", "Follow someone",
@@ -101,7 +103,7 @@ app.append(
         h("div", { class: "row" }, h("input", { id: "follow-fid", inputMode: "numeric", autocomplete: "off" }), h("button", { id: "follow", class: "btn btn-secondary" }, "Follow"))),
       panel("filters-panel", "Filters", h("div", { id: "filters" })),
       panel("pending-panel", "Sent", h("div", { id: "pending" })),
-      panel("settings-panel", "Settings",
+      panel("settings-panel", "Node connection",
         lab("node-url", "Node API URL"),
         h("div", { class: "row" },
           attr(h("input", { id: "node-url", placeholder: "Empty: this site (recommended)", value: settings.nodeUrl, autocomplete: "off", spellcheck: false }), { "aria-describedby": "node-url-hint" }),
@@ -124,6 +126,10 @@ app.append(
       h("div", { id: "feed", class: "feed-list" }),
     ),
   ),
+  attr(h("nav", { class: "tabbar" },
+    attr(h("button", { id: "tab-feed", class: "tab" }, icon("house", 22), h("span", {}, "Feed")), { "data-view": "feed" }),
+    h("button", { id: "tab-post", class: "tab" }, icon("pen", 22), h("span", {}, "Post")),
+    attr(h("button", { id: "tab-settings", class: "tab" }, icon("settings", 22), h("span", {}, "Settings")), { "data-view": "settings" })), { "aria-label": "Sections" }),
   h("dialog", { id: "add-key-dialog", class: "sheet" }),
   attr(h("div", { id: "action-msg", class: "toast", role: "status", hidden: true }), { "aria-live": "polite" }),
 );
@@ -157,7 +163,13 @@ $("save-node").addEventListener("click", () => {
 function renderSigner() {
   const card = $("appkey-card");
   card.replaceChildren();
-  card.hidden = !appKey;
+  card.classList.toggle("only-mobile", !appKey);
+  if (!appKey) {
+    card.append(h("div", { class: "card-head" }, h("h2", {}, "App key")),
+      h("p", { class: "hint" }, "No app key in this browser yet. You need one to post."),
+      h("button", { id: "open-add-key-side", class: "btn btn-secondary btn-block" }, "Add app key"));
+    $("open-add-key-side").addEventListener("click", openAddKey);
+  }
   if (appKey) {
     const active = appKey.status === "active";
     card.append(
@@ -390,6 +402,21 @@ function renderFilters() {
 
 // ---------- feed
 function initials(name: string) { return (name.replace(/^@/, "").trim()[0] ?? "?").toUpperCase(); }
+function embedChip(e: NonNullable<FeedCast["embeds"]>[number]) {
+  if (e.castFid !== undefined) return h("span", { class: "embed" }, icon("quote", 15), `Quotes a cast by FID ${e.castFid}`);
+  // http(s) only; nothing is loaded from the link (img-src stays 'self' data:).
+  const l = linkLabel(e.url ?? "");
+  if (!l) return null;
+  const kind = embedKind(l.href);
+  const a = h("a", { class: `embed embed-${kind}`, href: l.href, target: "_blank", rel: "noopener noreferrer" });
+  if (kind === "link") a.append(icon("link", 15), h("span", { class: "embed-label" }, l.label));
+  else a.append(icon(kind, 15), h("span", { class: "embed-kind" }, kind === "image" ? "Image" : "Video"), h("span", { class: "embed-host" }, hostOf(l.href)));
+  a.append(h("span", { class: "sr-only" }, " (opens in a new tab)"));
+  return a;
+}
+function actionBtn(name: IconName, label: string, onclick: () => void, cls = "") {
+  return attr(h("button", { class: `act ${cls}`.trim(), onclick, title: label }, icon(name)), { "aria-label": label });
+}
 function castCard(c: FeedCast) {
   const p = profiles.get(c.fid) ?? {};
   const name = p.displayName ?? p.username ?? `FID ${c.fid}`;
@@ -398,23 +425,19 @@ function castCard(c: FeedCast) {
     attr(h("div", { class: "avatar" }, initials(name)), { "aria-hidden": "true", "data-hue": String(c.fid % 6) }),
     h("div", { class: "cast-body" },
       h("div", { class: "cast-head" },
-        h("span", { class: "cast-name" }, name),
-        p.username ? h("span", { class: "cast-handle" }, `@${p.username}`) : null,
-        p.displayName || p.username ? h("span", { class: "cast-fid" }, `FID ${c.fid}`) : null,
-        h("span", { class: "cast-sep" }, "·"),
-        attr(h("time", { dateTime: date.toISOString(), title: date.toLocaleString() }, c.pending ? "now" : timeAgo(date)), {})),
+        h("span", { class: "cast-who" },
+          h("span", { class: "cast-name" }, name),
+          p.username ? h("span", { class: "cast-handle" }, `@${p.username}`) : null,
+          p.displayName || p.username ? h("span", { class: "cast-fid" }, `FID ${c.fid}`) : null),
+        h("time", { dateTime: date.toISOString(), title: date.toLocaleString() }, c.pending ? "now" : timeAgo(date))),
       c.text ? h("p", { class: "cast-text" }, c.text) : null,
-      c.embeds?.length ? h("div", { class: "embeds" }, ...c.embeds.map((e) => {
-        if (e.castFid !== undefined) return h("span", { class: "embed" }, `Quotes a cast by FID ${e.castFid}`);
-        const l = linkLabel(e.url ?? "");
-        return l ? h("a", { class: "embed", href: l.href, target: "_blank", rel: "noopener noreferrer" }, l.label) : null;
-      })) : null,
+      c.embeds?.length ? h("div", { class: "embeds" }, ...c.embeds.map(embedChip)) : null,
       c.pending
         ? attr(h("span", { class: `badge status-${c.pending.status}` }, STATUS_LABEL[c.pending.status]), { "data-status": c.pending.status })
         : h("div", { class: "cast-actions" },
-          attr(h("button", { class: "btn btn-ghost btn-sm", onclick: () => void react("like", c) }, "Like"), { "aria-label": `Like cast by ${name}` }),
-          attr(h("button", { class: "btn btn-ghost btn-sm", onclick: () => void react("recast", c) }, "Recast"), { "aria-label": `Recast cast by ${name}` }),
-          attr(h("button", { class: "btn btn-ghost btn-sm", onclick: () => { filters = addToList(filters, "mutedFids", String(c.fid)) as Filters; saveFilters(kv, filters); renderFilters(); renderFeed(); say(`Muted FID ${c.fid}. Undo under Filters.`); } }, "Mute"), { "aria-label": `Mute FID ${c.fid}` })),
+          actionBtn("heart", `Like cast by ${name}`, () => void react("like", c), "act-like"),
+          actionBtn("repeat", `Recast cast by ${name}`, () => void react("recast", c), "act-recast"),
+          actionBtn("mute", `Mute FID ${c.fid}`, () => { filters = addToList(filters, "mutedFids", String(c.fid)) as Filters; saveFilters(kv, filters); renderFilters(); renderFeed(); say(`Muted FID ${c.fid}. Undo under Filters.`); }, "act-mute")),
     )), { "data-fid": String(c.fid) });
   return card;
 }
@@ -465,8 +488,27 @@ $("refresh").addEventListener("click", () => void refreshFeed());
 $("apply-feed").addEventListener("click", () => void refreshFeed());
 for (const id of ["viewer-fid", "watch-fids"]) $(id).addEventListener("keydown", (ev) => { if ((ev as KeyboardEvent).key === "Enter") void refreshFeed(); });
 
-// Side panels start open on wide screens and closed on phones, where the feed comes first.
-if (window.matchMedia("(min-width: 960px)").matches) for (const id of ["filters-panel", "pending-panel"]) ($(id) as HTMLDetailsElement).open = true;
+// ---------- mobile tab bar (hidden on wide screens, where the side column is always shown)
+type View = "feed" | "settings";
+function setView(v: View) {
+  document.body.dataset.view = v;
+  for (const t of document.querySelectorAll<HTMLButtonElement>(".tabbar [data-view]")) {
+    if (t.dataset.view === v) t.setAttribute("aria-current", "page"); else t.removeAttribute("aria-current");
+  }
+}
+$("tab-feed").addEventListener("click", () => {
+  const already = document.body.dataset.view === "feed";
+  setView("feed");
+  if (already) window.scrollTo({ top: 0 });
+  else ($("feed-title") as HTMLElement).scrollIntoView({ block: "start" });
+});
+$("tab-post").addEventListener("click", () => {
+  setView("feed");
+  window.scrollTo({ top: 0 });
+  (document.getElementById("compose") ?? $("open-add-key")).focus();
+});
+$("tab-settings").addEventListener("click", () => { setView("settings"); window.scrollTo({ top: 0 }); ($("side-title") as HTMLElement).focus({ preventScroll: true }); });
+setView("feed");
 
 // ---------- boot
 renderSigner(); renderFilters(); renderPending();
