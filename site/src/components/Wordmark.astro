@@ -4,13 +4,11 @@ interface Props { href: string; class?: string }
 const { href, class: cls } = Astro.props;
 ---
 <a href={href} class:list={["wordmark", cls]}>
-  <span class="wordmark-mark" aria-hidden="true">3</span>
-  <span class="wordmark-text">Farcaster node<span class="wordmark-long"> in 3 simple steps</span></span>
+  <span class="wordmark-mark" aria-hidden="true">R</span>
+  <span class="wordmark-text">RunFarcaster</span>
 </a>
 <style>
   a.wordmark { display: inline-flex; align-items: center; gap: 10px; color: #15191f; text-decoration: none; font-family: "DM Sans Variable", "DM Sans", ui-sans-serif, system-ui, sans-serif; font-size: 16px; font-weight: 650; letter-spacing: -0.3px; white-space: nowrap; min-height: 44px; }
   .wordmark-mark { display: inline-grid; place-items: center; width: 24px; height: 24px; border-radius: 6px; background: #15191f; color: #fff; font-size: 14px; font-weight: 700; letter-spacing: 0; line-height: 1; }
-  .wordmark-long { font-weight: 450; color: #62676f; }
   a.wordmark:focus-visible { outline: 2px solid #244af0; outline-offset: 4px; border-radius: 4px; }
-  @media (max-width: 520px) { .wordmark-long { display: none; } }
 </style>

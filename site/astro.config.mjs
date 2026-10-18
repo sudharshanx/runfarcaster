@@ -20,7 +20,7 @@ export default defineConfig({
   markdown: { remarkPlugins: [remarkRepoUrl], rehypePlugins: [rehypeTableScroll] },
   integrations: [
     starlight({
-      title: "Farcaster node in 3 simple steps",
+      title: "RunFarcaster",
       description:
         "Run your own Farcaster node in 3 simple steps: a Snapchain read node and a web app on Hetzner. Measured time and cost, what we tested, and how it works.",
       editLink: { baseUrl: `${repo}/edit/main/site/` },

@@ -184,3 +184,4 @@ body.lp { margin: 0; background: #fff; color: var(--text); font-family: var(--sa
   .term-step, .term-foot { padding-inline: 16px; }
   .terminal pre { font-size: 12.5px; }
 }
+@media (max-width: 640px) { .hero-note { display: block; max-width: 300px; margin-inline: auto !important; } .hero-note svg { display: inline; vertical-align: -2px; margin-right: 6px; } }
