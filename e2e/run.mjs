@@ -29,9 +29,20 @@ check("node status via same-origin /v1/info proxy", true);
 await page.evaluate(() => document.fonts.ready);
 check("self-hosted fonts load under the CSP", await page.evaluate(() => document.fonts.check('16px "DM Sans Variable"') && [...document.fonts].some((f) => f.family.includes("DM Sans") && f.status === "loaded")));
 
+// --- first run: no FID yet, so the feed asks for one and offers the sample feed
+const csp = resp.headers()["content-security-policy"] ?? "";
+check("img-src is a host allowlist, never the whole https: scheme", /img-src 'self' data: https:\/\/imagedelivery\.net/.test(csp) && !/https:(\s|;|$)/.test(csp));
+await step(() => page.waitForSelector("#first-run", { timeout: 10000 }));
+check("first-run prompt asks for the reader's FID", (await page.textContent("#first-run"))?.includes("Enter your FID to see your feed"));
+await page.click("#try-sample");
+await step(() => page.waitForFunction(() => !document.getElementById("sample-note").hidden && !(document.getElementById("feed-meta")?.textContent ?? "").startsWith("Loading"), null, { timeout: 10000 }));
+const sampleReads = readFileSync(LOG, "utf8").trim().split("\n").map((l) => JSON.parse(l)).filter((r) => r.path === "/v1/castsByFid").map((r) => new URLSearchParams(r.query).get("fid"));
+check("Try a sample feed reads casts of the curated accounts (incl. balajis, FID 37)", ["37", "3", "5650", "2", "1"].every((f) => sampleReads.includes(f)), `fids=${[...new Set(sampleReads)].join(",")}`);
+
 // --- signer flow: the empty state offers "Add app key", which opens the panel
 check("post box shows the add-app-key empty state", (await page.textContent("#compose-box"))?.includes("To post, add an app key first."));
 await page.click("#open-add-key");
+check("opening the panel adds a stricter CSP meta: img-src 'self' data:", await page.evaluate(() => [...document.querySelectorAll('meta[http-equiv="Content-Security-Policy"]')].some((m) => m.getAttribute("content") === "img-src 'self' data:")));
 check("add-app-key panel open as a modal dialog", await page.evaluate(() => document.getElementById("add-key-dialog")?.matches(":modal")));
 await page.fill("#seed", PHRASE);
 await page.click("#cancel-add-key");

@@ -40,8 +40,8 @@ const ud = (type: string, value: string, timestamp: number) => ({ data: { type: 
 
 describe("profiles", () => {
   it("takes the newest display name and username", () => {
-    const p = profileFromUserData([ud("USER_DATA_TYPE_DISPLAY", "Old", 1), ud("USER_DATA_TYPE_DISPLAY", "Dan", 2), ud("USER_DATA_TYPE_USERNAME", "dwr", 1), ud("USER_DATA_TYPE_BIO", "x", 3)]);
-    expect(p).toEqual({ displayName: "Dan", username: "dwr" });
+    const p = profileFromUserData([ud("USER_DATA_TYPE_DISPLAY", "Old", 1), ud("USER_DATA_TYPE_DISPLAY", "Dan", 2), ud("USER_DATA_TYPE_USERNAME", "dwr", 1), ud("USER_DATA_TYPE_BIO", "x", 3), ud("USER_DATA_TYPE_PFP", "https://imagedelivery.net/x", 1)]);
+    expect(p).toEqual({ displayName: "Dan", username: "dwr", pfp: "https://imagedelivery.net/x" });
   });
   it("gives an empty profile when the lookup fails", async () => {
     const api = { userDataByFid: async (fid: number) => { if (fid === 2) throw new Error("down"); return { messages: [ud("USER_DATA_TYPE_USERNAME", "dwr", 1)] }; } };
@@ -74,5 +74,50 @@ describe("embedKind", () => {
     expect(embedKind("https://example.com/post")).toBe("link");
     expect(embedKind("nonsense")).toBe("link");
     expect(hostOf("https://www.example.com/a")).toBe("example.com");
+  });
+});
+
+describe("remote images", () => {
+  it("allows only https URLs on the listed hosts", async () => {
+    const { allowedImageUrl } = await import("../src/images");
+    expect(allowedImageUrl("https://imagedelivery.net/a/b/original")).toBe("https://imagedelivery.net/a/b/original");
+    expect(allowedImageUrl("http://imagedelivery.net/a")).toBeNull();
+    expect(allowedImageUrl("https://imagedelivery.net.evil.example/a")).toBeNull();
+    expect(allowedImageUrl("https://evil.example/?u=https://imagedelivery.net/")).toBeNull();
+    expect(allowedImageUrl("https://user:pw@i.imgur.com/a.png")).toBeNull();
+    expect(allowedImageUrl("https://i.imgur.com:8443/a.png")).toBeNull();
+    expect(allowedImageUrl("javascript:alert(1)")).toBeNull();
+    expect(allowedImageUrl(undefined)).toBeNull();
+  });
+  it("uses the same img-src in the Vite CSP and in deploy/Caddyfile", async () => {
+    const { IMG_SRC } = await import("../src/images");
+    const { readFileSync } = await import("node:fs");
+    const caddy = readFileSync(new URL("../../deploy/Caddyfile", import.meta.url), "utf8");
+    expect(caddy).toContain(`${IMG_SRC};`);
+    expect(IMG_SRC).not.toMatch(/https:(\s|;|$)/); // never the whole https: scheme
+  });
+  it("lockImages adds a stricter CSP meta tag once", async () => {
+    const { lockImages, imagesLocked } = await import("../src/images");
+    const added: Array<{ httpEquiv: string; content: string }> = [];
+    const doc = { createElement: () => ({ httpEquiv: "", content: "" }), head: { append: (m: { httpEquiv: string; content: string }) => added.push(m) } } as unknown as Document;
+    lockImages(doc); lockImages(doc);
+    expect(imagesLocked()).toBe(true);
+    expect(added).toEqual([{ httpEquiv: "Content-Security-Policy", content: "img-src 'self' data:" }]);
+  });
+});
+
+describe("sample feed", () => {
+  it("reads a few recent casts from each sample account and nothing else", async () => {
+    const { SAMPLE_ACCOUNTS, loadSampleFeed } = await import("../src/feed");
+    expect(SAMPLE_ACCOUNTS.find((a) => a.fname === "balajis")?.fid).toBe(37);
+    const calls: Array<[number, number]> = [];
+    const api = {
+      linksByFid: async () => { throw new Error("not used"); },
+      castsByFid: async (fid: number, n?: number) => { calls.push([fid, n ?? 0]); return { messages: [{ data: { type: "MESSAGE_TYPE_CAST_ADD", fid, timestamp: fid, network: "x", castAddBody: { text: `c${fid}` } }, hash: `0x${fid}` }] }; },
+    };
+    const feed = await loadSampleFeed(api);
+    expect(calls.map((c) => c[0]).sort((a, b) => a - b)).toEqual(SAMPLE_ACCOUNTS.map((a) => a.fid).sort((a, b) => a - b));
+    expect(calls.every((c) => c[1] === 5)).toBe(true);
+    expect(feed[0]!.fid).toBe(Math.max(...SAMPLE_ACCOUNTS.map((a) => a.fid))); // newest first
   });
 });

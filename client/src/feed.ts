@@ -63,7 +63,7 @@ export async function loadFeed(api: Pick<NodeApi, "linksByFid" | "castsByFid">, 
   return pages.flat().map(toFeedCast).filter((c): c is FeedCast => c !== null).sort((a, b) => b.timestamp - a.timestamp);
 }
 
-export interface Profile { displayName?: string; username?: string }
+export interface Profile { displayName?: string; username?: string; pfp?: string }
 
 /** Latest display name and username from GET /v1/userDataByFid (newest message per type wins). */
 export function profileFromUserData(messages: MessageJson[]): Profile {
@@ -79,6 +79,8 @@ export function profileFromUserData(messages: MessageJson[]): Profile {
   const username = latest.get("USER_DATA_TYPE_USERNAME")?.value.trim();
   if (display) p.displayName = display;
   if (username) p.username = username;
+  const pfp = latest.get("USER_DATA_TYPE_PFP")?.value.trim();
+  if (pfp) p.pfp = pfp;
   return p;
 }
 
@@ -90,3 +92,24 @@ export async function loadProfiles(api: Pick<NodeApi, "userDataByFid">, fids: nu
   });
   return out;
 }
+
+/**
+ * "Try a sample feed": a fixed list of well-known accounts. Each FID was checked on 2026-10-18
+ * against our own node with GET /v1/userNameProofByName?name=<fname> (the fname's current owner).
+ */
+export const SAMPLE_ACCOUNTS: ReadonlyArray<{ fname: string; fid: number }> = [
+  { fname: "balajis", fid: 37 },
+  { fname: "dwr", fid: 3 },
+  { fname: "vitalik.eth", fid: 5650 }, // ENS name proof
+  { fname: "v", fid: 2 },
+  { fname: "jessepollak", fid: 99 },
+  { fname: "linda", fid: 12 },
+  { fname: "ted", fid: 239 },
+  { fname: "cassie", fid: 1325 },
+  { fname: "horsefacts", fid: 3621 },
+  { fname: "farcaster", fid: 1 },
+];
+
+/** Recent casts of the sample accounts (a few each), merged newest first. */
+export const loadSampleFeed = (api: Pick<NodeApi, "linksByFid" | "castsByFid">, perFid = 5) =>
+  loadFeed(api, null, SAMPLE_ACCOUNTS.map((a) => a.fid), SAMPLE_ACCOUNTS.length, perFid);

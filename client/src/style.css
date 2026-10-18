@@ -129,7 +129,7 @@ input:focus-visible, textarea:focus-visible, select:focus-visible { outline: 2px
 .empty .hint { max-width: 32rem; }
 
 /* Feed */
-.feed-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 12px; margin: 8px 0 12px; }
+.feed-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 8px 0 12px; }
 .feed-head h1 { font-size: 22px; font-weight: 600; letter-spacing: -0.6px; line-height: 1.2; }
 .feed-head h1:focus { outline: none; }
 #feed-options { margin-bottom: 12px; }
@@ -244,3 +244,23 @@ a.embed:hover { border-color: #b9bec7; background: #fff; }
 .host { white-space: nowrap; font-weight: 600; }
 .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 @media (min-width: 960px) { .only-mobile { display: none; } }
+
+/* Profile pictures sit on top of the letter avatar, which shows if the image is missing or fails. */
+.avatar { position: relative; overflow: hidden; flex: none; }
+.avatar-img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; border-radius: 50%; background: var(--card); }
+/* Image-post thumbnail: fixed frame so nothing jumps while it loads. */
+.thumb { display: block; width: 100%; max-width: 480px; aspect-ratio: 16 / 10; border: 1px solid var(--line); border-radius: 12px; overflow: hidden; background: var(--card); }
+.thumb-img { display: block; width: 100%; height: 100%; object-fit: cover; }
+.thumb:hover { border-color: #b9bec7; }
+.embeds:has(.thumb) { display: grid; }
+
+/* First run */
+.first-run { display: grid; gap: 6px; padding: 24px 20px; }
+.first-run .row .btn { flex: 0 0 auto; }
+.first-or { display: flex; align-items: center; gap: 12px; color: var(--muted); font-size: 13px; margin: 10px 0 4px; }
+.first-or::before, .first-or::after { content: ""; flex: 1; height: 1px; background: var(--line); }
+.first-run > .btn-secondary { justify-self: start; }
+.feed-list > .first-run { border: 0; border-radius: 0; }
+@media (min-width: 640px) { .feed-list > .first-run { padding: 28px 28px; } }
+.sample-note { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 12px; margin: 0 0 12px; font-size: 14px; }
+.sample-note p { flex: 1 1 16rem; }

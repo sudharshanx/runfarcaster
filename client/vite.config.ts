@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: MIT
 import { defineConfig, type Plugin } from "vitest/config";
+import { IMG_SRC } from "./src/images";
 
 // In development the browser talks to the Vite dev server only; /v1/* is proxied to the node.
 // This mirrors production (Caddy serves the app and proxies /v1/* on the same origin), so the
@@ -16,10 +17,11 @@ export const DEV_PORT = 5317;
 // Content-Security-Policy as a <meta> tag. The production build gets the same policy as the Caddy
 // header (minus frame-ancestors, which a meta tag cannot set). The dev server needs inline styles
 // (Vite injects CSS from JS) and its HMR WebSocket.
+// img-src: see src/images.ts (a short list of HTTPS image hosts for profile pictures).
 const PROD_CSP =
-  "default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' data:; font-src 'self'; connect-src 'self'; base-uri 'none'; form-action 'none'";
+  `default-src 'none'; script-src 'self'; style-src 'self'; ${IMG_SRC}; font-src 'self'; connect-src 'self'; base-uri 'none'; form-action 'none'`;
 const DEV_CSP =
-  `default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; ` +
+  `default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; ${IMG_SRC}; font-src 'self'; ` +
   `connect-src 'self' ws://localhost:${DEV_PORT} ws://127.0.0.1:${DEV_PORT}; base-uri 'none'; form-action 'none'`;
 
 function cspMeta(): Plugin {

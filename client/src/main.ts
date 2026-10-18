@@ -13,7 +13,8 @@ import "@fontsource/ibm-plex-mono/400.css";
 import { getFarcasterTime } from "@farcaster/core";
 import { NodeApi } from "./api";
 import { forgetAppKey, generateAppKey, loadAppKey, privateKeyBytes, saveAppKey, toStored, type StoredAppKey } from "./appkey";
-import { fcTimeToDate, loadFeed, loadProfiles, mergeFeed, type FeedCast, type Profile } from "./feed";
+import { SAMPLE_ACCOUNTS, fcTimeToDate, loadFeed, loadProfiles, loadSampleFeed, mergeFeed, type FeedCast, type Profile } from "./feed";
+import { allowedImageUrl, imagesLocked, lockImages } from "./images";
 import { addToList, hiddenReason, loadFilters, removeFromList, saveFilters, type Filters } from "./filters";
 import { bytesLeft, embedKind, hostOf, linkLabel, nodeHealth, sentence, timeAgo } from "./format";
 import { icon, type IconName } from "./icons";
@@ -24,8 +25,8 @@ import { browserKV, readJSON, writeJSON } from "./storage";
 
 const kv = browserKV();
 const SETTINGS_KEY = "settings.v1";
-interface Settings { nodeUrl: string; viewerFid: number | null; watchFids: number[] }
-const settings: Settings = { nodeUrl: (import.meta.env.VITE_NODE_URL as string | undefined) ?? "", viewerFid: null, watchFids: [1], ...readJSON<Partial<Settings>>(kv, SETTINGS_KEY, {}) };
+interface Settings { nodeUrl: string; viewerFid: number | null; watchFids: number[]; sample?: boolean }
+const settings: Settings = { nodeUrl: (import.meta.env.VITE_NODE_URL as string | undefined) ?? "", viewerFid: null, watchFids: [], ...readJSON<Partial<Settings>>(kv, SETTINGS_KEY, {}) };
 const api = new NodeApi(settings.nodeUrl);
 let filters: Filters = loadFilters(kv);
 let appKey: StoredAppKey | null = loadAppKey(kv);
@@ -123,6 +124,9 @@ app.append(
           attr(h("input", { id: "watch-fids", autocomplete: "off", value: settings.watchFids.join(", ") }), { "aria-describedby": "watch-fids-hint" }),
           hint("watch-fids-hint", "Separate FIDs with commas."),
           h("button", { id: "apply-feed", class: "btn btn-secondary" }, "Update feed"))),
+      h("div", { id: "sample-note", class: "notice sample-note", hidden: true },
+        h("p", {}, h("strong", {}, "Sample feed. "), SAMPLE_ACCOUNTS.map((a) => a.fname).join(", "), "."),
+        h("button", { id: "leave-sample", class: "btn btn-secondary btn-sm" }, "Use my FID instead")),
       h("div", { id: "feed", class: "feed-list" }),
     ),
   ),
@@ -247,6 +251,8 @@ function openAddKey() {
   $("add-key").addEventListener("click", onAddKey);
   $("cancel-add-key").addEventListener("click", () => dlg.close());
   $("close-add-key").addEventListener("click", () => dlg.close());
+  // No image request may leave the page while a recovery phrase can be in it (see src/images.ts).
+  lockImages();
   dlg.showModal();
   seed.focus();
 }
@@ -277,7 +283,7 @@ async function onAddKey() {
     appKey = toStored(res.plan.fid, privateKey);
     saveAppKey(kv, appKey);
     if (!settings.viewerFid) {
-      settings.viewerFid = res.plan.fid; writeJSON(kv, SETTINGS_KEY, settings);
+      settings.viewerFid = res.plan.fid; settings.sample = false; writeJSON(kv, SETTINGS_KEY, settings);
       ($("viewer-fid") as HTMLInputElement).value = String(res.plan.fid);
     }
     ($("add-key-dialog") as HTMLDialogElement).close();
@@ -402,12 +408,31 @@ function renderFilters() {
 
 // ---------- feed
 function initials(name: string) { return (name.replace(/^@/, "").trim()[0] ?? "?").toUpperCase(); }
-function embedChip(e: NonNullable<FeedCast["embeds"]>[number]) {
+/** A remote image (allowed hosts only, see src/images.ts); calls onFail and removes itself if it can't load. */
+function remoteImg(url: string, cls: string, size: { width: number; height: number }, onFail: (img: HTMLImageElement) => void) {
+  const img = h("img", { className: cls, src: url, alt: "", loading: "lazy", decoding: "async", referrerPolicy: "no-referrer", width: size.width, height: size.height });
+  img.addEventListener("error", () => onFail(img), { once: true });
+  return img;
+}
+function avatar(fid: number, name: string, pfp: string | undefined) {
+  const box = attr(h("div", { class: "avatar" }, initials(name)), { "aria-hidden": "true", "data-hue": String(fid % 6) });
+  const url = imagesLocked() ? null : allowedImageUrl(pfp);
+  if (url) box.append(remoteImg(url, "avatar-img", { width: 44, height: 44 }, (img) => img.remove()));
+  return box;
+}
+function embedChip(e: NonNullable<FeedCast["embeds"]>[number], allowThumb = true): HTMLElement | null {
   if (e.castFid !== undefined) return h("span", { class: "embed" }, icon("quote", 15), `Quotes a cast by FID ${e.castFid}`);
-  // http(s) only; nothing is loaded from the link (img-src stays 'self' data:).
+  // http(s) links only. Only images on the allowed hosts are shown inline (src/images.ts).
   const l = linkLabel(e.url ?? "");
   if (!l) return null;
   const kind = embedKind(l.href);
+  const thumbUrl = allowThumb && kind === "image" && !imagesLocked() ? allowedImageUrl(l.href) : null;
+  if (thumbUrl) {
+    // Thumbnail in a fixed-size frame (no layout shift); falls back to the chip if it can't load.
+    const t = h("a", { class: "thumb", href: l.href, target: "_blank", rel: "noopener noreferrer" }, h("span", { class: "sr-only" }, `Image on ${hostOf(l.href)} (opens in a new tab)`));
+    t.prepend(remoteImg(thumbUrl, "thumb-img", { width: 480, height: 300 }, () => t.replaceWith(embedChip(e, false) ?? "")));
+    return t;
+  }
   const a = h("a", { class: `embed embed-${kind}`, href: l.href, target: "_blank", rel: "noopener noreferrer" });
   if (kind === "link") a.append(icon("link", 15), h("span", { class: "embed-label" }, l.label));
   else a.append(icon(kind, 15), h("span", { class: "embed-kind" }, kind === "image" ? "Image" : "Video"), h("span", { class: "embed-host" }, hostOf(l.href)));
@@ -422,7 +447,7 @@ function castCard(c: FeedCast) {
   const name = p.displayName ?? p.username ?? `FID ${c.fid}`;
   const date = fcTimeToDate(c.timestamp);
   const card = attr(h("article", { class: "cast" },
-    attr(h("div", { class: "avatar" }, initials(name)), { "aria-hidden": "true", "data-hue": String(c.fid % 6) }),
+    avatar(c.fid, name, p.pfp),
     h("div", { class: "cast-body" },
       h("div", { class: "cast-head" },
         h("span", { class: "cast-who" },
@@ -431,7 +456,7 @@ function castCard(c: FeedCast) {
           p.displayName || p.username ? h("span", { class: "cast-fid" }, `FID ${c.fid}`) : null),
         h("time", { dateTime: date.toISOString(), title: date.toLocaleString() }, c.pending ? "now" : timeAgo(date))),
       c.text ? h("p", { class: "cast-text" }, c.text) : null,
-      c.embeds?.length ? h("div", { class: "embeds" }, ...c.embeds.map(embedChip)) : null,
+      c.embeds?.length ? h("div", { class: "embeds" }, ...c.embeds.map((e) => embedChip(e))) : null,
       c.pending
         ? attr(h("span", { class: `badge status-${c.pending.status}` }, STATUS_LABEL[c.pending.status]), { "data-status": c.pending.status })
         : h("div", { class: "cast-actions" },
@@ -451,6 +476,10 @@ function renderFeed() {
   if (!loading) setText("feed-meta", `${shown.length} ${shown.length === 1 ? "cast" : "casts"}${hidden ? `, ${hidden} hidden by filters` : ""}`);
   const box = $("feed");
   box.replaceChildren();
+  $("sample-note").hidden = !settings.sample;
+  // First run without an app key: the FID prompt is the only thing to do, so the post box waits.
+  $("compose-box").hidden = isFirstRun() && !appKey;
+  if (isFirstRun()) { setText("feed-meta", ""); box.append(firstRun()); return; }
   if (shown.length === 0 && !loading) {
     box.append(h("div", { class: "card empty" },
       h("p", { class: "empty-title" }, hidden ? "Your filters hide every cast." : "No casts to show yet."),
@@ -460,6 +489,38 @@ function renderFeed() {
   for (const c of shown.slice(0, 100)) box.append(castCard(c));
 }
 
+// ---------- first run and sample feed
+const SAMPLE_NAMES = `Posts from ${SAMPLE_ACCOUNTS.slice(0, 3).map((a) => a.fname).join(", ")} and others.`;
+const isFirstRun = () => !settings.viewerFid && settings.watchFids.length === 0 && !settings.sample;
+function firstRun() {
+  const input = attr(h("input", { id: "first-fid", inputMode: "numeric", autocomplete: "off" }), { "aria-describedby": "first-fid-hint" });
+  const show = h("button", { id: "first-show", class: "btn" }, "Show my feed");
+  const go = () => {
+    const v = input.value.trim();
+    if (!/^\d+$/.test(v) || Number(v) <= 0) { say("Enter your FID as a number, for example 3."); input.focus(); return; }
+    ($("viewer-fid") as HTMLInputElement).value = v;
+    settings.sample = false;
+    void refreshFeed();
+  };
+  show.addEventListener("click", go);
+  input.addEventListener("keydown", (ev) => { if (ev.key === "Enter") go(); });
+  const sample = h("button", { id: "try-sample", class: "btn btn-secondary" }, "Try a sample feed");
+  sample.addEventListener("click", () => { settings.sample = true; void refreshFeed(); });
+  return h("div", { class: "card first-run", id: "first-run" },
+    h("h2", { class: "empty-title" }, "Enter your FID to see your feed"),
+    hint("first-fid-hint", "Your FID is the number of your Farcaster account. The feed shows your casts and casts from people you follow."),
+    h("label", { htmlFor: "first-fid", class: "lbl" }, "Your FID"),
+    h("div", { class: "row" }, input, show),
+    h("div", { class: "first-or" }, h("span", {}, "or")),
+    sample,
+    h("p", { class: "hint", id: "sample-names" }, SAMPLE_NAMES));
+}
+$("leave-sample").addEventListener("click", () => {
+  settings.sample = false; writeJSON(kv, SETTINGS_KEY, settings);
+  feed = []; renderFeed();
+  document.getElementById("first-fid")?.focus();
+});
+
 // Only the newest refresh may set the feed: the boot load (default FIDs) can finish after a
 // refresh the user started, and must not overwrite it.
 let feedGen = 0;
@@ -467,14 +528,16 @@ async function refreshFeed() {
   const v = ($("viewer-fid") as HTMLInputElement).value.trim();
   settings.viewerFid = /^\d+$/.test(v) ? Number(v) : null;
   settings.watchFids = ($("watch-fids") as HTMLInputElement).value.split(",").map((s) => Number(s.trim())).filter((n) => Number.isSafeInteger(n) && n > 0);
+  if (settings.viewerFid || settings.watchFids.length) settings.sample = false;
   writeJSON(kv, SETTINGS_KEY, settings);
+  if (isFirstRun()) { feedGen++; loading = false; feed = []; renderFeed(); return; }
   setText("feed-meta", "Loading…");
   const gen = ++feedGen;
   loading = true;
   const btn = $("refresh") as HTMLButtonElement;
   btn.disabled = true;
   try {
-    const loaded = await loadFeed(api, settings.viewerFid, settings.watchFids);
+    const loaded = settings.sample ? await loadSampleFeed(api) : await loadFeed(api, settings.viewerFid, settings.watchFids);
     if (gen !== feedGen) return;
     feed = loaded;
     // Names first, then render once, so cards do not jump from "FID 3" to a name.
