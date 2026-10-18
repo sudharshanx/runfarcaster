@@ -25,4 +25,41 @@ Fill in the angle brackets. Take tokens, IP addresses and hostnames out of the o
 
 <CopyPrompt id="concept" label="Copy the question prompt" show />
 
+## Docs MCP
+
+An MCP server lets your assistant look things up in this guide while it works. We use GitMCP for this. It is a free service run by a third party, not by us. It reads our `llms.txt` from this site.
+
+We tested it on 18 Oct 2026. We asked how to start the node, what `WATCHDOG=0` does and what to do if `cax31` is sold out. Each time, it returned our `llms.txt`, which answers all 3.
+
+Pick your assistant and paste the setup.
+
+**Claude Code.** Run this in a terminal:
+
+```bash
+claude mcp add --transport http runfarcaster-docs {{DOCS_MCP_URL}}
+```
+
+**Cursor.** Add this to `~/.cursor/mcp.json` (all projects) or `.cursor/mcp.json` (this project only):
+
+```json
+{
+  "mcpServers": {
+    "runfarcaster-docs": {
+      "url": "{{DOCS_MCP_URL}}"
+    }
+  }
+}
+```
+
+**Codex.** Add this to `~/.codex/config.toml`:
+
+```toml
+[mcp_servers.runfarcaster_docs]
+url = "{{DOCS_MCP_URL}}"
+```
+
+GitMCP can also fetch other web pages and search our code on GitHub. Anything your assistant sends to it goes to that third party. Keep your token and recovery phrase out of the chat.
+
+Setup formats checked against each tool's own docs on 18 Oct 2026: [Claude Code](https://code.claude.com/docs/en/mcp), [Cursor](https://cursor.com/docs/context/mcp), [Codex](https://developers.openai.com/codex/mcp).
+
 The whole site as plain text, for assistants: [`llms.txt`](../llms.txt) (summary) and [`llms-full.txt`](../llms-full.txt) (every page in Markdown).

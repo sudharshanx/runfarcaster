@@ -2,6 +2,7 @@
 // Turns the MDX pages into plain Markdown for /llms.txt and /llms-full.txt.
 import { getCollection } from "astro:content";
 import { prompts, REPO, type PromptKey } from "./prompts";
+import { DOCS_MCP } from "./config.mjs";
 
 export const ORDER = [
   "before-you-start", "quickstart", "tutorial", "hetzner", "proof", "first-cast", "fix",
@@ -42,6 +43,7 @@ export function toMarkdown(body: string): string {
   return body
     .replace(/\{\/\*[\s\S]*?\*\/\}/g, "")
     .replace(/\{\{REPO_URL\}\}/g, REPO)
+    .replace(/\{\{DOCS_MCP_URL\}\}/g, DOCS_MCP)
     .replace(/^import .*$/gm, "")
     .replace(/<AtAGlance \/>/g, GLANCE)
     .replace(/<TestedTable \/>/g, TESTED)

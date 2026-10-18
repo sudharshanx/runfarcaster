@@ -9,6 +9,7 @@ import { Image } from "astro:assets";
 import Wordmark from "../components/Wordmark.astro";
 import desktopShot from "../assets/client-desktop.png";
 import { REPO, prompts } from "../prompts";
+import { DOCS_MCP } from "../config.mjs";
 
 const base = import.meta.env.BASE_URL.replace(/\/?$/, "/");
 const u = (p: string) => `${base}${p}`;
@@ -205,6 +206,12 @@ const right = `<svg aria-hidden="true" width="12" height="12" viewBox="0 0 12 12
           <h2 id="ai-title" class="h-md">Or let your AI assistant do it.</h2>
           <p>Copy one prompt into Claude Code, Codex or Cursor. It does one step at a time and asks before each one.</p>
           <a class="textlink" href={u("ai-assistant/")}>All prompts<Fragment set:html={right} /></a>
+          <div class="mcp">
+            <h3 class="h-sm">Docs MCP</h3>
+            <p>Your assistant can also search this guide through GitMCP, a free service run by a third party.</p>
+            <pre class="mcp-cmd" tabindex="0" aria-label="Claude Code command"><code>claude mcp add --transport http runfarcaster-docs {DOCS_MCP}</code></pre>
+            <a class="textlink" href={u("ai-assistant/#docs-mcp")}>Setup for Claude Code, Cursor and Codex<Fragment set:html={right} /></a>
+          </div>
         </div>
         <div class="card">
           <p class="eyebrow">Prompt for a coding assistant</p>

@@ -3,10 +3,15 @@
 // the site, including code blocks (the {{REPO_URL}} token), prompts and llms.txt, reads it here.
 export const REPO = (process.env.REPO_URL ?? "https://github.com/sudharshanx/runfarcaster").replace(/\/+$/, "");
 export const REPO_TOKEN = "{{REPO_URL}}";
+// GitMCP (a free third-party service) serves a GitHub Pages site's llms.txt as an MCP server at
+// https://<owner>.gitmcp.io/<repo>. Code blocks use the {{DOCS_MCP_URL}} token.
+const [, OWNER = "", NAME = ""] = REPO.match(/github\.com\/([^/]+)\/([^/]+)/) ?? [];
+export const DOCS_MCP = `https://${OWNER.toLowerCase()}.gitmcp.io/${NAME}`;
+export const DOCS_MCP_TOKEN = "{{DOCS_MCP_URL}}";
 
 // remark plugin: replace {{REPO_URL}} in text, inline code, code blocks, links and raw HTML.
 export function remarkRepoUrl() {
-  const fix = (s) => (typeof s === "string" ? s.split(REPO_TOKEN).join(REPO) : s);
+  const fix = (s) => (typeof s === "string" ? s.split(REPO_TOKEN).join(REPO).split(DOCS_MCP_TOKEN).join(DOCS_MCP) : s);
   const walk = (node) => {
     if ("value" in node) node.value = fix(node.value);
     if ("url" in node) node.url = fix(node.url);

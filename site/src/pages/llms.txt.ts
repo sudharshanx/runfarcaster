@@ -1,6 +1,7 @@
 import type { APIRoute } from "astro";
 import { pages } from "../llms";
 import { REPO } from "../prompts";
+import { DOCS_MCP } from "../config.mjs";
 
 export const GET: APIRoute = async ({ site }) => {
   const base = new URL(import.meta.env.BASE_URL, site).href.replace(/\/?$/, "/");
@@ -31,6 +32,7 @@ If a server type is sold out, provision.sh says so and lists the types available
 
 Repo (MIT): ${REPO}
 Full text: ${base}llms-full.txt
+Docs MCP (GitMCP, a free third-party service that serves this file): ${DOCS_MCP}
 
 ## Pages
 

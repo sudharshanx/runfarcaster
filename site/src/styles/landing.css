@@ -136,6 +136,9 @@ body.lp { margin: 0; background: #fff; color: var(--text); font-family: var(--sa
 .linkgrid a { color: var(--text); display: flex; flex-direction: column; padding: 16px 0 14px; text-decoration: none; min-height: 44px; }
 .lg-t { display: inline-flex; align-items: center; gap: 6px; font-family: var(--mono); font-size: 14px; color: var(--ink); }
 .lg-d { font-size: 13px; }
+.mcp { margin-top: 36px; padding-top: 28px; border-top: 1px solid var(--line); }
+.mcp-cmd { margin: 0 0 14px; font-family: var(--mono); font-size: 13px; line-height: 1.6; color: #323d51; background: #f8f9fb; border: 1px solid var(--line); border-radius: 6px; padding: 10px 12px; white-space: pre-wrap; overflow-wrap: anywhere; }
+.mcp-cmd code { background: none; padding: 0; font-size: inherit; }
 .linkgrid.plain .lg-t { font-family: var(--sans); font-size: 16px; font-weight: 550; }
 .linkgrid a:hover .lg-t { color: var(--accent); }
 
