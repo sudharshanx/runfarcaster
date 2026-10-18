@@ -95,7 +95,7 @@ ok "no GNU timeout: falls back to perl" '[ "$(cat "$T/kind")" = perl ]'
 ok "perl fallback stops a hung command after 1 s" '[ "$rc" -ne 0 ] && [ $(( $(date +%s) - start )) -lt 4 ]'
 
 # 9. HCLOUD_TOKEN missing: clear message
-rc=0; out="$(env -u HCLOUD_TOKEN bash "$ROOT/watchdog.sh" 2>&1)" || rc=$?
+rc=0; out="$(env -u HCLOUD_TOKEN STATE_DIR="$T/state9a" bash "$ROOT/watchdog.sh" 2>&1)" || rc=$?
 ok "missing HCLOUD_TOKEN: exits 1 with a clear message" '[ "$rc" = 1 ] && grep -q "HCLOUD_TOKEN not set" <<<"$out"'
 sd9="$T/state9"; rc=0; env -u HCLOUD_TOKEN STATE_DIR="$sd9" bash "$ROOT/watchdog.sh" >/dev/null 2>&1 || rc=$?
 ok "missing HCLOUD_TOKEN: error is also written to watchdog.log" '[ "$rc" = 1 ] && grep -q "NOT RUNNING" "$sd9/watchdog.log"'
