@@ -44,16 +44,37 @@ check("post box shows the add-app-key empty state", (await page.textContent("#co
 await page.click("#open-add-key");
 check("opening the panel adds a stricter CSP meta: img-src 'self' data:", await page.evaluate(() => [...document.querySelectorAll('meta[http-equiv="Content-Security-Policy"]')].some((m) => m.getAttribute("content") === "img-src 'self' data:")));
 check("add-app-key panel open as a modal dialog", await page.evaluate(() => document.getElementById("add-key-dialog")?.matches(":modal")));
+const stepNow = () => page.evaluate(() => document.querySelector('#add-key-dialog .stepper [aria-current="step"]')?.textContent ?? "");
+check("stepper starts at step 1 (About) with no phrase field", (await stepNow()).includes("About") && (await page.$("#seed")) === null);
+await page.click("#step-next");
+const warn = (await page.textContent("#phrase-warning")) ?? "";
+check("step 2 lists what you need and keeps the trusted-software and delegated-signer warning", (await stepNow()).includes("Before you start") && warn.includes("developers you trust") && warn.includes("delegated signer") && (await page.$("#seed")) === null);
+await page.click("#step-next");
+check("step 3 (Sign) shows the phrase field and the technical details", (await stepNow()).includes("Sign") && (await page.$("#seed")) !== null && (await page.textContent("#add-key-dialog details.tech"))?.includes("Prefer delegated signers"));
 await page.fill("#seed", PHRASE);
-await page.click("#cancel-add-key");
+await page.click("#step-back");
+check("Back from step 3 drops the phrase field and what was typed", (await stepNow()).includes("Before you start") && (await page.$("#seed")) === null && !(await page.evaluate(() => document.body.innerHTML)).includes("junk"));
+await page.click("#step-next");
+check("returning to step 3 starts with an empty field", (await page.inputValue("#seed")) === "");
+await page.fill("#seed", PHRASE);
+await page.click("#close-add-key");
 await step(() => page.waitForFunction(() => document.getElementById("seed") === null && !document.getElementById("add-key-dialog").open, null, { timeout: 5000 }));
-check("Cancel closes the panel and drops the phrase field", !(await page.evaluate(() => document.body.innerHTML + [...document.querySelectorAll("textarea, input")].map((e) => e.value).join(" "))).includes("junk"));
+check("Close (×) on the Sign step closes the panel and drops the phrase field", !(await page.evaluate(() => document.body.innerHTML + [...document.querySelectorAll("textarea, input")].map((e) => e.value).join(" "))).includes("junk"));
 await page.click("#open-add-key");
+await page.click("#step-next"); await page.click("#step-next");
+await page.fill("#seed", "test test test");
+await page.click("#add-key");
+await step(() => page.waitForFunction(() => document.getElementById("signer-msg")?.classList.contains("error"), null, { timeout: 10000 }));
+check("a wrong word count says how many words a phrase has", (await page.textContent("#signer-msg"))?.includes("12, 15, 18, 21 or 24 words"));
 await page.fill("#seed", PHRASE);
 await page.click("#add-key");
 await step(() => page.waitForFunction(() => document.getElementById("appkey-card")?.textContent?.includes("FID 4242"), null, { timeout: 20000 }));
 check("KEY_ADD signed and submitted; app key stored for FID 4242", true);
 check("seed textarea cleared / removed", (await page.$("#seed")) === null);
+const done = (await page.textContent("#key-done")) ?? "";
+check("step 4 (Done) explains how to remove and revoke the key", (await stepNow()).includes("Done") && done.includes("Remove from this browser") && done.includes("revokes"));
+await page.click("#key-done-close");
+check("Done closes the dialog", !(await page.evaluate(() => document.getElementById("add-key-dialog").open)));
 await step(() => page.waitForFunction(() => document.getElementById("appkey-state")?.dataset.state === "ok", null, { timeout: 20000 }));
 check("app key reconciled as active via /v1/signer", true);
 
@@ -99,6 +120,60 @@ for (const vp of [{ width: 360, height: 740, isMobile: true, hasTouch: true }, {
   } else {
     check("no tab bar on desktop; side column visible", await p.evaluate(() => getComputedStyle(document.querySelector(".tabbar")).display === "none" && !!document.getElementById("side")?.offsetParent));
   }
+  await ctx.close();
+}
+// --- newcomer guidance, username lookup, timeline rules, empty and error states (fresh browser)
+{
+  const ctx = await browser.newContext({ viewport: { width: 1280, height: 900 } });
+  const p = await ctx.newPage();
+  const ready = () => p.waitForFunction(() => document.getElementById("node-status")?.textContent?.startsWith("Connected"), null, { timeout: 15000 });
+  const settled = () => p.waitForFunction(() => !(document.getElementById("feed-meta")?.textContent ?? "").startsWith("Loading") && !document.getElementById("refresh").disabled, null, { timeout: 15000 });
+  await p.goto(URL); await ready();
+  check("first run shows the How this works explainer", await p.isVisible("#intro") && (await p.textContent("#intro")).includes("Your FID is your account number"));
+  await p.click("#intro-done");
+  await p.reload(); await ready();
+  check("explainer stays dismissed after reload and reopens from How this works", !(await p.isVisible("#intro")) && await p.isVisible("#intro-open"));
+  await p.click("#intro-open");
+  check("How this works reopens the explainer", await p.isVisible("#intro"));
+  await p.click("#fid-help-first > summary");
+  check("Where do I find my FID? explains the username lookup", (await p.textContent("#fid-help-first")).includes("type your username instead"));
+  await p.fill("#first-fid", "nobody");
+  await p.click("#first-show");
+  await step(() => p.waitForFunction(() => document.getElementById("first-msg")?.textContent, null, { timeout: 10000 }));
+  check("unknown username says so and what to do", (await p.textContent("#first-msg")).includes("No account called @nobody"));
+  await p.fill("#first-fid", "@Alice");
+  await p.click("#first-show");
+  await step(() => p.waitForSelector("#feed .cast", { timeout: 15000 })); await settled();
+  check("username @Alice resolves to FID 4242 on the node", (await p.inputValue("#viewer-fid")) === "4242");
+  check("timeline rule is stated under the Feed header", await p.isVisible("#feed-rule") && (await p.textContent("#feed-rule")).includes("newest first") && (await p.textContent("#feed-rule")).includes("no ranking"));
+  const feedText = () => p.textContent("#feed");
+  check("reply to someone you follow shows Replying to @bob", (await feedText()).includes("Carol agrees with Bob") && (await feedText()).includes("Replying to @bob"));
+  check("reply to someone you don't follow is hidden and counted", !(await feedText()).includes("Bob replying to Dave") && (await p.textContent("#feed-meta")).includes("1 reply to people you don't follow hidden"));
+  const times = await p.$$eval("#feed .cast time", (ts) => ts.map((t) => Date.parse(t.getAttribute("datetime"))));
+  check("casts are newest first", times.length > 1 && times.every((t, i) => i === 0 || times[i - 1] >= t), times.length + " casts");
+  const before = await p.$$eval("#feed .cast", (c) => c.length);
+  const olderVisible = await p.isVisible("#load-older");
+  if (olderVisible) { await p.click("#load-older"); await p.waitForFunction((n) => document.querySelectorAll("#feed .cast").length > n, before, { timeout: 10000 }); }
+  const after = await p.$$eval("#feed .cast", (c) => c.length);
+  check("Load older casts pages castsByFid with pageToken and then hides itself", olderVisible && before === 20 && after === 25 && !(await p.isVisible("#load-older")), `${before} then ${after}`);
+  const tokens = readFileSync(LOG, "utf8").trim().split("\n").map((l) => JSON.parse(l)).filter((r) => r.path === "/v1/castsByFid" && new URLSearchParams(r.query).get("pageToken"));
+  check("older pages are requested with the node's nextPageToken", tokens.some((r) => new URLSearchParams(r.query).get("fid") === "10"));
+  await p.click("#feed-options > summary");
+  await p.check("#all-replies");
+  check("Show replies to people I don't follow reveals the hidden reply", (await feedText()).includes("Bob replying to Dave") && (await feedText()).includes("Replying to @dave"));
+  for (const [fid, sel, what] of [["10", "#feed-no-follows", "follows nobody: notice says how to read others"], ["13", "#feed-empty", "no casts yet: says what to do"], ["777", "#feed-unknown", "unknown FID: says to check it or use a username"]]) {
+    await p.fill("#viewer-fid", fid); await p.click("#apply-feed"); await settled();
+    check(what, await p.isVisible(sel), (await p.textContent("#feed-notice")) + (await p.textContent("#feed")).slice(0, 120));
+  }
+  await p.fill("#viewer-fid", "nobody"); await p.click("#apply-feed");
+  await step(() => p.waitForFunction(() => document.getElementById("viewer-fid-hint")?.classList.contains("error"), null, { timeout: 10000 }));
+  check("Feed options also takes a username and explains a miss", (await p.textContent("#viewer-fid-hint")).includes("No account called @nobody"));
+  await p.route("**/v1/**", (r) => r.abort());
+  await p.fill("#viewer-fid", "4242"); await p.click("#apply-feed"); await settled();
+  check("node unreachable: says so with Try again and Node connection", await p.isVisible("#feed-down") && await p.isVisible("#retry-feed") && await p.isVisible("#open-node-settings"));
+  await p.unroute("**/v1/**");
+  await p.click("#retry-feed"); await step(() => p.waitForSelector("#feed .cast", { timeout: 15000 }));
+  check("Try again recovers once the node answers", true);
   await ctx.close();
 }
 await browser.close();

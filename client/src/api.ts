@@ -100,8 +100,13 @@ export class NodeApi {
 
   info() { return this.get<InfoJson>("/v1/info"); }
 
-  castsByFid(fid: number, pageSize = 25) {
-    return this.get<{ messages: MessageJson[]; nextPageToken?: string }>("/v1/castsByFid", { fid, pageSize, reverse: true });
+  castsByFid(fid: number, pageSize = 25, pageToken?: string) {
+    return this.get<{ messages: MessageJson[]; nextPageToken?: string }>("/v1/castsByFid", { fid, pageSize, reverse: true, pageToken: pageToken || undefined });
+  }
+
+  /** Current owner of a Farcaster username (fname) or ENS name, from the node's username proofs. */
+  userNameProofByName(name: string) {
+    return this.get<{ fid: number; name?: string; type?: string }>("/v1/userNameProofByName", { name });
   }
 
   castById(fid: number, hash: string) { return this.get<MessageJson>("/v1/castById", { fid, hash }); }

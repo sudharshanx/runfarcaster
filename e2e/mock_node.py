@@ -3,10 +3,30 @@
 """Local fake Snapchain HTTP API for the browser E2E test. Never contacts any network.
 Records every request (path, query, body) so the test can assert the seed phrase never
 leaves the browser. Mimics: /v1/info, castsByFid, linksByFid, onChainIdRegistryEventByAddress,
-signersByFid, signer, userDataByFid, submitMessage (octet-stream only), castById (found after a submit)."""
-import http.server, json, sys, urllib.parse, threading
+signersByFid, signer, userDataByFid, submitMessage (octet-stream only), castById (found after a submit),
+userNameProofByName. A small made-up social graph exercises the Following timeline:
+  4242 @alice follows 10 @bob and 11 @carol; bob has 25 casts (paged), one a reply to 99 @dave
+  (someone alice doesn't follow); carol replies to bob; 13 @erin follows only alice (no casts).
+Optional argv[3], comma separated: "slow-signer" (the new key never shows as active),
+"reject-casts" (submits after the KEY_ADD are rejected). Used for screenshots of those states."""
+import http.server, json, sys, urllib.parse, threading, time
 
 PORT = int(sys.argv[1]); LOG = sys.argv[2]
+FLAGS = set(sys.argv[3].split(",")) if len(sys.argv) > 3 else set()
+FC_EPOCH = 1609459200
+NOW = int(time.time()) - FC_EPOCH
+NAMES = {"alice": 4242, "bob": 10, "carol": 11, "dave": 99, "erin": 13}
+FOLLOWS = {4242: [10, 11], 13: [4242]}
+def cast(fid, i, ts, text, parent=None):
+    body = {"text": text, "embeds": [], "mentions": [], "mentionsPositions": []}
+    if parent: body["parentCastId"] = {"fid": parent, "hash": "0x" + "ab" * 20}
+    return {"data": {"type": "MESSAGE_TYPE_CAST_ADD", "fid": fid, "timestamp": ts, "network": "FARCASTER_NETWORK_MAINNET", "castAddBody": body},
+            "hash": "0x%04x%036x" % (fid, i)}
+CASTS = {
+    10: [cast(10, i, NOW - 600 * (i + 1), f"Bob's cast number {25 - i}", 99 if i == 1 else None) for i in range(25)],
+    11: [cast(11, 0, NOW - 900, "Carol agrees with Bob", 10)],
+}
+CASTS[10][1]["data"]["castAddBody"]["text"] = "Bob replying to Dave"
 CUSTODY = "0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266"  # public Hardhat test account #0
 FID = 4242
 state = {"submits": 0, "keys": set()}
@@ -29,15 +49,31 @@ class H(http.server.BaseHTTPRequestHandler):
         p = u.path
         if p == "/v1/info":
             return self.send(200, {"version": "mock", "numShards": 2, "shardInfos": [{"shardId": i, "maxHeight": 100, "blockDelay": 1} for i in (0, 1, 2)]})
-        if p in ("/v1/castsByFid", "/v1/linksByFid", "/v1/userDataByFid"):
-            return self.send(200, {"messages": []})
+        if p == "/v1/castsByFid":
+            fid = int(q.get("fid", 0)); size = int(q.get("pageSize", 25)); start = int(q.get("pageToken") or 0)
+            allc = CASTS.get(fid, [])  # newest first, like reverse=true
+            out = {"messages": allc[start:start + size]}
+            if start + size < len(allc): out["nextPageToken"] = str(start + size)
+            return self.send(200, out)
+        if p == "/v1/linksByFid":
+            fid = int(q.get("fid", 0))
+            return self.send(200, {"messages": [{"data": {"type": "MESSAGE_TYPE_LINK_ADD", "fid": fid, "timestamp": NOW - 86400, "linkBody": {"type": "follow", "targetFid": t}}, "hash": "0x%040x" % t} for t in FOLLOWS.get(fid, [])]})
+        if p == "/v1/userDataByFid":
+            fid = int(q.get("fid", 0)); name = next((n for n, f in NAMES.items() if f == fid), None)
+            if not name: return self.send(200, {"messages": []})
+            return self.send(200, {"messages": [{"data": {"type": "MESSAGE_TYPE_USER_DATA_ADD", "fid": fid, "timestamp": NOW - 86400, "userDataBody": {"type": t, "value": v}}, "hash": "0x00"}
+                                                for t, v in (("USER_DATA_TYPE_USERNAME", name), ("USER_DATA_TYPE_DISPLAY", name.capitalize()))]})
+        if p == "/v1/userNameProofByName":
+            n = q.get("name", "").lower()
+            if n in NAMES: return self.send(200, {"timestamp": 1, "name": n, "owner": "0x00", "signature": "", "fid": NAMES[n], "type": "USERNAME_TYPE_FNAME"})
+            return self.send(400, {"error": "Failed to get username proof", "error_detail": "NotFound"})
         if p == "/v1/onChainIdRegistryEventByAddress":
             if q.get("address", "").lower() == CUSTODY: return self.send(200, {"fid": FID, "type": "EVENT_TYPE_ID_REGISTER"})
             return self.send(400, {"errCode": "not_found", "details": "no fid"})
         if p == "/v1/signersByFid":
             return self.send(200, {"signers": [], "currentUserNonce": 0, "gaslessSignerCount": 0, "gaslessSignerLimit": 1000})
         if p == "/v1/signer":
-            if state["submits"] >= 1: return self.send(200, {"signer": {"source": "SIGNER_SOURCE_OFFCHAIN", "key": q.get("signer"), "fid": FID}})
+            if state["submits"] >= 1 and "slow-signer" not in FLAGS: return self.send(200, {"signer": {"source": "SIGNER_SOURCE_OFFCHAIN", "key": q.get("signer"), "fid": FID}})
             return self.send(400, {"errCode": "not_found", "details": "Active signer not found"})
         if p == "/v1/castById":
             if state["submits"] >= 2:
@@ -52,6 +88,8 @@ class H(http.server.BaseHTTPRequestHandler):
             if self.headers.get("content-type") != "application/octet-stream":
                 self.send_response(400); self.end_headers(); return
             state["submits"] += 1
+            if state["submits"] > 1 and "reject-casts" in FLAGS:
+                return self.send(400, {"errCode": "bad_request.validation_failure", "presentable": False, "name": "ValidationError", "code": 3, "details": "invalid signer"})
             return self.send(200, {"hash": "0x00", "data": {"type": "ok"}})
         self.send(404, {})
 
