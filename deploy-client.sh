@@ -38,6 +38,8 @@ node_ok() {
 }
 if [[ "${DRY_RUN:-0}" != "1" ]] && ! node_ok; then
   echo "[deploy-client] ERROR: Node.js 22.12+ (22.x), 24.x or 26+ is required (found: $(node --version 2>/dev/null || echo none))." >&2
+  echo "[deploy-client] Install one, e.g. with nvm (https://github.com/nvm-sh/nvm#installing-and-updating): nvm install 24 && nvm use 24" >&2
+  echo "[deploy-client] or download it from https://nodejs.org/en/download, then run this script again." >&2
   exit 1
 fi
 echo "[deploy-client] building client (npm ci --ignore-scripts, typecheck, tests, build)"
