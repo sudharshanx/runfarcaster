@@ -25,12 +25,13 @@ import RepoLink from "../../components/RepoLink.astro";
 |---|---|---|---|
 | `HCLOUD_TOKEN` | provision, teardown, watchdog | (required) | Hetzner API token, read/write |
 | `SSH_KEY` | provision | (required) | Name or ID of an SSH key in your Hetzner project |
-| `SERVER_TYPE` | provision | `cx43` | `cax31` today; empty = auto-pick from `SERVER_TYPE_CANDIDATES` |
+| `SERVER_TYPE` | provision | `cx43` | We ran `cax31`. Empty = auto-pick from `SERVER_TYPE_CANDIDATES`. If it is sold out in `LOCATION`, the error lists what is for sale |
 | `SERVER_TYPE_CANDIDATES` | provision | `cx43 cax31 cpx42 ccx23` | Cheapest first |
 | `VOLUME_GB` | provision | `2000` (`REQUIRED_DISK_GB`) | `1000` fits a new account's quota |
-| `LOCATION` | provision | `fsn1` | |
-| `MAX_USD` | provision, watchdog | `2` / `5` | Spending cap, in your Hetzner account's currency |
-| `EXPECTED_HOURS` | provision | `6` | Cost guard horizon; use `16` |
+| `LOCATION` | provision | `fsn1` | `fsn1`, `nbg1`, `hel1`, `ash`, `hil` or `sin`. Server and volume share it |
+| `MAX_USD` | provision, watchdog | `2` / `5` | Price limit for the check before creating anything; the watchdog deletes everything at it. In your Hetzner account's currency |
+| `EXPECTED_HOURS` | provision | `6` | Hours the price check multiplies by. We used `16` with the watchdog |
+| `WATCHDOG` | provision | `1` | `0` = no watchdog; the server runs until you delete it. The Quickstart uses `0` |
 | `ESTIMATE_ONLY` | provision | `0` | `1` = price check only, creates nothing |
 | `SSH_SOURCE_CIDRS` | provision | `0.0.0.0/0,::/0` | Set to `"$MY_IP/32"` (from `curl -4 -s https://ifconfig.me`) |
 | `NODE_API_CIDRS` | provision | empty | Addresses allowed to reach 3381 and 3383. Empty keeps both closed |

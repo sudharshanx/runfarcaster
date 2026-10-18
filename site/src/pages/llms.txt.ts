@@ -16,16 +16,18 @@ Key facts:
 - Ports: 3381/tcp HTTP API and 3383/tcp gRPC (closed to the internet by default), 3382/udp gossip (open). Keep Grafana's 3000 closed.
 - Sign the KEY_ADD in the app running on localhost on your own computer. Never paste a recovery phrase into an AI assistant. Never print HCLOUD_TOKEN.
 
-The 3 steps, as we ran them (from the repo folder on your computer):
+The 3 steps (from the repo folder on your computer):
 \`\`\`bash
 MY_IP=$(curl -4 -s https://ifconfig.me)
-IP=$(SSH_KEY=my-key SERVER_TYPE=cax31 VOLUME_GB=1000 MAX_USD=5 EXPECTED_HOURS=16 SSH_SOURCE_CIDRS="$MY_IP/32" ./provision.sh)
+IP=$(SSH_KEY=my-key SERVER_TYPE=cax31 VOLUME_GB=1000 WATCHDOG=0 SSH_SOURCE_CIDRS="$MY_IP/32" ./provision.sh)
 ssh root@$IP "SNAPCHAIN_AGREE_NO_REWARDS=yes MIN_FREE_GB=900 bash -s" < node.sh
 ./deploy-client.sh "$IP"
 # when done:
 CONFIRM=snapchain-read-node ./teardown.sh
 \`\`\`
 In a new terminal: IP=$(hcloud server ip snapchain-read-node)
+WATCHDOG=0 keeps the server until you delete it. For a trial run, leave it out and add MAX_USD=5 EXPECTED_HOURS=16 (how we ran it): watchdog.sh then deletes everything after 24 h.
+If a server type is sold out, provision.sh says so and lists the types available in LOCATION; set SERVER_TYPE and/or LOCATION.
 
 Repo (MIT): ${REPO}
 Full text: ${base}llms-full.txt

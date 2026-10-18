@@ -31,9 +31,8 @@ Then the 3 steps:
 MY_IP=$(curl -4 -s https://ifconfig.me)
 echo "$MY_IP"                       # must print your address
 
-# 1. Rent a server: cax31 (ARM64, 16 GB RAM), a 1000 GB volume and a firewall. Starts the watchdog first.
-#    Prints the IP. 35 s for us.
-IP=$(SSH_KEY=my-key SERVER_TYPE=cax31 VOLUME_GB=1000 MAX_USD=5 EXPECTED_HOURS=16 \
+# 1. Rent a server: cax31 (ARM64, 16 GB RAM), a 1000 GB volume and a firewall. Prints the IP. 35 s for us.
+IP=$(SSH_KEY=my-key SERVER_TYPE=cax31 VOLUME_GB=1000 WATCHDOG=0 \
   SSH_SOURCE_CIDRS="$MY_IP/32" ./provision.sh)
 
 # 2. Start the node: Docker, disk helpers (disk < 1500 GB), the official bootstrap, then wait up to 24 h for sync.
@@ -45,10 +44,12 @@ ssh root@$IP "SNAPCHAIN_AGREE_NO_REWARDS=yes MIN_FREE_GB=900 bash -s" < node.sh
 
 In a new terminal, get the IP back with `IP=$(hcloud server ip snapchain-read-node)`.
 
-**The watchdog deletes everything 24 hours after step 1, even if the node is healthy.** To keep the node, run
-`touch .provision-state/watchdog.disarm` (or start step 1 with `WATCHDOG_MAX_WALL_SECS=172800` for 48 h).
+`WATCHDOG=0` keeps the server until you delete it. If you only want to try it, leave it out and add
+`MAX_USD=5 EXPECTED_HOURS=16` (how we ran it): `provision.sh` then starts `watchdog.sh`, which deletes everything
+after 24 hours. Server types sell out: if `cax31` is not available, `provision.sh` lists the types available in
+`LOCATION`, cheapest first. Set `SERVER_TYPE` and/or `LOCATION` (fsn1, nbg1, hel1, ash, hil, sin) and run it again.
 
-When you are done, delete the server, the volume and the firewall. Safe to run twice:
+When you no longer need the node, delete the server, the volume and the firewall. Safe to run twice:
 
 ```bash
 CONFIRM=snapchain-read-node ./teardown.sh
@@ -64,11 +65,12 @@ Notes:
 - If SSH drops during step 2, the node keeps going. Wait again with `ssh root@$IP 'bash -s wait' < node.sh`.
 - `SNAPCHAIN_AGREE_NO_REWARDS=yes` answers the official bootstrap's question: a read node earns no rewards.
   Read it first: https://snapchain.farcaster.xyz/getting-started
-- `ESTIMATE_ONLY=1 SERVER_TYPE=cax31 VOLUME_GB=1000 EXPECTED_HOURS=16 ./provision.sh` shows the price and creates nothing.
-- The x86 type cx43 was sold out on 2026-10-18; cax31 is ARM64 and every image has an ARM64 build.
+- `ESTIMATE_ONLY=1 SERVER_TYPE=cax31 VOLUME_GB=1000 ./provision.sh` shows the price and creates nothing.
+- On 2026-10-18 at 18:48 IST, Hetzner listed cx43 and cax31 as sold out in fsn1, nbg1 and hel1. cax31 is ARM64 and
+  every image has an ARM64 build; we have only run the node on cax31.
 - Ports 3381 (HTTP API) and 3383 (gRPC) are closed to the internet. The app reaches the node through Caddy.
   Set `NODE_API_CIDRS` in `provision.sh` to open them to chosen addresses.
-- `provision.sh` starts `watchdog.sh` in the background before it creates anything (output in
+- Optional: without `WATCHDOG=0`, `provision.sh` starts `watchdog.sh` in the background before it creates anything (output in
   `.provision-state/watchdog.out`, log in `.provision-state/watchdog.log`). If the watchdog cannot start, for
   example without `HCLOUD_TOKEN`, `provision.sh` stops and creates nothing. The watchdog runs `teardown.sh` before
   the bill reaches `MAX_USD` (in your Hetzner account's currency), after 24 hours (`WATCHDOG_MAX_WALL_SECS`), or
@@ -181,7 +183,7 @@ bash test/node_sh_test.sh        # node.sh with fake docker and a mock /v1/info
 bash test/space_saver_test.sh
 bash test/watchdog_test.sh       # progress check, SSH loss, money cap, macOS without timeout
 bash test/teardown_test.sh       # fake hcloud; running twice, missing token, wrong confirmation
-bash test/provision_test.sh      # CIDR check, watchdog start (stub), no second watchdog, loud failure
+bash test/provision_test.sh      # CIDR check, watchdog start (stub), sold-out types and LOCATION hints (fake hcloud)
 python3 tools/embed-helpers.py --check
 cd client && npm ci --ignore-scripts && npm run typecheck && npm test && npm run build
 cd e2e && npm ci && CADDY=caddy CHROME=/path/to/chrome ./run.sh   # Caddy, mock node, headless Chrome

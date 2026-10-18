@@ -12,8 +12,8 @@ You need:
 - Node.js 22.12 or later (22.x, 24.x or 26+) and this repo on your computer.
 - Your node from the [Quickstart](../quickstart/).
 
-:::caution[The watchdog deletes the node after 24 hours]
-If the watchdog from step 1 is still running, it deletes the server, the volume and the firewall 24 hours after it started, even if the node is healthy. To keep the node: `touch .provision-state/watchdog.disarm`. Within a minute, `tail -n 1 .provision-state/watchdog.log` should show `disarmed by …`.
+:::note[If you started the watchdog]
+If you started the watchdog in step 1 ([If you only want to try it](../quickstart/#if-you-only-want-to-try-it)), it deletes the server, the volume and the firewall 24 hours after it started, even if the node is healthy. To keep the node: `touch .provision-state/watchdog.disarm`. Within a minute, `tail -n 1 .provision-state/watchdog.log` should show `disarmed by …`.
 :::
 
 :::danger

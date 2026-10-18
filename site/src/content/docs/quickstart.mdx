@@ -75,11 +75,15 @@ This needs a Hetzner volume limit above 2000 GB. The price list puts it at about
 </TabItem>
 </Tabs>
 
-Replace `my-key` with the name `hcloud ssh-key list` shows. With `WATCHDOG=0` the server keeps running until you delete it. If you only want to try it, provision.sh can delete the server for you after a set time; see [If you only want to try it](#if-you-only-want-to-try-it). Read the script first: <RepoLink path="provision.sh" />
+Replace `my-key` with the name `hcloud ssh-key list` shows.
+
+Server types sell out. On 18 Oct 2026 at 18:48 IST, Hetzner listed cax31 as sold out in fsn1, nbg1 and hel1, the only places that offer it. If step 1 stops with `not available in fsn1 right now`, the error lists the types with at least 16 GB of RAM that you can rent there, cheapest first. Run step 1 again with one of them in `SERVER_TYPE`, or with another place in `LOCATION` (fsn1, nbg1, hel1, ash, hil or sin). We have only run the node on cax31.
+
+With `WATCHDOG=0` the server keeps running until you delete it. If you only want to try it, provision.sh can delete the server for you after a set time; see [If you only want to try it](#if-you-only-want-to-try-it). Read the script first: <RepoLink path="provision.sh" />
 
 What it does:
 - Checks that each entry in `SSH_SOURCE_CIDRS` looks like an address with a prefix, such as `203.0.113.7/32`. An empty `$MY_IP` stops it here.
-- Checks that the server type exists in `fsn1`, is for sale, and has at least 16 GB of RAM.
+- Checks that `LOCATION` exists and that the server type is for sale there with at least 16 GB of RAM. If not, it lists what is available and creates nothing.
 - Reads the hourly price from Hetzner's live price list and prints it. It stops before creating anything if that price × `EXPECTED_HOURS` (default 6) is above `MAX_USD` (default 2, in your account's currency).
 - Creates a firewall, the data volume and the server. The firewall opens SSH (22, only to `SSH_SOURCE_CIDRS`), gossip (3382/udp) and the web ports 80 and 443. The node's own API ports 3381 and 3383 stay closed; the app reaches the node through Caddy.
 - Starts `watchdog.sh` first, unless you set `WATCHDOG=0` (see [If you only want to try it](#if-you-only-want-to-try-it)).
@@ -105,7 +109,7 @@ hcloud server list      # snapchain-read-node, running
 hcloud volume list      # snapchain-read-node-data, 1000 GB
 ```
 
-Hetzner bills the server by the hour from now on: about $0.164 an hour, or about $102 a month if you keep it.
+Hetzner bills the server by the hour from now on. For cax31 with the 1000 GB volume that is about $0.164 an hour, or about $102 a month if you keep it.
 
 :::tip[Lost `$IP`?]
 `$IP` only lives in the terminal where you set it. In a new terminal, or after a reconnect, run `IP=$(hcloud server ip snapchain-read-node)`.

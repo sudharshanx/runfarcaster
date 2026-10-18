@@ -75,6 +75,10 @@ New accounts can rent at most 1024 GB of volumes in total. The node needs a bigg
 | Location | `fsn1` (Falkenstein) | The script's default. Server and volume must be in the same location. |
 | Image | Ubuntu 24.04 | The script's default. |
 
+Server types sell out. On 18 Oct 2026 at 18:48 IST, Hetzner listed cax31 and cx43 as sold out in fsn1, nbg1 and hel1. The cheapest type with 16 GB of RAM for sale in fsn1 was cpx42 (x86, 8 vCPU, 16 GB RAM) at $0.1314 an hour, at most $81.99 a month. With the IPv4 address and the 1000 GB volume that comes to about $159 a month. We have not run the node on cpx42.
+
+To check before you rent, run the price check below. If the type is sold out, `provision.sh` says so and lists the types for sale in `LOCATION`, cheapest first. Then set `SERVER_TYPE`, or `LOCATION` (fsn1, nbg1, hel1, ash, hil or sin).
+
 ## 8. What it costs
 
 From Hetzner's price list on 2026-10-18, in USD:
