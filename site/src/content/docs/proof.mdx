@@ -36,6 +36,19 @@ A logger on our side read the disk and the node's `/v1/info` over SSH every 10 m
 | From renting the server to fully synced (every shard less than 10 s behind) | 14 h 06 m |
 | `deploy-client.sh`, including the Let's Encrypt certificate | About 35 s |
 
+Problems we hit on the way, all on 2026-10-18, IST. Each has a fix on [Fix a problem](../fix/):
+
+| Time | What happened |
+|---|---|
+| 01:20 | cx43 was sold out, so we rented cax31 |
+| 01:23 | The 2000 GB volume went over the new-account limit; we used 1000 GB |
+| 01:35 | SSH was refused because our home address changed |
+| 01:44 | The disk was filling during the restore; we installed the two disk helpers by hand |
+| 01:38 to 10:11 | The HTTP API did not answer while the snapshot loaded |
+| 13:39 | `node.sh` stopped waiting at its old 12-hour limit; the node kept syncing |
+| 18:48 | cax31 was sold out in fsn1, nbg1 and hel1 |
+| Whole sync | The computer running the steps paused at least 13 times; the node kept going |
+
 ## The node once synced
 
 | Item | Value | Measured with |

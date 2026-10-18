@@ -46,3 +46,17 @@ export function rehypeTableScroll() {
   };
   return (tree) => walk(tree, { i: 0, heading: "", seen: new Map() });
 }
+
+// rehype plugin: on the Quickstart, the numbered H2s ("1. Rent a server") get the ids step-1, step-2,
+// step-3, so the landing page and other pages can link to #step-1. Astro keeps ids a plugin sets.
+export function rehypeStepIds() {
+  const text = (x) => (x.type === "text" ? x.value : (x.children || []).map(text).join(""));
+  return (tree, file) => {
+    if (!/quickstart\.mdx?$/.test(String(file?.path ?? file?.history?.at(-1) ?? ""))) return;
+    for (const c of tree.children || []) {
+      if (c.type !== "element" || c.tagName !== "h2") continue;
+      const m = /^(\d)\.\s/.exec(text(c).trim());
+      if (m) c.properties = { ...c.properties, id: `step-${m[1]}` };
+    }
+  };
+}

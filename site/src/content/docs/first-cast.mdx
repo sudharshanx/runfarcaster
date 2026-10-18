@@ -4,7 +4,7 @@ description: Add an app key with one gasless KEY_ADD, then cast, follow and like
 ---
 
 :::caution[Not yet tested on mainnet]
-Only unit tests and a local mock node have run this part. We have not added a key or posted a cast on mainnet with it. If you try it, use a test account and tell us what happened ([Vouches](../proof/#vouches)).
+Only unit tests and a local mock node have run this part. Adding a key and posting a cast on mainnet with it have not been tested. If you try it, use a test account and report what happened ([Vouches](../proof/#vouches)).
 :::
 
 You need:
@@ -13,7 +13,7 @@ You need:
 - Your node from the [Quickstart](../quickstart/).
 
 :::note[If you started the watchdog]
-If you started the watchdog in step 1 ([If you only want to try it](../quickstart/#if-you-only-want-to-try-it)), it deletes the server, the volume and the firewall 24 hours after it started, even if the node is healthy. To keep the node: `touch .provision-state/watchdog.disarm`. Within a minute, `tail -n 1 .provision-state/watchdog.log` should show `disarmed by …`.
+If you started the watchdog in step 1 ([Only trying it?](../quickstart/#try-it)), it deletes the server, the volume and the firewall 24 hours after it started, even if the node is healthy. To keep the node: `touch .provision-state/watchdog.disarm`. Within a minute, `tail -n 1 .provision-state/watchdog.log` should show `disarmed by …`.
 :::
 
 :::danger
@@ -92,7 +92,7 @@ The app can only add. It has no button to delete a cast, unfollow or unlike.
 
 ## 4. Look for it in another app
 
-Open your profile in any other Farcaster app. Our app does not show hashes; ask your node:
+Open your profile in any other Farcaster app. The app does not show hashes; ask your node:
 
 ```bash
 curl -s "http://127.0.0.1:3381/v1/castsByFid?fid=<your-fid>&pageSize=1&reverse=true" \
@@ -105,6 +105,6 @@ curl -s "http://127.0.0.1:3381/v1/castsByFid?fid=<your-fid>&pageSize=1&reverse=t
 
 - **Forget app key** deletes the key from this browser. The network still accepts it until it expires.
 - A key you stop using expires when its lifetime runs out.
-- To cancel it now, send a `KEY_REMOVE` from your custody wallet, or use the app you manage keys with. Our app cannot do this.
+- To cancel it now, send a `KEY_REMOVE` from your custody wallet, or use the app you manage keys with. The RunFarcaster app cannot do this.
 
 When you are done on `localhost`, press **Forget app key**, so no other page on `localhost:5317` can read the key later. Then stop the tunnel and the dev server with Ctrl-C.

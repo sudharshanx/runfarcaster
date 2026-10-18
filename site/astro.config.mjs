@@ -2,7 +2,7 @@
 // @ts-check
 import { defineConfig } from "astro/config";
 import starlight from "@astrojs/starlight";
-import { REPO, remarkRepoUrl, rehypeTableScroll } from "./src/config.mjs";
+import { REPO, remarkRepoUrl, rehypeTableScroll, rehypeStepIds } from "./src/config.mjs";
 
 // GitHub Pages: set SITE_URL=https://<user>.github.io and BASE_PATH=/runfarcaster/ (the repo name).
 // Defaults below; CI sets them from the repository. The home page is src/pages/index.astro (custom
@@ -20,7 +20,7 @@ export default defineConfig({
     "/receipts/": `${base.replace(/\/$/, "")}/proof/`,
     "/troubleshooting/": `${base.replace(/\/$/, "")}/fix/`,
   },
-  markdown: { remarkPlugins: [remarkRepoUrl], rehypePlugins: [rehypeTableScroll] },
+  markdown: { remarkPlugins: [remarkRepoUrl], rehypePlugins: [rehypeTableScroll, rehypeStepIds] },
   integrations: [
     starlight({
       title: "RunFarcaster",
@@ -45,19 +45,28 @@ export default defineConfig({
       },
       lastUpdated: false,
       sidebar: [
-        { label: "Home", link: "/" },
-        { label: "Before you start", slug: "before-you-start" },
-        { label: "Quickstart", slug: "quickstart" },
-        { label: "Tutorial", slug: "tutorial" },
-        { label: "Do it on Hetzner", slug: "hetzner" },
-        { label: "Proof: what we ran", slug: "proof" },
-        { label: "Your first cast", slug: "first-cast" },
-        { label: "Fix a problem", slug: "fix" },
-        { label: "Docs issues we found", slug: "docs-issues" },
-        { label: "Reference", slug: "reference" },
-        { label: "Glossary", slug: "glossary" },
-        { label: "Do it with your AI assistant", slug: "ai-assistant" },
-        { label: "How AI was used", slug: "how-ai-was-used" },
+        { label: "Quickstart: 3 steps", slug: "quickstart" },
+        {
+          label: "Go deeper",
+          items: [
+            { label: "Before you start", slug: "before-you-start" },
+            { label: "Do it on Hetzner", slug: "hetzner" },
+            { label: "Tutorial: what you ran", slug: "tutorial" },
+            { label: "Your first cast", slug: "first-cast" },
+            { label: "Do it with your AI assistant", slug: "ai-assistant" },
+            { label: "Fix a problem", slug: "fix" },
+          ],
+        },
+        {
+          label: "Reference",
+          items: [
+            { label: "Reference", slug: "reference" },
+            { label: "Glossary", slug: "glossary" },
+            { label: "Proof: what we ran", slug: "proof" },
+            { label: "Docs issues we found", slug: "docs-issues" },
+            { label: "How AI was used", slug: "how-ai-was-used" },
+          ],
+        },
       ],
     }),
   ],

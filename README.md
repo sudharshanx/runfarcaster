@@ -6,9 +6,10 @@ This repo holds the scripts for those 3 steps, a small web app, the tests and th
 Snapchain read node with a full copy of Farcaster. The app shows a feed from that node and can post casts,
 likes and follows through it. You need no API keys.
 
-Status: we ran the 3 steps once, on 2026-10-18, on a Hetzner cax31 with a 1000 GB volume. It took 14 h 06 m from
-renting the server to a synced node and cost about $2.31 by the price list. The app was served over HTTPS from
-the node and tested read-only. We have not sent a real message to mainnet. Numbers: `MEASUREMENTS.md`. Log:
+Status: the 3 steps have been tested end to end once on mainnet (2026-10-18), on a Hetzner cax31 with a 1000 GB
+volume. On that hardware, expect about 14 hours from renting the server to a synced node, about $2.31 by the price
+list. The app was served over HTTPS from the node and tested read-only. Sending a real message to mainnet has not
+been tested. Numbers: `MEASUREMENTS.md`. Log:
 `run-log.md` (server details replaced with placeholders).
 
 Guide website: `site/`. Vouching: `VOUCHER.md`. Key handling: `SECURITY.md`.
@@ -38,7 +39,7 @@ Then the 3 steps:
 MY_IP=$(curl -4 -s https://ifconfig.me)
 echo "$MY_IP"                       # must print your address
 
-# 1. Rent a server: cax31 (ARM64, 16 GB RAM), a 1000 GB volume and a firewall. Prints the IP. 35 s for us.
+# 1. Rent a server: cax31 (ARM64, 16 GB RAM), a 1000 GB volume and a firewall. Prints the IP. Under a minute.
 IP=$(SSH_KEY=my-key SERVER_TYPE=cax31 VOLUME_GB=1000 WATCHDOG=0 \
   SSH_SOURCE_CIDRS="$MY_IP/32" ./provision.sh)
 
@@ -52,7 +53,7 @@ ssh root@$IP "SNAPCHAIN_AGREE_NO_REWARDS=yes MIN_FREE_GB=900 bash -s" < node.sh
 In a new terminal, get the IP back with `IP=$(hcloud server ip snapchain-read-node)`.
 
 `WATCHDOG=0` keeps the server until you delete it. If you only want to try it, leave it out and add
-`MAX_USD=5 EXPECTED_HOURS=16` (how we ran it): `provision.sh` then starts `watchdog.sh`, which deletes everything
+`MAX_USD=5 EXPECTED_HOURS=16`: `provision.sh` then starts `watchdog.sh`, which deletes everything
 after 24 hours. Server types sell out: if `cax31` is not available, `provision.sh` lists the types available in
 `LOCATION`, cheapest first. Set `SERVER_TYPE` and/or `LOCATION` (fsn1, nbg1, hel1, ash, hil, sin) and run it again.
 
@@ -64,17 +65,17 @@ CONFIRM=snapchain-read-node ./teardown.sh
 
 Notes:
 - New Hetzner accounts may rent at most 1024 GB of volumes in total (https://console.hetzner.cloud/limits).
-  The Snapchain docs ask for 1.5 to 2 TB. `VOLUME_GB=1000` worked for us with two helpers that keep the
+  The Snapchain docs ask for 1.5 to 2 TB. `VOLUME_GB=1000` works with two helpers that keep the
   snapshot from filling the disk: `disk-guard.sh` stops the node at 90% full and `snapshot-space-saver.sh`
   deletes snapshot files once the node has read them. `node.sh` now installs both on disks under 1500 GB.
-  **That automatic install has unit tests but has not run during a live sync yet;** in our run we installed
-  them by hand. `MIN_FREE_GB=900` lets `node.sh` accept the volume, which shows 984 GB.
+  **That automatic install has unit tests but has not run during a live sync yet;** on the mainnet run they were
+  installed by hand. `MIN_FREE_GB=900` lets `node.sh` accept the volume, which shows 984 GB.
 - If SSH drops during step 2, the node keeps going. Wait again with `ssh root@$IP 'bash -s wait' < node.sh`.
 - `SNAPCHAIN_AGREE_NO_REWARDS=yes` answers the official bootstrap's question: a read node earns no rewards.
   Read it first: https://snapchain.farcaster.xyz/getting-started
 - `ESTIMATE_ONLY=1 SERVER_TYPE=cax31 VOLUME_GB=1000 ./provision.sh` shows the price and creates nothing.
 - On 2026-10-18 at 18:48 IST, Hetzner listed cx43 and cax31 as sold out in fsn1, nbg1 and hel1. cax31 is ARM64 and
-  every image has an ARM64 build; we have only run the node on cax31.
+  every image has an ARM64 build. The guide has been tested on cax31 only; times on other types vary.
 - Ports 3381 (HTTP API) and 3383 (gRPC) are closed to the internet. The app reaches the node through Caddy.
   Set `NODE_API_CIDRS` in `provision.sh` to open them to chosen addresses.
 - Optional: without `WATCHDOG=0`, `provision.sh` starts `watchdog.sh` in the background before it creates anything (output in

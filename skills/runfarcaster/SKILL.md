@@ -41,8 +41,8 @@ Read the reference file for a step before you run it. For an error, read [refere
 
 ## What to expect
 
-- Our one mainnet run, on 18 Oct 2026: 14 h 06 m from renting the server to synced, on a cax31 with a 1000 GB volume.
-- Cost: about $0.164 an hour for us, from Hetzner's price list. The server keeps running, and Hetzner bills it, until `teardown.sh` deletes it.
+- On a cax31 with a 1000 GB volume, expect about 14 hours from renting the server to synced. Times on other server types vary.
+- Cost: about $0.164 an hour for cax31 with the volume, from Hetzner's price list. The server keeps running, and Hetzner bills it, until `teardown.sh` deletes it.
 - The node needs no API keys. A read node earns no rewards.
 
 ## Sources

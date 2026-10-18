@@ -73,6 +73,15 @@ const icons = {
 </div>
 
 <script>
+  // A link to an id inside a closed <details> (for example /quickstart/#try-it) opens it.
+  const openTarget = () => {
+    const id = decodeURIComponent(location.hash.slice(1));
+    const el = id ? document.getElementById(id) : null;
+    const d = el?.closest("details");
+    if (d && !d.open) { d.open = true; el?.scrollIntoView(); }
+  };
+  openTarget();
+  window.addEventListener("hashchange", openTarget);
   const CHECK = '<svg aria-hidden="true" focusable="false" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5" /></svg>';
   for (const root of document.querySelectorAll<HTMLElement>("[data-copy-page]")) {
     const toggle = root.querySelector<HTMLButtonElement>("[data-cp-toggle]")!;

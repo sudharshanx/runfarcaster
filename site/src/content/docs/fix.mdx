@@ -1,17 +1,17 @@
 ---
 title: Fix a problem
-description: The problems we hit while running the 3 steps, and how we fixed each one. Every entry says where we saw it.
+description: Problems that come up during the 3 steps, each with the exact message, the cause and the fix.
 ---
 
 import CopyPrompt from "../../components/CopyPrompt.astro";
 import RepoLink from "../../components/RepoLink.astro";
 
-These are the problems we saw while building and running this guide. Each entry gives what you see, why it happens and the command that fixes it.
+Each entry gives what you see, why it happens and the command that fixes it. Every problem here came up in a real run, a review or a test.
 
-Each entry also says where we saw it:
-- **Hit on our run** means it happened during our mainnet run on 18 Oct 2026. The run log has the details: <RepoLink path="run-log.md" />
-- **Found in review** means a tester found it while checking the guide against our node or our code.
-- **Reproduced in testing** means we caused it on purpose to record the exact message.
+Each entry also says where it was seen:
+- **Seen on a mainnet run** means it happened during a full mainnet run of the 3 steps on 18 Oct 2026. The run log has the details: <RepoLink path="run-log.md" />
+- **Found in review** means a tester found it while checking the guide against a live node or the code.
+- **Reproduced in testing** means it was caused on purpose to record the exact message.
 
 ## Step 1: rent a server
 
@@ -19,7 +19,7 @@ Each entry also says where we saw it:
 
 **You see:** `volumes size limit exceeded (resource_limit_exceeded)`
 
-**Why:** New Hetzner accounts can rent at most 1024 GB of volumes in total. We first asked for 2000 GB.
+**Why:** New Hetzner accounts can rent at most 1024 GB of volumes in total. Asking for 2000 GB gives this error.
 
 **Fix:** Ask for 1000 GB, as the Quickstart does. Your limits are at [console.hetzner.cloud/limits](https://console.hetzner.cloud/limits).
 
@@ -27,15 +27,15 @@ Each entry also says where we saw it:
 VOLUME_GB=1000
 ```
 
-**Where:** Hit on our run, at 01:23 IST. Nothing was created, so it cost nothing.
+**Where:** Seen on a mainnet run, when step 1 asked for 2000 GB. Nothing was created, so it cost nothing.
 
 ### The server type is sold out
 
 **You see:** `server type cax31: not available in fsn1 right now.` The same error lists the types you can rent there, cheapest first.
 
-**Why:** Hetzner sells out of server types. When we started, cx43 was sold out, so we used cax31. At 18:48 IST the same day, cax31 was sold out in every location that offers it.
+**Why:** Hetzner sells out of server types. On 18 Oct 2026, cx43 was sold out in the morning, and by evening cax31 was sold out in every location that offers it.
 
-**Fix:** Run step 1 again with a type from the list, or with another location. We have only run the node on cax31.
+**Fix:** Run step 1 again with a type from the list, or with another location. The guide has been tested on cax31 only; times on other types vary.
 
 ```bash
 SERVER_TYPE=cpx42      # or another type from the error
@@ -44,7 +44,7 @@ LOCATION=nbg1          # fsn1, nbg1, hel1, ash, hil or sin
 
 A typo in `LOCATION` gives `unknown LOCATION=…`, followed by the list of valid names.
 
-**Where:** Hit on our run. cx43 at 01:20 IST, cax31 at 18:48 IST.
+**Where:** Seen on a mainnet run, for cx43 and later for cax31.
 
 ### SSH stops working
 
@@ -59,7 +59,7 @@ SSH_KEY=my-key SERVER_TYPE=cax31 VOLUME_GB=1000 WATCHDOG=0 \
   SSH_SOURCE_CIDRS="$(curl -4 -s https://ifconfig.me)/32" ./provision.sh
 ```
 
-**Where:** Hit on our run, at 01:35 IST. Our address kept changing, so we opened SSH to every address and kept key-only login.
+**Where:** Seen on a mainnet run, on a home connection whose address kept changing. Opening SSH to every address, with key-only login, is the other way out.
 
 ### `$IP` is empty
 
@@ -81,7 +81,7 @@ This only applies if you left out `WATCHDOG=0` in step 1.
 
 **You see:** The server is gone. `.provision-state/watchdog.log` gives the reason, for example `wall-clock cap 86400s reached`.
 
-**Why:** The watchdog deletes everything 24 hours after step 1, even if the node is healthy. Our sync took 14 hours. An earlier version would also have deleted it 2 hours into the sync when it had no SSH key file, because it could not see any progress.
+**Why:** The watchdog deletes everything 24 hours after step 1, even if the node is healthy. A sync on cax31 takes about 14 hours. An earlier version would also have deleted it 2 hours into the sync when it had no SSH key file, because it could not see any progress.
 
 **Fix:** To keep the node, stop the watchdog. Nothing is deleted.
 
@@ -105,7 +105,7 @@ The current watchdog turns its progress check off when it has no SSH key file.
 read -rsp 'Hetzner token: ' HCLOUD_TOKEN && export HCLOUD_TOKEN && echo
 ```
 
-**Where:** Found in review. Our tests now check this message.
+**Where:** Found in review. The tests now check this message.
 
 ## Step 2: start the node
 
@@ -121,13 +121,13 @@ read -rsp 'Hetzner token: ' HCLOUD_TOKEN && export HCLOUD_TOKEN && echo
 ssh root@$IP systemctl status snapchain-space-saver snapchain-disk-guard.timer
 ```
 
-**Where:** Hit on our run, at 01:44 IST. We installed the helpers by hand before the disk filled. The disk peaked at 699 GB (75%). The automatic install in `node.sh` has unit tests but has not run during a real sync yet.
+**Where:** Seen on a mainnet run, during the snapshot restore. The helpers were installed by hand before the disk filled, and the disk peaked at 699 GB (75%). The automatic install in `node.sh` has unit tests but has not run during a real sync yet.
 
 ### The API does not answer for hours
 
 **You see:** `HTTP API not answering yet (snapshot download in progress?).`
 
-**Why:** The node serves no API while it loads the snapshot. That took us 8 h 34 m.
+**Why:** The node serves no API while it loads the snapshot. On cax31 that takes about 8 to 9 hours.
 
 **Fix:** Wait. The used space on the server should keep growing:
 
@@ -135,13 +135,13 @@ ssh root@$IP systemctl status snapchain-space-saver snapchain-disk-guard.timer
 ssh root@$IP df -h /root/snapchain
 ```
 
-**Where:** Hit on our run, from 01:38 to 10:11 IST.
+**Where:** Seen on a mainnet run, for the whole snapshot restore.
 
 ### `node.sh` stops waiting before the node is in sync
 
 **You see:** `not in sync after 43200s. Re-run './node.sh wait' later; it is safe to re-run.`
 
-**Why:** `node.sh` waits for a set time. It was 12 hours on our run, and our sync took 14 h 06 m. It is 24 hours now, so the message says `86400s`.
+**Why:** `node.sh` waits for a set time. It used to be 12 hours, shorter than a sync on cax31 (about 14 hours). It is 24 hours now, so the message says `86400s`.
 
 **Fix:** Wait again. The node kept syncing the whole time.
 
@@ -149,7 +149,7 @@ ssh root@$IP df -h /root/snapchain
 ssh root@$IP 'bash -s wait' < node.sh
 ```
 
-**Where:** Hit on our run, at 13:39 IST.
+**Where:** Seen on a mainnet run, with the old 12-hour wait.
 
 ### Your computer sleeps or SSH drops
 
@@ -164,7 +164,7 @@ IP=$(hcloud server ip snapchain-read-node)
 ssh root@$IP 'bash -s wait' < node.sh
 ```
 
-**Where:** Hit on our run. The computer running our steps paused at least 13 times during the sync. The node kept syncing each time.
+**Where:** Seen on a mainnet run. The computer running the steps paused at least 13 times during the sync, and the node kept syncing each time.
 
 ### Warnings about peers in the node log
 
@@ -178,7 +178,7 @@ ssh root@$IP 'bash -s wait' < node.sh
 ssh root@$IP 'curl -s 127.0.0.1:3381/v1/info' | jq '.shardInfos[] | {shardId, blockDelay}'
 ```
 
-**Where:** Hit on our run, for the whole sync.
+**Where:** Seen on a mainnet run, for the whole sync.
 
 ## Step 3: open the app
 
@@ -237,7 +237,7 @@ curl -s 127.0.0.1:3381/v1/info
 
 **Fix:** Use `reverse=true`.
 
-**Where:** Found in review, on our node.
+**Where:** Found in review, on a live node.
 
 ### A repeated parameter returns 400
 
@@ -247,7 +247,7 @@ curl -s 127.0.0.1:3381/v1/info
 
 **Fix:** Use `requesterFids[]=1&requesterFids[]=2`.
 
-**Where:** Found in review, on our node.
+**Where:** Found in review, on a live node.
 
 ### `mempoolSize` shows 4294967295
 
@@ -257,7 +257,7 @@ curl -s 127.0.0.1:3381/v1/info
 
 **Fix:** Nothing.
 
-**Where:** Seen on our node.
+**Where:** Seen on a live node.
 
 {/* AUTHOR: add any problem you hit that is not on this page, in your own words. */}
 

@@ -8,7 +8,7 @@ export const GET: APIRoute = async ({ site }) => {
   const list = home + "\n" + (await pages()).map((e) => `- [${e.data.title}](${base}${e.id === "index" ? "" : `${e.id}/`}): ${e.data.description ?? ""}`).join("\n");
   const body = `# Run your own Farcaster node in 3 simple steps
 
-> Rent a Hetzner server. Start a Snapchain read node on it with the official bootstrap. Open a small web app served from the same server over HTTPS. You need no API keys. From one mainnet run on 2026-10-18: 14 h 06 m from renting the server to synced, about $2.31 at $0.164 an hour, a 557.86 GB database. Writes (gasless KEY_ADD, casts) have not been tried on mainnet.
+> Rent a Hetzner server. Start a Snapchain read node on it with the official bootstrap. Open a small web app served from the same server over HTTPS. You need no API keys. On a Hetzner cax31 with a 1000 GB volume, expect about 14 hours from renting the server to synced, about $2.31 at $0.164 an hour, and a database of about 560 GB. Writes (gasless KEY_ADD, casts) have not been tried on mainnet.
 
 Key facts:
 - An app key is added with a KEY_ADD message that the custody address signs (EIP-712). It needs no transaction on OP Mainnet. Mainnet has accepted it since engine version V16 on 2026-05-07 (https://snapchain.farcaster.xyz/guides/writing-messages; snapchain src/version/version.rs).
@@ -26,7 +26,7 @@ ssh root@$IP "SNAPCHAIN_AGREE_NO_REWARDS=yes MIN_FREE_GB=900 bash -s" < node.sh
 CONFIRM=snapchain-read-node ./teardown.sh
 \`\`\`
 In a new terminal: IP=$(hcloud server ip snapchain-read-node)
-WATCHDOG=0 keeps the server until you delete it. For a trial run, leave it out and add MAX_USD=5 EXPECTED_HOURS=16 (how we ran it): watchdog.sh then deletes everything after 24 h.
+WATCHDOG=0 keeps the server until you delete it. For a trial run, leave it out and add MAX_USD=5 EXPECTED_HOURS=16: watchdog.sh then deletes everything after 24 h.
 If a server type is sold out, provision.sh says so and lists the types available in LOCATION; set SERVER_TYPE and/or LOCATION.
 
 Repo (MIT): ${REPO}

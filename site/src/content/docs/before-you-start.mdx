@@ -1,6 +1,6 @@
 ---
 title: Before you start
-description: What you need, Hetzner limits, what it costs, how to stop paying, and how our app handles a recovery phrase.
+description: What you need, Hetzner limits, what it costs, how to stop paying, and how the app handles a recovery phrase.
 ---
 
 import RepoLink from "../../components/RepoLink.astro";
@@ -43,9 +43,9 @@ The scripts read `HCLOUD_TOKEN` from the environment and never print it. Do the 
 
 ## A Farcaster account, only for posting
 
-Reading the feed needs no account. Posting needs an FID with storage, plus its recovery phrase. Registering an FID and paying for storage are onchain actions; see the [Farcaster docs](https://docs.farcaster.xyz/). A test account needs its own FID and storage. We do not cover creating one.
+Reading the feed needs no account. Posting needs an FID with storage, plus its recovery phrase. Registering an FID and paying for storage are onchain actions; see the [Farcaster docs](https://docs.farcaster.xyz/). A test account needs its own FID and storage. This guide does not cover creating one.
 
-## Two Hetzner limits we hit
+## Two Hetzner limits
 
 | Limit | What you see | What to do |
 |---|---|---|
@@ -58,10 +58,10 @@ Reading the feed needs no account. Posting needs an FID with storage, plus its r
 |---|---|
 | cax31 (ARM64, 8 vCPU, 16 GB RAM, 160 GB disk) | $0.040 an hour, at most $24.99 a month |
 | Public IPv4 | $0.001 an hour, at most $0.60 a month |
-| 1000 GB volume | $76.70 a month ($0.0767 per GB). Hetzner bills it by the hour; we estimate about $0.123 an hour (monthly price ÷ 625 hours, the ratio of the server's own monthly and hourly prices) |
+| 1000 GB volume | $76.70 a month ($0.0767 per GB). Hetzner bills it by the hour; that works out to about $0.123 an hour (monthly price ÷ 625 hours, the ratio of the server's own monthly and hourly prices) |
 | Total | About $0.164 an hour. About $102 a month if you leave it on, because Hetzner stops charging each item at its monthly price. |
 
-Our run cost about $2.31 from renting the server to a synced node, 14 h 06 m. We calculated that from the price list; we have not seen the invoice.
+On cax31, expect about $2.31 from renting the server to a synced node, which takes about 14 hours. That figure comes from the price list, not an invoice.
 
 ```bash title="See the price, create nothing"
 ESTIMATE_ONLY=1 SERVER_TYPE=cax31 VOLUME_GB=1000 EXPECTED_HOURS=16 ./provision.sh
@@ -70,11 +70,11 @@ ESTIMATE_ONLY=1 SERVER_TYPE=cax31 VOLUME_GB=1000 EXPECTED_HOURS=16 ./provision.s
 ### How to stop paying
 
 - `CONFIRM=snapchain-read-node ./teardown.sh` deletes the server, the volume and the firewall, then lists what is left. The node's database is on the volume, so it goes too.
-- If you only want to try it, `watchdog.sh` can delete everything for you. It runs on your computer and calls `teardown.sh` after 24 hours, before the bill reaches `MAX_USD`, or when the node has made no progress for 2 hours. `MAX_USD` is in your Hetzner account's currency. Step 1 starts it unless you set `WATCHDOG=0`, as the Quickstart's commands do; [If you only want to try it](../quickstart/#if-you-only-want-to-try-it) explains it.
+- If you only want to try it, `watchdog.sh` can delete everything for you. It runs on your computer and calls `teardown.sh` after 24 hours, before the bill reaches `MAX_USD`, or when the node has made no progress for 2 hours. `MAX_USD` is in your Hetzner account's currency. Step 1 starts it unless you set `WATCHDOG=0`, as the Quickstart's commands do; [Only trying it?](../quickstart/#try-it) explains it.
 - `provision.sh` creates nothing if the hourly price × `EXPECTED_HOURS` is above `MAX_USD`. The default `MAX_USD` is 2.
 
 :::caution
-We have run `teardown.sh` only with `DRY_RUN=1` and against a fake `hcloud` in tests. After it finishes, look in the Hetzner console yourself.
+`teardown.sh` has been tested only with `DRY_RUN=1` and against a fake `hcloud`. After it finishes, look in the Hetzner console yourself.
 :::
 
 ## Seed phrases and app keys
@@ -83,7 +83,7 @@ We have run `teardown.sh` only with `DRY_RUN=1` and against a fake `hcloud` in t
 Use a test account. Only type a recovery phrase into code you have read, or code from people you trust, on your own computer. Never paste it into an AI assistant or a chat. If an app you already trust can give you an app key, use that instead.
 :::
 
-What our app does if you give it the phrase (<RepoLink path="client/src/signer.ts" />):
+What the app does if you give it the phrase (<RepoLink path="client/src/signer.ts" />):
 
 1. Your browser makes a new ed25519 app key.
 2. The browser uses the phrase once to sign one gasless `KEY_ADD` with your custody address. There is no transaction and no gas.
@@ -95,7 +95,7 @@ JavaScript cannot promise that the browser has wiped the phrase from memory. Tha
 | The app key can | The app key cannot |
 |---|---|
 | Post casts (`CAST_ADD`) | Move money or sign transactions |
-| Like and recast (`REACTION_ADD`) | Delete casts, unfollow or edit your profile; we do not ask for those scopes |
+| Like and recast (`REACTION_ADD`) | Delete casts, unfollow or edit your profile; the app does not ask for those scopes |
 | Follow (`LINK_ADD`) | Approve or cancel other keys (`KEY_ADD` and `KEY_REMOVE` are never scopes) |
 | Work until it expires: 7 days by default, 90 at most, renewed each time it is used | Keep working after your custody address cancels it |
 

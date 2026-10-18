@@ -8,7 +8,7 @@ tableOfContents:
 import CopyPrompt from "../../components/CopyPrompt.astro";
 import RepoLink from "../../components/RepoLink.astro";
 
-<p class="byline">Updated on 18 October 2026<br />Tested on Hetzner cax31 (ARM64), Ubuntu 24.04, Snapchain v0.14.3, mainnet. We have not sent a real message to mainnet yet; see <a href="../proof/#test-status">test status</a>.</p>
+<p class="byline">Updated on 18 October 2026<br />Tested on Hetzner cax31 (ARM64), Ubuntu 24.04, Snapchain v0.14.3, mainnet. Sending a real message to mainnet has not been tested yet; see <a href="../proof/#test-status">test status</a>.</p>
 
 ## Introduction
 
@@ -50,7 +50,7 @@ A `KEY_ADD` holds three signatures:
 | Signed by | What | Why |
 |---|---|---|
 | Custody address (EIP-712, domain `Farcaster KeyAdd`, chainId 1) | `KeyAdd(fid, key, keyType, scopes, ttl, nonce, deadline)` | You approve this key, with these permissions, for this long |
-| Custody address of `requestFid`, the app's FID (same domain) | `SignedKeyRequest(requestFid, key, deadline)` | Says which app asked for the key. Our app uses your own FID, so your custody key signs both. |
+| Custody address of `requestFid`, the app's FID (same domain) | `SignedKeyRequest(requestFid, key, deadline)` | Says which app asked for the key. The RunFarcaster app uses your own FID, so your custody key signs both. |
 | The new app key | The message envelope | Shows the app has the private half |
 
 What the node checks (`key.rs` at v0.14.3, see SOURCES.md):
@@ -64,9 +64,9 @@ curl -s "$NODE/v1/signersByFid?fid=<your-fid>" \
   | jq '{currentUserNonce, gaslessSignerCount, gaslessSignerLimit, signers: [.signers[] | {source, scopes, ttl}]}'
 ```
 
-Scopes and a lifetime only exist on gasless keys. For keys added onchain the node sends no `ttl`, so jq prints `null`; `scopes` may be empty or missing. We have not checked this output against a live onchain key.
+Scopes and a lifetime only exist on gasless keys. For keys added onchain the node sends no `ttl`, so jq prints `null`; `scopes` may be empty or missing. This output has not been checked against a live onchain key.
 
-Our app asks for 3 scopes, `CAST_ADD`, `REACTION_ADD` and `LINK_ADD`, for 7 days by default. The example in the official guide asks for 9 scopes and 30 days ([Docs issues #9](../docs-issues/)).
+The app asks for 3 scopes, `CAST_ADD`, `REACTION_ADD` and `LINK_ADD`, for 7 days by default. The example in the official guide asks for 9 scopes and 30 days ([Docs issues #9](../docs-issues/)).
 
 ```ts title="client/src/signer.ts (condensed)"
 const { currentUserNonce } = await api.signersByFid(fid);
@@ -80,7 +80,7 @@ const msg = await makeKeyAdd(body.value, { fid, network: FarcasterNetwork.MAINNE
 Call `makeKeyAddBody`. The older `getSignedKeyRequestMetadata` signs for the onchain contract, and the node rejects that inside a `KEY_ADD`.
 
 :::danger[Your recovery phrase]
-The two EIP-712 signatures need your custody key, which comes from your recovery phrase. Use a test account. Only type the phrase into code you have read, or code from people you trust. Do it on your own computer, as in [Your first cast](../first-cast/). Never paste it into an AI assistant. How our app handles it: [Before you start](../before-you-start/#seed-phrases-and-app-keys).
+The two EIP-712 signatures need your custody key, which comes from your recovery phrase. Use a test account. Only type the phrase into code you have read, or code from people you trust. Do it on your own computer, as in [Your first cast](../first-cast/). Never paste it into an AI assistant. How the app handles it: [Before you start](../before-you-start/#seed-phrases-and-app-keys).
 :::
 
 <CopyPrompt id="concept" label="Copy prompt: ask an assistant about gasless app keys" question="How does a gasless KEY_ADD work, which three signatures does it carry, and how do nonce and TTL work?" />
@@ -91,7 +91,7 @@ Send a signed message to `POST /v1/submitMessage` on your read node. The node va
 
 An HTTP `200` therefore means the node found the message valid and sent it on. It does not mean a validator has put it in a block. To find out, ask for the message back. `/v1/info` on a read node shows `mempoolSize: 4294967295` for shards 1 and 2, a placeholder value.
 
-This optional check sends 64 random bytes. It was the only write we sent to mainnet:
+This optional check sends 64 random bytes. It is the only write tested on mainnet so far:
 
 ```bash title="Optional"
 head -c 64 /dev/urandom | curl -s -X POST "$NODE/v1/submitMessage" \
@@ -99,7 +99,7 @@ head -c 64 /dev/urandom | curl -s -X POST "$NODE/v1/submitMessage" \
 # HTTP 400: Invalid protobuf data: Unable to decode message
 ```
 
-What our app does after you press Cast, Like, Recast or Follow (<RepoLink path="client/src/pending.ts" />):
+What the app does after you press Cast, Like, Recast or Follow (<RepoLink path="client/src/pending.ts" />):
 
 1. Shows it right away, marked *sending*.
 2. Sends the signed message. On `200` it shows *Accepted by the node for relay. Waiting to see it in a block.*
@@ -107,7 +107,7 @@ What our app does after you press Cast, Like, Recast or Follow (<RepoLink path="
 4. If the node still does not have it 30 seconds after the last send, sends the identical message again. It has the same hash, so it cannot appear twice.
 5. After 4 sends it marks the message *failed* and says why. A `4xx` answer fails it at once, since an invalid message stays invalid.
 
-We have not measured how long a valid message takes to appear.
+How long a valid message takes to appear has not been measured.
 
 <CopyPrompt id="concept" label="Copy prompt: ask about write relay" question="What does a 200 from submitMessage on a read node mean, and why should a client query the message back and retry?" />
 
@@ -117,14 +117,14 @@ We have not measured how long a valid message takes to appear.
 |---|---|---|
 | Accounts | Contracts on OP Mainnet (IdRegistry, KeyRegistry, StorageRegistry) | Account numbers (FIDs), owner addresses, storage, keys added onchain |
 | Messages | Snapchain | Casts, likes and recasts, follows, profile fields, verifications, gasless `KEY_ADD` |
-| Apps | Anywhere | Apps like ours, reading from whichever node they choose |
+| Apps | Anywhere | Apps like this one, reading from whichever node they choose |
 
 Validators read the Farcaster contracts on OP Mainnet and put those events in blocks. Your node gets them inside the blocks, together with all messages. It needs no OP Mainnet connection of its own. Your account is not tied to an app. Any app that can reach a node can show your posts, and any app key you approved can post for you.
 
 ## Step 4: Account number, owner address, storage
 
 - **FID** is your account number. It is registered onchain. Profiles, casts and follows all refer to it.
-- **Custody address** is the Ethereum address that owns the FID. It approves and revokes app keys, and can move the FID to another address. Our app derives it from the recovery phrase at the path `m/44'/60'/0'/0/0`.
+- **Custody address** is the Ethereum address that owns the FID. It approves and revokes app keys, and can move the FID to another address. The app derives it from the recovery phrase at the path `m/44'/60'/0'/0/0`.
 - **Storage** is paid for onchain, in units. Each unit holds a fixed number of each kind of message. Past that, the node deletes the oldest ([docs: Messages](https://docs.farcaster.xyz/learn/what-is-farcaster/messages)). Registering an FID and buying storage still cost gas. This guide does neither.
 
 The per-unit numbers in the official docs are out of date ([Docs issues #20](../docs-issues/)). Your node has the current ones:
@@ -146,17 +146,17 @@ curl -s "$NODE/v1/userDataByFid?fid=3" | jq '.messages[].data.userDataBody'
 | Rewards | Not covered here | None |
 | Delay | Up to date | A little behind, by the time it takes to fetch each block ([node-types](https://snapchain.farcaster.xyz/node-types)) |
 
-Messages are split across shards. Shard 0 holds network-wide data, including gasless `KEY_ADD` messages. Shards 1 and 2 split the accounts between them. `numShards` in `/v1/info` counts only the account shards, so it says 2 while `shardInfos` lists 3. Our node's database was 557.86 GB; on disk the shards took 37, 261 and 259 GiB.
+Messages are split across shards. Shard 0 holds network-wide data, including gasless `KEY_ADD` messages. Shards 1 and 2 split the accounts between them. `numShards` in `/v1/info` counts only the account shards, so it says 2 while `shardInfos` lists 3. Expect a database of about 560 GB; on the tested node the shards took 37, 261 and 259 GiB.
 
 ```bash
 curl -s "$NODE/v1/info" | jq '{version, numShards, shards: [.shardInfos[] | {shardId, maxHeight, blockDelay}]}'
 ```
 
-`blockDelay` is how many seconds a shard's newest block is behind the clock. When every shard shows single digits, the node is synced ([Getting Started](https://snapchain.farcaster.xyz/getting-started)). A new node first downloads a snapshot. On 2026-10-18 that was 5689 compressed chunks, roughly 500 GB by our disk readings. Then it fetches the newer blocks one by one. Ours did 4.3 to 4.6 blocks a second per shard.
+`blockDelay` is how many seconds a shard's newest block is behind the clock. When every shard shows single digits, the node is synced ([Getting Started](https://snapchain.farcaster.xyz/getting-started)). A new node first downloads a snapshot. On 2026-10-18 that was 5689 compressed chunks, roughly 500 GB on disk. Then it fetches the newer blocks one by one: on cax31, about 4.3 to 4.6 blocks a second per shard.
 
 ## Step 6: Read with the HTTP API
 
-The node answers HTTP on port 3381. It has no "home feed" endpoint, so our app builds one (<RepoLink path="client/src/feed.ts" />):
+The node answers HTTP on port 3381. It has no "home feed" endpoint, so the app builds one (<RepoLink path="client/src/feed.ts" />):
 
 ```bash
 # 1. Which FIDs does FID 3 follow?
@@ -215,7 +215,7 @@ Through Caddy, `/v1/mesh` (the node's mesh debug view) returns 404. `/v1/current
 
 ## Step 8: Filters
 
-Our app's filters work on casts made in any app, because they run on what your node returns (<RepoLink path="client/src/filters.ts" />).
+The app's filters work on casts made in any app, because they run on what your node returns (<RepoLink path="client/src/filters.ts" />).
 
 | Rule | Effect |
 |---|---|
@@ -242,7 +242,7 @@ CONFIRM=snapchain-read-node ./teardown.sh
 |---|---|---|
 | Server | Set up by hand in the AWS console, with screenshots | `provision.sh` on Hetzner |
 | Cost | "Roughly $100/month", an estimate | About $0.164 an hour, about $2.31 until synced (one run, price-list rates) |
-| Time to sync | "A few hours" | 14 h 06 m in our run |
+| Time to sync | "A few hours" | About 14 hours on cax31 |
 | Disk | 2 TB (docs), 1.5 TB (README) | 1000 GB worked with two helper scripts; `node.sh` now installs them (unit-tested only) |
 | Firewall | Opens 3382/**tcp** and SSH to everyone ([Docs issues #1, #2](../docs-issues/)) | 3382/udp; SSH only from `SSH_SOURCE_CIDRS`; 3381 and 3383 closed |
 | Bootstrap | `curl … \| bash`, needs a terminal, keeps running in front of you | The same official script, run by `node.sh`, which then waits for sync |

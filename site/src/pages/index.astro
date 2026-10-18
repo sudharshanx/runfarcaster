@@ -31,7 +31,7 @@ IP=$(SSH_KEY=my-key \\
   },
   {
     n: "02", label: "Start", title: "Start the node.",
-    text: "Your node downloads Farcaster's data, then keeps up on its own. Ours took about 14 hours to sync.",
+    text: "Your node downloads Farcaster's data, then keeps up on its own. On a cax31, expect about 14 hours to sync.",
     cmd: `ssh root@$IP \\
   "SNAPCHAIN_AGREE_NO_REWARDS=yes MIN_FREE_GB=900 bash -s" \\
   < node.sh`,
@@ -128,10 +128,10 @@ const right = `<svg aria-hidden="true" width="12" height="12" viewBox="0 0 12 12
       </section>
 
       <section class="wrap trio" aria-label="Overview">
-        {steps.map((s) => (
+        {steps.map((s, i) => (
           <div>
             <p class="eyebrow">{s.n} / {s.label}</p>
-            <h2 class="h-sm">{s.title}</h2>
+            <h2 class="h-sm"><a class="card-link" href={u(`quickstart/#step-${i + 1}`)}>{s.title}</a></h2>
             <p>{s.text}</p>
           </div>
         ))}
@@ -243,7 +243,7 @@ const right = `<svg aria-hidden="true" width="12" height="12" viewBox="0 0 12 12
         <div>
           <p class="eyebrow">Fix a problem</p>
           <h2 id="fix-title" class="h-md">If something breaks, start here.</h2>
-          <p>These are the problems we hit while running the 3 steps, and how we fixed each one.</p>
+          <p>Common problems with the 3 steps, each with the exact message and the fix.</p>
           <a class="textlink" href={u("fix/")}>Fix a problem<Fragment set:html={right} /></a>
         </div>
         <ul class="linkgrid plain">

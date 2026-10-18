@@ -18,14 +18,14 @@ If SSH says `Connection refused` right after step 1, the server is still booting
 
 Expected output: `[node.sh] Data disk ... arming disk-guard and snapshot-space-saver.`, then `[node.sh] ... SYNCING shard 0: height=... blockDelay=...` lines, then `[node.sh] Node is in sync.` and a health check with `sync: SYNCED`.
 
-## Sync expectations (our run, 18 Oct 2026)
+## Sync expectations (cax31: 8 cores, 16 GB RAM, 1000 GB volume)
 
-- Loading the snapshot took 8 h 34 m. The HTTP API does not answer during that time. That is normal.
-- Renting the server to synced took 14 h 06 m.
-- The volume peaked at 699 GB (75% full) while the snapshot loaded. The database was 557.86 GB once synced.
-- About 2.5 GB of memory in use once synced.
+- Loading the snapshot takes about 8 to 9 hours. The HTTP API does not answer during that time. That is normal.
+- Catching up takes about 5 more hours, so about 14 hours from renting the server to synced. A faster disk or network shortens both. Times on other server types vary.
+- Expect the volume to peak at about 700 GB (75% full) while the snapshot loads, and the database to be about 560 GB once synced.
+- Expect about 2.5 GB of memory in use once synced.
 
-We installed the two disk helpers by hand on that run. The automatic install in `node.sh` has unit tests but has not run during a real sync yet.
+The automatic install in `node.sh` has unit tests but has not run during a real sync yet.
 
 ## Check progress
 

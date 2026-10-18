@@ -1,13 +1,13 @@
 # Fix a problem
 
-Problems we saw while building and running the guide. Match the exact text the user sees. Full page: https://sudharshanx.github.io/runfarcaster/fix/
+Problems seen while building and running the guide. Match the exact text the user sees. Full page: https://sudharshanx.github.io/runfarcaster/fix/
 
 ## Step 1
 
 | You see | Why | Fix |
 |---|---|---|
 | `volumes size limit exceeded (resource_limit_exceeded)` | New Hetzner accounts can rent at most 1024 GB of volumes in total. | Use `VOLUME_GB=1000`. Limits: https://console.hetzner.cloud/limits |
-| `server type cax31: not available in fsn1 right now.` | Hetzner sold out of that type there. The error lists what you can rent. | Run step 1 again with a `SERVER_TYPE` from the list, or another `LOCATION` (fsn1, nbg1, hel1, ash, hil, sin). We have only run the node on cax31. |
+| `server type cax31: not available in fsn1 right now.` | Hetzner sold out of that type there. The error lists what you can rent. | Run step 1 again with a `SERVER_TYPE` from the list, or another `LOCATION` (fsn1, nbg1, hel1, ash, hil, sin). The guide has been tested on cax31 only. |
 | `unknown LOCATION=…` | A typo in `LOCATION`. | Use a name from the list it prints. |
 | SSH hangs, then times out. It worked before. | The firewall lets SSH in only from `SSH_SOURCE_CIDRS`, and the user's address changed. | Run step 1 again with every setting and the new address: `SSH_KEY=my-key SERVER_TYPE=cax31 VOLUME_GB=1000 WATCHDOG=0 SSH_SOURCE_CIDRS="$(curl -4 -s https://ifconfig.me)/32" ./provision.sh`. It updates the firewall and keeps the server. |
 | `ssh: Could not resolve hostname : Name or service not known` | `$IP` is empty in a new terminal. | `IP=$(hcloud server ip snapchain-read-node)` |
@@ -19,7 +19,7 @@ Problems we saw while building and running the guide. Match the exact text the u
 | You see | Why | Fix |
 |---|---|---|
 | The data disk fills hours into step 2. `/root/snapchain-DISK-FULL` exists. | The official restore keeps every chunk, an unpacked copy and the database until the end. `disk-guard.sh` stopped the node at 90%. | Check the helpers: `ssh root@$IP systemctl status snapchain-space-saver snapchain-disk-guard.timer` |
-| `HTTP API not answering yet (snapshot download in progress?).` | The node serves no API while it loads the snapshot (8 h 34 m for us). | Wait. Used space should grow: `ssh root@$IP df -h /root/snapchain` |
+| `HTTP API not answering yet (snapshot download in progress?).` | The node serves no API while it loads the snapshot (about 8 to 9 hours on cax31). | Wait. Used space should grow: `ssh root@$IP df -h /root/snapchain` |
 | `not in sync after 43200s. Re-run './node.sh wait' later; it is safe to re-run.` | `node.sh` waits a set time (now 24 h, so the message says `86400s`). | `ssh root@$IP 'bash -s wait' < node.sh` |
 | The terminal running step 2 stops, or SSH disconnects. | The node runs on the server, not on the user's computer. | `IP=$(hcloud server ip snapchain-read-node)` then `ssh root@$IP 'bash -s wait' < node.sh` |
 | About 18 `InsufficientPeers ("read-node-peers")` warnings a minute, `HandshakeTimedOut` every 30 s. | No connected peer listens on that topic. Two bootstrap peers do not answer. | Nothing, while `blockDelay` stays in single digits: `ssh root@$IP 'curl -s 127.0.0.1:3381/v1/info' \| jq '.shardInfos[] \| {shardId, blockDelay}'` |

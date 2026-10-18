@@ -22,7 +22,7 @@ This creates nothing:
 ESTIMATE_ONLY=1 SERVER_TYPE=cax31 VOLUME_GB=1000 ./provision.sh
 ```
 
-It was about $0.164 an hour for us.
+For cax31 with the 1000 GB volume it is about $0.164 an hour.
 
 ## Rent the server
 
@@ -32,13 +32,13 @@ Ask first. Then run (add `LOCATION=<location>` if the user picked one):
 IP=$(SSH_KEY=<key-name> SERVER_TYPE=cax31 VOLUME_GB=1000 WATCHDOG=0 SSH_SOURCE_CIDRS="$MY_IP/32" ./provision.sh)
 ```
 
-Expected: `[provision] cost guard OK`, then `[provision] WATCHDOG=0: no watchdog started`, then a `[provision] done. Next` line on stderr, and the IPv4 address on stdout. It took 35 s for us.
+Expected: `[provision] cost guard OK`, then `[provision] WATCHDOG=0: no watchdog started`, then a `[provision] done. Next` line on stderr, and the IPv4 address on stdout. It takes under a minute.
 
 Tell the user: the server keeps running, and Hetzner bills it by the hour, until they delete it with `teardown.sh`.
 
 ## Server type and location
 
-- We have only run the node on `cax31` (ARM64, 8 vCPU, 16 GB RAM).
+- The guide has been tested on `cax31` (ARM64, 8 vCPU, 16 GB RAM) only. Times on other types vary.
 - Hetzner sells out of server types. If the type is sold out, `provision.sh` stops with `server type cax31: not available in fsn1 right now.` and lists the types available there, cheapest first. Show the user that list and ask which `SERVER_TYPE`, and which `LOCATION` if they want another place.
 - Locations: `fsn1`, `nbg1`, `hel1`, `ash`, `hil`, `sin`. A typo gives `unknown LOCATION=…` and the list of valid names.
 
@@ -46,7 +46,7 @@ Tell the user: the server keeps running, and Hetzner bills it by the hour, until
 
 `WATCHDOG=0` is the default in the guide: no watchdog runs, and the server stays until the user deletes it.
 
-If the user only wants to try it, leave out `WATCHDOG=0` and add `MAX_USD=5 EXPECTED_HOURS=16` (how we ran it). Then `provision.sh` starts `watchdog.sh`, which deletes everything after 24 h, when the bill would pass `MAX_USD`, or after 2 h without progress.
+If the user only wants to try it, leave out `WATCHDOG=0` and add `MAX_USD=5 EXPECTED_HOURS=16`. Then `provision.sh` starts `watchdog.sh`, which deletes everything after 24 h, when the bill would pass `MAX_USD`, or after 2 h without progress.
 
 - To keep the node after all: `touch .provision-state/watchdog.disarm`
 - Its log: `.provision-state/watchdog.log`
