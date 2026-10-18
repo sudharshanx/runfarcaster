@@ -13,7 +13,7 @@ const base = process.env.BASE_PATH ?? "/runfarcaster/";
 const repo = REPO;
 // Social preview (public/og.png, 1200x630), on every docs page and the landing page.
 const OG_IMAGE = new URL(`${base.replace(/\/?$/, "/")}og.png`, site).href;
-const OG_ALT = "RunFarcaster: Run your own Farcaster node in 3 simple steps. 01 Rent a server, 02 Start the node, 03 Open the app.";
+const OG_ALT = "RunFarcaster: Read and post on Farcaster from your own server. 01 Rent a server, 02 Start the node, 03 Open the app.";
 
 export default defineConfig({
   site,
@@ -31,7 +31,7 @@ export default defineConfig({
     starlight({
       title: "RunFarcaster",
       description:
-        "Run your own Farcaster node in 3 simple steps: a Snapchain read node and a web app on Hetzner. Measured time and cost, what we tested, and how it works.",
+        "RunFarcaster sets up your own Farcaster node and app with no gatekeepers in between.",
       editLink: { baseUrl: `${repo}/edit/main/site/` },
       head: [
         { tag: "meta", attrs: { property: "og:image", content: OG_IMAGE } },
@@ -59,7 +59,7 @@ export default defineConfig({
       },
       lastUpdated: false,
       sidebar: [
-        { label: "Quickstart: 3 steps", slug: "quickstart" },
+        { label: "Quickstart: 3 commands", slug: "quickstart" },
         {
           label: "Go deeper",
           items: [

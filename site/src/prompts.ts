@@ -9,7 +9,7 @@ const SAFETY = `Rules for you:
 - Ask me before you run teardown.sh, delete anything, or change MAX_USD.
 - Show me real output only. If a command fails, show the exact error and stop.`;
 
-const CONTEXT = `Context: I am following the guide "Run your own Farcaster node in 3 simple steps" (a Snapchain read node and a web app).
+const CONTEXT = `Context: I am following the RunFarcaster guide (3 commands: a Hetzner server running a Snapchain read node, and a web app that reads and posts through it).
 Repo: ${REPO} (MIT). I cloned it to my computer (git clone ${REPO}, then cd runfarcaster) and run every command from that folder. Scripts: provision.sh (step 1), node.sh (step 2), deploy-client.sh (step 3), teardown.sh, and watchdog.sh (optional).
 In any new terminal, get the server IP again with: IP=$(hcloud server ip snapchain-read-node)`;
 

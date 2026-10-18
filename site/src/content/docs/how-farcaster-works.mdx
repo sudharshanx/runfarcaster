@@ -12,7 +12,30 @@ import RepoLink from "../../components/RepoLink.astro";
 
 {/* AUTHOR: two or three sentences on what confused you most when you started, and what this page will make clear. */}
 
-The [Quickstart](../quickstart/) gave you a node and an app. This page explains what they do, using commands you can run against your own node. Since 2026-05-07, adding an app key needs no blockchain transaction. A read node passes the messages you send it on to the validators.
+The [Quickstart](../quickstart/) gave you a node and an app. This page explains what they do, using commands you can run against your own node. The ideas fall into two groups.
+
+**Reading** needs no account:
+- [Snapchain messages](#some-parts-live-onchain): casts, likes, follows and profile fields, and which parts live onchain instead.
+- [Read nodes and validators](#shards-validators-and-your-node): what your node stores and what it leaves to the validators.
+- [The HTTP API](#read-with-the-http-api) the app reads from.
+
+**Posting** needs an account and a key:
+- [FIDs and custody addresses](#account-number-and-owner-address): the account number and the address that owns it.
+- [App keys](#app-keys-are-gasless-now): the key the app signs with, and how it gets added without gas.
+- [Storage rent](#storage-rent): the space an account pays for before it can post.
+- [Usernames](#usernames-fnames-and-ens-names): fnames and ENS names, and how they map to an FID.
+
+## Where a post goes from a read node
+
+A read node downloads every block the validators make and keeps a full copy of the messages. It takes no part in making blocks, so it cannot add a cast to the network by itself. Posting still works through it:
+
+1. The app signs the cast with the app key, then posts the bytes to `POST /v1/submitMessage` on your node.
+2. The node checks the message against its own copy of the state. If it is valid and new, the node gossips it to the validators on the `mempool` topic and keeps nothing.
+3. A validator puts the message in a block. Your node gets that block like any other, and the app finds the cast there.
+
+The [Snapchain docs on message submission](https://snapchain.farcaster.xyz/node-types#message-submission-and-the-mempool) describe this path. In the code it is `submit_message_internal` in `src/network/server.rs` and `ReadNodeMempool` in `src/mempool/mempool.rs`. [Your node passes messages on](#your-node-passes-messages-on) covers what an HTTP `200` means and how the app checks that the cast landed.
+
+Adding an app key takes the same path and costs no gas. The older way to add an app key is a transaction on OP Mainnet, paid in ETH. Since engine version V16 went live on mainnet on 2026-05-07, a node also accepts a gasless `KEY_ADD` message signed by the custody address. The app sends that message through `submitMessage` like a cast, so you need no ETH and no OP Mainnet connection. [App keys are gasless now](#app-keys-are-gasless-now) lists its three signatures.
 
 ## How the parts connect
 

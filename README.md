@@ -1,6 +1,7 @@
-# Run your own Farcaster node in 3 simple steps
+# RunFarcaster: read and post on Farcaster from your own server
 
-Rent a server. Start the node. Open the app.
+Three commands: rent a Hetzner server, bring up a Snapchain read node there, and open a web app that reads your
+feed from that node and posts through it.
 
 This repo holds the scripts for those 3 steps, a small web app, the tests and the guide's website. The node is a
 Snapchain read node with a full copy of Farcaster. The app shows a feed from that node and can post casts,
