@@ -9,7 +9,7 @@
 // signers wherever possible. See src/signer.ts and README.md.
 import "@fontsource-variable/dm-sans";
 import "@fontsource/ibm-plex-mono/400.css";
-import { NodeApi } from "./api";
+import { NodeApi, NodeApiError } from "./api";
 import { forgetAppKey, loadAppKey, saveAppKey, type StoredAppKey } from "./appkey";
 import { FARCASTER_EPOCH_MS, SAMPLE_ACCOUNTS, fcTimeToDate, loadProfiles, loadSampleFeed, mergeFeed, type FeedCast, type Profile } from "./feed";
 import { AppIndex } from "./apps";
@@ -190,11 +190,23 @@ async function refreshStatus() {
     for (const s of i.shardInfos ?? []) rows.push(h("dt", {}, `Shard ${s.shardId}`), h("dd", {}, `${s.blockDelay} s behind`));
     info.replaceChildren(h("dl", {}, ...rows), h("p", { class: "hint" }, "A read node is always slightly behind the validators."));
   } catch (e) {
+    nodeStarting = isStarting(e);
+    if (nodeStarting) {
+      pill.dataset.state = "behind";
+      setText("node-status-text", "Node still starting");
+      info.replaceChildren(h("p", { class: "hint" }, STARTING_TEXT));
+      return;
+    }
     pill.dataset.state = "down";
     setText("node-status-text", "Can't reach your node");
     info.replaceChildren(h("p", { class: "hint" }, sentence((e as Error).message)));
   }
 }
+// Caddy answers 502/503/504 when it is up but the node's API is not (yet) listening, e.g. while
+// node.sh is still loading the snapshot. Tested against Caddy with no upstream listening.
+let nodeStarting = false;
+const isStarting = (e: unknown) => e instanceof NodeApiError && [502, 503, 504].includes(e.status);
+const STARTING_TEXT = "The app is up, but your node isn't answering yet. After step 2 it first loads a snapshot, which took about 8 to 9 hours on cax31. This page checks again every 30 seconds.";
 
 $("save-node").addEventListener("click", () => {
   settings.nodeUrl = ($("node-url") as HTMLInputElement).value.trim();
@@ -670,6 +682,7 @@ function renderFeed() {
   renderAppFilters(merged.filter((c) => !c.pending));
   if (!loading) {
     const parts = [`${shown.length} ${shown.length === 1 ? "cast" : "casts"}`];
+    if (detailsFor !== null) parts[0] = `Loading names and apps for ${parts[0]}…`;
     if (newCount) parts.push(`${newCount} new since the last refresh`);
     if (hidden) parts.push(`${hidden} hidden by filters`);
     if (view?.hiddenReplies) parts.push(`${view.hiddenReplies} ${view.hiddenReplies === 1 ? "reply" : "replies"} to people you don't follow hidden`);
@@ -692,6 +705,7 @@ function renderFeed() {
   reacted = sentReactions();
   if (problem === "node-down") {
     setText("feed-meta", "");
+    if (nodeStarting) { box.append(notice("feed-down", "Your node is still starting.", STARTING_TEXT, button("retry-feed", "Try again", () => void refreshFeed(), "btn"))); return; }
     box.append(notice("feed-down", "Can't reach your node.",
       `This page reads from ${api.baseUrl || "this site's /v1 address"}, and it didn't answer. Check that your node is running and that Settings, Node connection has the right address, then try again.`,
       button("retry-feed", "Try again", () => void refreshFeed(), "btn"),
@@ -772,7 +786,7 @@ $("leave-sample").addEventListener("click", () => {
   document.getElementById("first-fid")?.focus();
 });
 
-async function nodeAnswers() { try { await api.info(); return true; } catch { return false; } }
+async function nodeAnswers() { try { await api.info(); nodeStarting = false; return true; } catch (e) { nodeStarting = isStarting(e); return false; } }
 async function addProfiles(casts: FeedCast[]) {
   await apps.load(casts); // which app posted each cast (src/apps.ts)
   const fids = new Set<number>();
@@ -780,6 +794,23 @@ async function addProfiles(casts: FeedCast[]) {
   const missing = [...fids].filter((f) => !profiles.has(f));
   for (const [fid, p] of await loadProfiles(api, missing)) profiles.set(fid, p);
 }
+/**
+ * Names, pictures and apps for the casts on screen only (not for hidden replies or casts past
+ * the 300 shown): the first screen first, then the rest. Each batch is drawn as soon as it arrives.
+ */
+const FIRST_SCREEN = 25;
+let detailsFor: number | null = null; // feedGen whose names are still loading
+async function addDetails(casts: FeedCast[], gen: number) {
+  const shown = casts.filter((c) => !c.pending).slice(0, 300);
+  detailsFor = gen;
+  try {
+    for (const batch of [shown.slice(0, FIRST_SCREEN), shown.slice(FIRST_SCREEN)]) {
+      if (gen !== feedGen) return;
+      if (batch.length) { await addProfiles(batch); if (gen === feedGen) renderFeed(); }
+    }
+  } finally { if (detailsFor === gen) detailsFor = null; }
+}
+const currentView = () => (timeline ? timelineView(timeline, !!settings.allReplies).casts : feed);
 
 // Only the newest refresh may set the feed: the boot load (default FIDs) can finish after a
 // refresh the user started, and must not overwrite it.
@@ -815,15 +846,14 @@ async function refreshFeed() {
       const loaded = await loadSampleFeed(api);
       if (gen !== feedGen) return;
       if (loaded.length === 0 && !(await nodeAnswers())) next = "node-down";
-      await addProfiles(loaded);
-      if (gen !== feedGen) return;
       feed = loaded; timeline = null;
     } else {
-      let tl = await startTimeline(api, settings.viewerFid, settings.watchFids);
+      // Progress while each account's casts arrive (a node has no home timeline; see src/timeline.ts).
+      const progress = (round: string) => (done: number, total: number) => { if (gen === feedGen) setText("feed-meta", `Loading${round} casts: ${done} of ${total} accounts read…`); };
+      let tl = await startTimeline(api, settings.viewerFid, settings.watchFids, progress(""));
       // Make the first screen worth reading: a few more pages if the complete part is short.
-      for (let i = 0; i < 2 && hasOlder(tl) && timelineView(tl, !!settings.allReplies).casts.length < 15; i++) tl = await loadOlder(api, tl);
+      for (let i = 0; i < 2 && hasOlder(tl) && timelineView(tl, !!settings.allReplies).casts.length < 15; i++) tl = await loadOlder(api, tl, progress(" more"));
       if (gen !== feedGen) return;
-      await addProfiles(tl.casts);
       if (settings.viewerFid && !profiles.has(settings.viewerFid)) for (const [f, p] of await loadProfiles(api, [settings.viewerFid])) profiles.set(f, p);
       if (gen !== feedGen) return;
       if (tl.casts.length === 0 && tl.failed > 0 && !(await nodeAnswers())) next = "node-down";
@@ -837,6 +867,7 @@ async function refreshFeed() {
     }
     problem = next;
     if (next === "node-down") void refreshStatus();
+    if (gen === feedGen) { loading = false; renderFeed(); await addDetails(currentView(), gen); }
   } catch {
     if (gen === feedGen) { problem = (await nodeAnswers()) ? "load-failed" : "node-down"; if (problem === "node-down") void refreshStatus(); }
   } finally {
@@ -849,11 +880,11 @@ async function onLoadOlder() {
   const before = timeline;
   try {
     const tl = await loadOlder(api, before);
-    await addProfiles(tl.casts);
+    await addProfiles(timelineView(tl, !!settings.allReplies).casts.slice(0, 300));
     if (timeline === before) { timeline = tl; for (const c of tl.casts) lastHashes.add(c.hash.toLowerCase()); if (tl.failed > before.failed) problem = problem ?? "load-failed"; }
   } finally { loadingOlder = false; renderFeed(); }
 }
-function setAllReplies(on: boolean) { settings.allReplies = on; writeJSON(kv, SETTINGS_KEY, settings); renderFeed(); }
+function setAllReplies(on: boolean) { settings.allReplies = on; writeJSON(kv, SETTINGS_KEY, settings); renderFeed(); if (on) void addProfiles(currentView().slice(0, 300)).then(() => renderFeed()); }
 $("all-replies").addEventListener("change", (ev) => setAllReplies((ev.target as HTMLInputElement).checked));
 $("load-older").addEventListener("click", () => void onLoadOlder());
 $("show-pictures").addEventListener("change", (ev) => { settings.noPictures = !(ev.target as HTMLInputElement).checked; writeJSON(kv, SETTINGS_KEY, settings); renderFeed(); });

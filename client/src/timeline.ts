@@ -25,11 +25,14 @@ export interface Timeline {
 }
 type Api = Pick<NodeApi, "linksByFid" | "castsByFid">;
 
-async function mapLimit<T, R>(items: T[], limit: number, fn: (t: T) => Promise<R>): Promise<R[]> {
+/** Called as each account's page arrives: (accounts read so far, accounts to read). */
+export type Progress = (done: number, total: number) => void;
+
+async function mapLimit<T, R>(items: T[], limit: number, fn: (t: T) => Promise<R>, onDone?: Progress): Promise<R[]> {
   const out: R[] = new Array(items.length);
-  let i = 0;
+  let i = 0, done = 0;
   await Promise.all(Array.from({ length: Math.min(limit, items.length) }, async () => {
-    while (i < items.length) { const idx = i++; out[idx] = await fn(items[idx]!); }
+    while (i < items.length) { const idx = i++; out[idx] = await fn(items[idx]!); onDone?.(++done, items.length); }
   }));
   return out;
 }
@@ -39,7 +42,7 @@ function addCasts(existing: FeedCast[], more: FeedCast[]): FeedCast[] {
   return [...existing, ...more.filter((c) => !seen.has(c.hash.toLowerCase()))].sort((a, b) => b.timestamp - a.timestamp);
 }
 
-async function fetchPages(api: Api, sources: Source[]): Promise<{ sources: Source[]; casts: FeedCast[]; failed: number }> {
+async function fetchPages(api: Api, sources: Source[], onProgress?: Progress): Promise<{ sources: Source[]; casts: FeedCast[]; failed: number }> {
   let failed = 0;
   const pages = await mapLimit(sources, 6, async (s) => {
     try {
@@ -52,12 +55,12 @@ async function fetchPages(api: Api, sources: Source[]): Promise<{ sources: Sourc
       failed++;
       return { source: { ...s, done: true }, casts: [] as FeedCast[] };
     }
-  });
+  }, onProgress);
   return { sources: pages.map((p) => p.source), casts: pages.flatMap((p) => p.casts), failed };
 }
 
 /** First page for you, the accounts you follow and any extra FIDs. */
-export async function startTimeline(api: Api, viewerFid: number | null, extraFids: number[]): Promise<Timeline> {
+export async function startTimeline(api: Api, viewerFid: number | null, extraFids: number[], onProgress?: Progress): Promise<Timeline> {
   const following = new Set<number>();
   let followsTruncated = false;
   if (viewerFid) {
@@ -68,15 +71,15 @@ export async function startTimeline(api: Api, viewerFid: number | null, extraFid
     } catch { /* show what we can */ }
   }
   const fids = [...new Set([...(viewerFid ? [viewerFid] : []), ...following, ...extraFids])].slice(0, MAX_ACCOUNTS + 1 + extraFids.length);
-  const r = await fetchPages(api, fids.map((fid) => ({ fid, done: false, oldest: Infinity })));
+  const r = await fetchPages(api, fids.map((fid) => ({ fid, done: false, oldest: Infinity })), onProgress);
   return { viewerFid, following, followsTruncated, sources: r.sources, casts: addCasts([], r.casts), failed: r.failed };
 }
 
 /** Next page for every account that has older casts. */
-export async function loadOlder(api: Api, tl: Timeline): Promise<Timeline> {
+export async function loadOlder(api: Api, tl: Timeline, onProgress?: Progress): Promise<Timeline> {
   const open = tl.sources.filter((s) => !s.done);
   if (open.length === 0) return tl;
-  const r = await fetchPages(api, open);
+  const r = await fetchPages(api, open, onProgress);
   const byFid = new Map(r.sources.map((s) => [s.fid, s]));
   return { ...tl, sources: tl.sources.map((s) => byFid.get(s.fid) ?? s), casts: addCasts(tl.casts, r.casts), failed: tl.failed + r.failed };
 }

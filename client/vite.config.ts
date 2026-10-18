@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 import { defineConfig, type Plugin } from "vitest/config";
-import { IMG_SRC } from "./src/images";
+import { IMG_SRC } from "./src/images.ts";
 
 // In development the browser talks to the Vite dev server only; /v1/* is proxied to the node.
 // This mirrors production (Caddy serves the app and proxies /v1/* on the same origin), so the

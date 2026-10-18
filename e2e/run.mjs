@@ -201,6 +201,8 @@ for (const vp of [{ width: 360, height: 740, isMobile: true, hasTouch: true }, {
   check("the setting says where pictures come from", (await p.textContent("#pictures-hint")).includes("imagedelivery.net") && (await p.textContent("#pictures-hint")).includes("only from your node"));
   await p.click("#feed-options > summary");
   await p.check("#all-replies");
+  // The parent's name loads after the toggle (names load only for casts on screen).
+  await p.waitForFunction(() => document.getElementById("feed").textContent.includes("Replying to @dave"), null, { timeout: 5000 }).catch(() => {});
   check("Show replies to people I don't follow reveals the hidden reply", (await feedText()).includes("Bob replying to Dave") && (await feedText()).includes("Replying to @dave"));
   for (const [fid, sel, what] of [["10", "#feed-no-follows", "follows nobody: notice says how to read others"], ["13", "#feed-empty", "no casts yet: says what to do"], ["777", "#feed-unknown", "unknown FID: says to check it or use a username"]]) {
     await p.fill("#viewer-fid", fid); await p.click("#apply-feed"); await settled();

@@ -113,17 +113,11 @@ export const SAMPLE_ACCOUNTS: ReadonlyArray<{ fname: string; fid: number }> = [
 ];
 
 /**
- * Sample feed order: each account's newest cast first (newest account first), then everything else
- * newest first, so the first screen shows many people. `pinFid` (balajis) is moved into the top 3.
- * Input must be newest first (loadFeed's order).
+ * Sample feed order: strictly newest first, so the times read top to bottom like any timeline.
+ * `pinFid` is kept for callers of the old signature and no longer changes the order.
  */
-export function sampleOrder(casts: FeedCast[], pinFid = SAMPLE_ACCOUNTS[0]!.fid): FeedCast[] {
-  const seen = new Set<number>();
-  const lead: FeedCast[] = [], rest: FeedCast[] = [];
-  for (const c of casts) (seen.has(c.fid) ? rest : lead).push(c), seen.add(c.fid);
-  const i = lead.findIndex((c) => c.fid === pinFid);
-  if (i > 2) lead.splice(2, 0, ...lead.splice(i, 1));
-  return [...lead, ...rest];
+export function sampleOrder(casts: FeedCast[], _pinFid = SAMPLE_ACCOUNTS[0]!.fid): FeedCast[] {
+  return [...casts].sort((a, b) => b.timestamp - a.timestamp);
 }
 
 /** Recent casts of the sample accounts (a few each), in sampleOrder. */
