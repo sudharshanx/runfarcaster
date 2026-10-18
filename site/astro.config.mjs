@@ -19,7 +19,7 @@ export default defineConfig({
   markdown: { remarkPlugins: [remarkRepoUrl], rehypePlugins: [rehypeTableScroll] },
   integrations: [
     starlight({
-      title: "Snapchain in 3 steps",
+      title: "Farcaster node in 3 simple steps",
       description:
         "Run your own Farcaster Snapchain read node and web client in 3 steps. Measured time and cost, what was tested, and how it works.",
       social: [{ icon: "github", label: "Source on GitHub", href: repo }],

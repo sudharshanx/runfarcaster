@@ -1,4 +1,4 @@
-# Run a Farcaster Snapchain read node and client in 3 steps
+# Run your own Farcaster node in 3 simple steps
 
 Rent a server. Start the node. Open the app.
 
