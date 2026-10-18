@@ -36,23 +36,6 @@ Set the token in this terminal. The prompt hides what you type, so run this line
 read -rsp 'Hetzner token: ' HCLOUD_TOKEN && export HCLOUD_TOKEN && echo
 ```
 
-## The spending cap
-
-Step 1 starts `watchdog.sh` in the background on your computer, before it creates anything. The watchdog deletes the server, the volume and the firewall:
-- before the bill reaches `MAX_USD`,
-- 24 hours after it started, even if the node is healthy,
-- or if the node makes no progress for 2 hours.
-
-If the watchdog cannot start (for example `HCLOUD_TOKEN` is missing), step 1 stops with an error and creates nothing. Its output is in `.provision-state/watchdog.out` and its log in `.provision-state/watchdog.log`.
-
-The progress check reads the database size and block heights over SSH with `SSH_KEY_FILE`, the private half of the key you uploaded to Hetzner. It defaults to `~/.ssh/id_ed25519` if that file exists. Without a key file only the money and time limits apply. If SSH stops working (for example your home IP changed), the watchdog logs a warning and keeps the server.
-
-To keep the node longer than 24 hours:
-- Stop the watchdog without deleting anything: `touch .provision-state/watchdog.disarm`.
-- Or start step 1 with `WATCHDOG_MAX_WALL_SECS=172800` (48 hours) instead.
-
-`WATCHDOG=0` skips the watchdog. Then nothing deletes the server for you.
-
 ## 1. Rent a server
 
 Find your public IP so only you can reach SSH, then rent the server:
@@ -69,8 +52,7 @@ echo "$MY_IP"
 IP=$(SSH_KEY=my-key \
   SERVER_TYPE=cax31 \
   VOLUME_GB=1000 \
-  MAX_USD=5 \
-  EXPECTED_HOURS=16 \
+  WATCHDOG=0 \
   SSH_SOURCE_CIDRS="$MY_IP/32" \
   ./provision.sh)
 echo "$IP"
@@ -82,8 +64,7 @@ echo "$IP"
 ```bash title="your computer"
 IP=$(SSH_KEY=my-key \
   SERVER_TYPE=cax31 \
-  MAX_USD=5 \
-  EXPECTED_HOURS=16 \
+  WATCHDOG=0 \
   SSH_SOURCE_CIDRS="$MY_IP/32" \
   ./provision.sh)
 echo "$IP"
@@ -94,14 +75,14 @@ This needs a Hetzner volume limit above 2000 GB. The price list puts it at about
 </TabItem>
 </Tabs>
 
-Replace `my-key` with the name `hcloud ssh-key list` shows. Read the script first: <RepoLink path="provision.sh" />
+Replace `my-key` with the name `hcloud ssh-key list` shows. With `WATCHDOG=0` the server keeps running until you delete it. If you only want to try it, provision.sh can delete the server for you after a set time; see [If you only want to try it](#if-you-only-want-to-try-it). Read the script first: <RepoLink path="provision.sh" />
 
 What it does:
 - Checks that each entry in `SSH_SOURCE_CIDRS` looks like an address with a prefix, such as `203.0.113.7/32`. An empty `$MY_IP` stops it here.
 - Checks that the server type exists in `fsn1`, is for sale, and has at least 16 GB of RAM.
-- Prices the run from Hetzner's live price list. If the hourly price × `EXPECTED_HOURS` is above `MAX_USD`, it stops and creates nothing. `MAX_USD` is in your account's currency.
+- Reads the hourly price from Hetzner's live price list and prints it. It stops before creating anything if that price × `EXPECTED_HOURS` (default 6) is above `MAX_USD` (default 2, in your account's currency).
 - Creates a firewall, the data volume and the server. The firewall opens SSH (22, only to `SSH_SOURCE_CIDRS`), gossip (3382/udp) and the web ports 80 and 443. The node's own API ports 3381 and 3383 stay closed; the app reaches the node through Caddy.
-- Starts the watchdog first (see [The spending cap](#the-spending-cap)).
+- Starts `watchdog.sh` first, unless you set `WATCHDOG=0` (see [If you only want to try it](#if-you-only-want-to-try-it)).
 - Prints the server's IP. Running it again reuses what exists and does not start a second watchdog.
 
 What it prints (shortened; the lines come from the script's log calls):
@@ -110,8 +91,8 @@ What it prints (shortened; the lines come from the script's log calls):
 [provision] server type cax31: 8 vCPU (shared), 16 GB RAM, 160 GB disk, arm
 [provision] local disk 160 GB < 2000 GB: adding a 1000 GB volume
   total       ~0.164 /h
-[provision] cost guard OK: projected <= MAX_USD=5
-[provision] watchdog started (pid 12345). It deletes everything when the bill would pass MAX_USD=5, after 24 h even if the node is healthy, or after 2 h without progress (progress check over SSH with ~/.ssh/id_ed25519).
+[provision] cost guard OK: projected <= MAX_USD=2
+[provision] WATCHDOG=0: no watchdog started (no automatic spending cap).
 [provision] done. Next (in a new terminal, get the IP back with: IP=$(hcloud server ip snapchain-read-node)):
 ```
 
@@ -124,9 +105,7 @@ hcloud server list      # snapchain-read-node, running
 hcloud volume list      # snapchain-read-node-data, 1000 GB
 ```
 
-:::caution[This costs money from now on]
-The server bills by the hour until you delete it (see the end of this page).
-:::
+Hetzner bills the server by the hour from now on: about $0.164 an hour, or about $102 a month if you keep it.
 
 :::tip[Lost `$IP`?]
 `$IP` only lives in the terminal where you set it. In a new terminal, or after a reconnect, run `IP=$(hcloud server ip snapchain-read-node)`.
@@ -233,10 +212,6 @@ curl -s https://<name>/v1/info | jq .version                 # your node, throug
 
 Open the address in a browser. The status line should start with `Connected. version 0.14.3;` and list how far behind each shard is. Type an FID (try `3`) under Feed and press Refresh.
 
-:::caution[The watchdog deletes the node after 24 hours]
-If the watchdog is running, it deletes everything 24 hours after step 1, even if the node is healthy. Our sync took 14 hours, which left about 10 hours with a synced node. To keep the node: `touch .provision-state/watchdog.disarm`.
-:::
-
 <CopyPrompt id="client" />
 
 ## How the pieces fit
@@ -245,9 +220,36 @@ If the watchdog is running, it deletes everything 24 hours after step 1, even if
 - The app is static files. Every request goes to `/v1/*` on the same address it came from, so the browser never makes a cross-site call.
 - To post you need an app key. See [Your first cast](../first-cast/) and the [Tutorial](../tutorial/#step-1-app-keys-are-gasless-now).
 
+## If you only want to try it
+
+provision.sh can delete the server for you after a set time. Leave out `WATCHDOG=0` in step 1 and set a price limit and the hours you expect to use. This is the command we ran:
+
+```bash title="your computer"
+IP=$(SSH_KEY=my-key \
+  SERVER_TYPE=cax31 \
+  VOLUME_GB=1000 \
+  MAX_USD=5 \
+  EXPECTED_HOURS=16 \
+  SSH_SOURCE_CIDRS="$MY_IP/32" \
+  ./provision.sh)
+```
+
+provision.sh then starts `watchdog.sh` in the background on your computer, before it creates anything. The watchdog deletes the server, the volume and the firewall at the first of these:
+- 24 hours after it started, even if the node is healthy (`WATCHDOG_MAX_WALL_SECS` changes this, for example `172800` for 48 hours),
+- when the bill would reach `MAX_USD`,
+- when the node has made no progress for 2 hours.
+
+Our sync took 14 hours, so the 24-hour default left us about 10 hours with a synced node.
+
+If the watchdog cannot start (for example `HCLOUD_TOKEN` is missing), step 1 stops with an error and creates nothing. Its output is in `.provision-state/watchdog.out` and its log in `.provision-state/watchdog.log`.
+
+The progress check reads the database size and block heights over SSH with `SSH_KEY_FILE`, the private half of the key you uploaded to Hetzner. It defaults to `~/.ssh/id_ed25519` if that file exists. Without a key file only the price and time limits apply. If SSH stops working (for example your home IP changed), the watchdog logs a warning and keeps the server.
+
+To keep the node after all, stop the watchdog without deleting anything: `touch .provision-state/watchdog.disarm`.
+
 ## Delete everything
 
-Read the script first: <RepoLink path="teardown.sh" />
+When you no longer need the node, delete it. Read the script first: <RepoLink path="teardown.sh" />
 
 ```bash title="your computer"
 CONFIRM=snapchain-read-node ./teardown.sh

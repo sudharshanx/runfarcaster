@@ -70,7 +70,7 @@ ESTIMATE_ONLY=1 SERVER_TYPE=cax31 VOLUME_GB=1000 EXPECTED_HOURS=16 ./provision.s
 ### How to stop paying
 
 - `CONFIRM=snapchain-read-node ./teardown.sh` deletes the server, the volume and the firewall, then lists what is left. The node's database is on the volume, so it goes too.
-- `watchdog.sh` runs on your computer. It calls `teardown.sh` before the bill reaches `MAX_USD`, after 24 hours, or when the node has made no progress for 2 hours. `MAX_USD` is in your Hetzner account's currency. Step 1 starts it for you; the [Quickstart](../quickstart/#the-spending-cap) explains it. It deletes a healthy node after 24 hours too, unless you stop it.
+- If you only want to try it, `watchdog.sh` can delete everything for you. It runs on your computer and calls `teardown.sh` after 24 hours, before the bill reaches `MAX_USD`, or when the node has made no progress for 2 hours. `MAX_USD` is in your Hetzner account's currency. Step 1 starts it unless you set `WATCHDOG=0`, as the Quickstart's commands do; [If you only want to try it](../quickstart/#if-you-only-want-to-try-it) explains it.
 - `provision.sh` creates nothing if the hourly price × `EXPECTED_HOURS` is above `MAX_USD`. The default `MAX_USD` is 2.
 
 :::caution

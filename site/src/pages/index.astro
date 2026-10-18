@@ -14,51 +14,49 @@ const base = import.meta.env.BASE_URL.replace(/\/?$/, "/");
 const u = (p: string) => `${base}${p}`;
 const blob = (p: string) => `${REPO}/blob/main/${p}`;
 const title = "Run your own Farcaster node in 3 simple steps";
-const description =
-  "Rent a server, run the Snapchain read node on it, and open a small Farcaster app served by that node. Time and cost measured on one mainnet run.";
+const description = "Read and post on Farcaster from a server you control.";
 const canonical = new URL(base, Astro.site).href;
 
 const steps = [
   {
     n: "01", label: "Rent", title: "Rent a server.",
-    text: "provision.sh rents a Hetzner cax31 with a 1000 GB volume and a firewall that opens SSH only to your IP. It checks the price first and starts a watchdog.",
+    text: "One script sets up the server on Hetzner, with a disk big enough for Farcaster's data.",
     cmd: `MY_IP=$(curl -4 -s https://ifconfig.me)
 IP=$(SSH_KEY=my-key \\
   SERVER_TYPE=cax31 \\
   VOLUME_GB=1000 \\
-  MAX_USD=5 \\
-  EXPECTED_HOURS=16 \\
+  WATCHDOG=0 \\
   SSH_SOURCE_CIDRS="$MY_IP/32" \\
   ./provision.sh)`,
   },
   {
     n: "02", label: "Start", title: "Start the node.",
-    text: "node.sh installs Docker, runs the official Snapchain bootstrap and waits until every shard is in sync. It took 14 h 06 m for us.",
+    text: "Your node downloads Farcaster's data, then keeps up on its own. Ours took about 14 hours to sync.",
     cmd: `ssh root@$IP \\
   "SNAPCHAIN_AGREE_NO_REWARDS=yes MIN_FREE_GB=900 bash -s" \\
   < node.sh`,
   },
   {
     n: "03", label: "Open", title: "Open the app.",
-    text: "deploy-client.sh builds the app on your computer and serves it with Caddy over HTTPS, next to the node's /v1 API.",
+    text: "You get a simple Farcaster app in your browser that reads straight from your node.",
     cmd: `./deploy-client.sh "$IP"`,
   },
 ];
 
 const stats = [
-  { v: "14 h 06 m", l: "From renting the server to a synced node" },
-  { v: "$2.31", l: "About, to reach sync at $0.164 an hour" },
-  { v: "557.86 GB", l: "Database once synced, from a snapshot of about 500 GB" },
-  { v: "914M", l: "Messages on the node (914,243,963)" },
+  { v: "14 h", l: "to sync" },
+  { v: "About $102", l: "a month for the server we used" },
+  { v: "914M", l: "messages on our node" },
+  { v: "0", l: "API keys needed" },
 ];
 
 const scripts = [
-  ["provision.sh", "Step 1: rent the server"],
-  ["node.sh", "Step 2: start the node"],
-  ["deploy-client.sh", "Step 3: open the app"],
-  ["teardown.sh", "Delete everything"],
-  ["watchdog.sh", "Spending cap"],
-  ["client/src/signer.ts", "The KEY_ADD signer"],
+  ["provision.sh", "Rents the server"],
+  ["node.sh", "Starts the node"],
+  ["deploy-client.sh", "Puts the app online"],
+  ["teardown.sh", "Deletes everything"],
+  ["watchdog.sh", "Optional: deletes the server after a set time"],
+  ["client/src/signer.ts", "Adds the app's key"],
 ];
 
 const master = prompts.master;
@@ -110,21 +108,21 @@ const right = `<svg aria-hidden="true" width="12" height="12" viewBox="0 0 12 12
 
     <main id="main">
       <section class="wrap hero" aria-labelledby="hero-title">
-        <p class="eyebrow">Snapchain read node · MIT · No API keys</p>
+        <p class="eyebrow">Open source · No API keys · MIT</p>
         <h1 id="hero-title">Run your own Farcaster node in 3 simple steps<span class="dot">.</span></h1>
-        <p class="hero-sub">Rent a server. Start the node. Open the app.</p>
+        <p class="hero-sub">Read and post on Farcaster from a server you control.</p>
         <div class="hero-ctas">
           <a class="btn" href={u("quickstart/")}>Start the quickstart<Fragment set:html={arrow} /></a>
-          <a class="textlink" href={REPO}>View on GitHub<Fragment set:html={right} /></a>
+          <a class="textlink" href={u("ai-assistant/")}>Use your AI assistant<Fragment set:html={right} /></a>
         </div>
         <p class="hero-note">
           <svg aria-hidden="true" width="14" height="14" viewBox="0 0 14 14"><circle cx="7" cy="7" r="6" fill="none" stroke="currentColor" stroke-width="1.2"/><path d="M4.3 7.2 6.2 9l3.5-4" fill="none" stroke="currentColor" stroke-width="1.3"/></svg>
-          We ran it once on mainnet, on 2026-10-18.
+          We ran a node on Farcaster mainnet on 18 Oct 2026.
         </p>
         {/* AUTHOR: your intro line, one or two sentences in your own words: who you are and why you wanted your own node. */}
       </section>
 
-      <section class="wrap trio" aria-label="The 3 steps">
+      <section class="wrap trio" aria-label="Overview">
         {steps.map((s) => (
           <div>
             <p class="eyebrow">{s.n} / {s.label}</p>
@@ -136,11 +134,10 @@ const right = `<svg aria-hidden="true" width="12" height="12" viewBox="0 0 12 12
 
       <section class="wrap split cmds" aria-labelledby="cmd-title">
         <div>
-          <p class="eyebrow">From your computer</p>
-          <h2 id="cmd-title" class="h-md">Run it from the repo folder.</h2>
-          <p>Clone the repo first. You need a Hetzner token in <code>HCLOUD_TOKEN</code>, an SSH key uploaded to Hetzner, and Node.js 22.12 or later (22.x, 24.x or 26+).</p>
-          <p>Step 1 starts a watchdog. It deletes everything before the bill reaches <code>MAX_USD</code>, or 24 hours later even if the node is healthy.</p>
-          <a class="textlink" href={u("quickstart/")}>What each command prints<Fragment set:html={right} /></a>
+          <p class="eyebrow">The 3 steps</p>
+          <h2 id="cmd-title" class="h-md">Copy each step into your terminal.</h2>
+          <p>You need a Hetzner account, a terminal and Node.js. <a href={u("hetzner/")}>Do it on Hetzner</a> shows how to set them up.</p>
+          <a class="textlink" href={u("tutorial/")}>What each step does<Fragment set:html={right} /></a>
         </div>
         <div class="terminal" role="group" aria-label="The 3 steps">
           {steps.map((s, i) => (
@@ -152,13 +149,13 @@ const right = `<svg aria-hidden="true" width="12" height="12" viewBox="0 0 12 12
               <pre id={`cmd-${i}`} tabindex="0" aria-label={`Step ${i + 1} command`}><code>{s.cmd}</code></pre>
             </div>
           ))}
-          <p class="term-foot">When you are done: <code>CONFIRM=snapchain-read-node ./teardown.sh</code></p>
+          <p class="term-foot">When you&rsquo;re done, delete everything: <code>CONFIRM=snapchain-read-node ./teardown.sh</code></p>
           <span class="sr-only" role="status" aria-live="polite" data-copy-status></span>
         </div>
       </section>
 
       <section class="wrap stats" aria-labelledby="stats-title">
-        <h2 id="stats-title" class="eyebrow">Measured on our run</h2>
+        <h2 id="stats-title" class="eyebrow">Our run</h2>
         <dl>
           {stats.map((s) => (
             <div>
@@ -167,28 +164,28 @@ const right = `<svg aria-hidden="true" width="12" height="12" viewBox="0 0 12 12
             </div>
           ))}
         </dl>
-        <p class="stats-note">Hetzner cax31 (ARM64, 16 GB RAM), 1000 GB volume. Cost from Hetzner's price list; we have not seen the invoice. <a href={u("proof/")}>How we measured</a></p>
+        <p class="stats-note">We worked out the cost from Hetzner&rsquo;s price list. <a href={u("proof/")}>How we measured<Fragment set:html={right} /></a></p>
       </section>
 
       <section class="wrap split noline" aria-labelledby="how-title">
         <div>
           <p class="eyebrow">How it works</p>
-          <h2 id="how-title" class="h-md">Your app reads from your node, and your node reads from the validators.</h2>
-          <p>The read node has no account with anyone. You need no API keys.</p>
+          <h2 id="how-title" class="h-md">You run your own copy of Farcaster.</h2>
+          <p>Farcaster&rsquo;s messages live on a network called Snapchain. Your node keeps a full copy and stays in sync. Your app reads only from your node.</p>
           <a class="textlink" href={u("tutorial/")}>Read the tutorial<Fragment set:html={right} /></a>
         </div>
         <ol class="rows">
           <li>
-            <h3>Validators</h3>
-            <p>They make the blocks. Your node gets each new block from them over gossip on UDP 3382.</p>
+            <h3>The network</h3>
+            <p>Validators add new messages to the network in blocks.</p>
           </li>
           <li>
-            <h3>Your read node</h3>
-            <p>It loads a snapshot, then keeps up block by block. A message you send, it checks and passes on to the validators. It keeps no mempool.</p>
+            <h3>Your node</h3>
+            <p>Your node stores every message and passes your posts on to the network.</p>
           </li>
           <li>
             <h3>Your app</h3>
-            <p>Static files. Caddy serves them and the node's <code>/v1</code> API from one HTTPS address, so the browser never makes a cross-site call.</p>
+            <p>Your app shows your feed and lets you post, using only your node.</p>
           </li>
         </ol>
       </section>
@@ -196,27 +193,26 @@ const right = `<svg aria-hidden="true" width="12" height="12" viewBox="0 0 12 12
       <section class="wrap panel split" aria-labelledby="acct-title">
         <div>
           <p class="eyebrow">Keys</p>
-          <h2 id="acct-title" class="h-md">Your account stays yours.</h2>
-          <p>Posting needs an app key. You add it with one gasless <code>KEY_ADD</code> that your custody address signs. Mainnet has accepted these since engine version V16 on 2026-05-07.</p>
+          <h2 id="acct-title" class="h-md">How your account stays safe.</h2>
           <a class="textlink" href={u("first-cast/")}>Your first cast<Fragment set:html={right} /></a>
         </div>
         <div>
-          <h3 class="h-sm">The recovery phrase stays on your computer.</h3>
-          <p>For this one step you run the app on <code>localhost</code>. It signs the <code>KEY_ADD</code>, then drops the phrase. Nothing stores, logs or sends it.</p>
-          <h3 class="h-sm">An app key can only post.</h3>
-          <p>It signs casts, likes and follows for its lifetime: 7 days by default, 90 at most. It cannot move money or approve other keys.</p>
-          <details class="more">
-            <summary>What we have not tried yet</summary>
-            <p>A real <code>KEY_ADD</code>, cast, like or follow on mainnet. Unit tests and a local mock node cover this part.</p>
-          </details>
+          <h3 class="h-sm">Your recovery phrase stays on your computer.</h3>
+          <p>You use it once in your browser to give the app its own key. The app does not save it or send it anywhere.</p>
+          <h3 class="h-sm">The app&rsquo;s key can post, like and follow.</h3>
+          <p>It can&rsquo;t move money, edit your profile or approve other keys.</p>
+          <h3 class="h-sm">Adding the key costs no gas.</h3>
+          <p>Your browser signs one message for your node. You make no crypto transaction.</p>
+          <h3 class="h-sm">What we have not tested yet</h3>
+          <p>We have not added a key or posted on mainnet. So far only unit tests and a mock node have run this part.</p>
         </div>
       </section>
 
       <section class="wrap split" aria-labelledby="ai-title">
         <div>
           <p class="eyebrow">With your AI assistant</p>
-          <h2 id="ai-title" class="h-md">Let your coding assistant run the 3 steps.</h2>
-          <p>Copy one prompt. The assistant does one step at a time and waits for your OK before the next.</p>
+          <h2 id="ai-title" class="h-md">Or let your AI assistant do it.</h2>
+          <p>Copy one prompt into Claude Code, Codex or Cursor. It does one step at a time and asks before each one.</p>
           <a class="textlink" href={u("ai-assistant/")}>All prompts<Fragment set:html={right} /></a>
         </div>
         <div class="card">
@@ -228,22 +224,21 @@ const right = `<svg aria-hidden="true" width="12" height="12" viewBox="0 0 12 12
             <summary>Show the whole prompt</summary>
             <pre id="master-prompt" tabindex="0" aria-label="Full prompt">{master}</pre>
           </details>
-          <p class="fine">Never paste a recovery phrase or a token into an AI assistant.</p>
+          <p class="fine">Never paste your recovery phrase or a token into an AI assistant.</p>
         </div>
       </section>
 
       <section class="wrap split" aria-labelledby="proof-title">
         <div>
           <p class="eyebrow">Proof</p>
-          <h2 id="proof-title" class="h-md">We ran it once on mainnet.</h2>
-          <p>Logs, numbers and screenshots from 2026-10-18. Our read-only browser test passed 17 of 17 checks against the synced node.</p>
-          <p>We sent one deliberately broken message, and the node rejected it. We have not sent a real cast yet.</p>
+          <h2 id="proof-title" class="h-md">See what we ran.</h2>
+          <p>The proof page has the logs, numbers and screenshots from our run on 18 Oct 2026.</p>
           <a class="textlink" href={u("proof/")}>See the proof<Fragment set:html={right} /></a>
           {/* AUTHOR: one line on what it felt like when the feed first loaded from your own node. */}
         </div>
         <figure class="shot">
           <Image src={desktopShot} alt="The app on a desktop screen: node status (Connected, version 0.14.3), then the app key box with the Address check warning" widths={[640, 1024]} sizes="(max-width: 900px) 100vw, 520px" loading="lazy" />
-          <figcaption>The app on our synced node. The server's address is replaced.</figcaption>
+          <figcaption>The app on our synced node. We replaced the server&rsquo;s address.</figcaption>
         </figure>
         {/* AUTHOR: 59 s vertical video (9:16): rent the server, a synced /v1/info, the feed on a phone. Put it here with a caption that says how you made it. */}
       </section>
@@ -251,8 +246,8 @@ const right = `<svg aria-hidden="true" width="12" height="12" viewBox="0 0 12 12
       <section class="wrap split last" aria-labelledby="src-title">
         <div>
           <p class="eyebrow">Open source · MIT</p>
-          <h2 id="src-title" class="h-md">Read every script before you run it.</h2>
-          <p>Each script is plain bash or TypeScript. The tokens come from your environment and are never printed.</p>
+          <h2 id="src-title" class="h-md">Read the code first.</h2>
+          <p>Every script is plain bash or TypeScript with comments. Read it before you run it.</p>
         </div>
         <ul class="linkgrid">
           {scripts.map(([f, d]) => (
@@ -265,7 +260,7 @@ const right = `<svg aria-hidden="true" width="12" height="12" viewBox="0 0 12 12
     <footer class="wrap lp-footer">
       <div class="f-brand">
         <Wordmark href={base} />
-        <p>Rent a server. Start the node. Open the app.</p>
+        <p>MIT licensed. Source on GitHub.</p>
       </div>
       <nav aria-label="Docs">
         <h2>Docs</h2>
