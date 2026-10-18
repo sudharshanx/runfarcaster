@@ -290,3 +290,12 @@ body.lp { margin: 0; background: #fff; color: var(--text); font-family: var(--sa
 @media (hover:none){.cost-tabs button:focus .cost-tip{opacity:1;visibility:visible}}
 
 .cost-asof{color:#666;margin:0.25rem 0 0;font-size:0.95rem}
+
+.cost-calc{max-width:760px;margin-top:1.75rem;padding:1.1rem 1.2rem;border:1px solid rgba(0,0,0,0.12);border-radius:10px;background:#fff}
+.cost-calc h3{margin:0 0 0.75rem;font-size:1.05rem}
+.calc-row{display:flex;flex-wrap:wrap;gap:0.75rem;align-items:flex-end}
+.calc-row label{display:flex;flex-direction:column;gap:0.3rem;font-size:0.85rem;color:#555}
+.calc-row select,.calc-row input{font:inherit;font-size:1rem;color:#111;padding:0.5rem 0.6rem;border:1px solid rgba(0,0,0,0.2);border-radius:6px;background:#fff;min-width:6.5rem}
+.calc-row input{width:6.5rem}
+.calc-out{margin:1rem 0 0;font-size:0.95rem;color:#555}
+.calc-out #calc-total{font-size:1.6rem;font-weight:700;color:#111;margin-right:0.4rem;font-variant-numeric:tabular-nums}

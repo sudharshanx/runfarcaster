@@ -213,7 +213,6 @@ const right = `<svg aria-hidden="true" width="12" height="12" viewBox="0 0 12 12
               <tr><td>Public IPv4 address</td><td>$0.001</td><td>$0.60</td></tr>
               <tr><td>1000 GB volume for the node's data</td><td>$0.123</td><td>$76.70</td></tr>
               <tr class="cost-total"><td>Total</td><td>$0.164</td><td>$102.29</td></tr>
-              <tr><td>Our sync from zero: 14 h 6 min</td><td colspan="2">$2.31</td></tr>
             </tbody>
           </table>
         </div>
@@ -225,7 +224,6 @@ const right = `<svg aria-hidden="true" width="12" height="12" viewBox="0 0 12 12
               <tr><td>Public IPv4 address</td><td>$0.001</td><td>$0.60</td></tr>
               <tr><td>1000 GB volume for the node's data</td><td>$0.123</td><td>$76.70</td></tr>
               <tr class="cost-total"><td>Total</td><td>$0.255</td><td>$159.29</td></tr>
-              <tr><td>Sync from zero</td><td colspan="2">Not measured yet</td></tr>
             </tbody>
           </table>
         </div>
@@ -248,7 +246,55 @@ const right = `<svg aria-hidden="true" width="12" height="12" viewBox="0 0 12 12
             });
           });
         </script>
-                <p><a href={u("server-and-node/#what-it-costs")}>See the full price breakdown</a></p>
+                <form class="cost-calc" aria-labelledby="calc-title" onsubmit="return false">
+          <h3 id="calc-title">Estimate your bill</h3>
+          <div class="calc-row">
+            <label>Server
+              <select id="calc-server">
+                <option value="cax31">cax31</option>
+                <option value="cpx42">cpx42</option>
+              </select>
+            </label>
+            <label>Run it for
+              <input id="calc-n" type="number" min="1" step="1" value="1" inputmode="numeric" />
+            </label>
+            <label><span class="sr-only">Unit</span>
+              <select id="calc-unit">
+                <option value="1">hours</option>
+                <option value="24" selected>days</option>
+                <option value="730">months</option>
+              </select>
+            </label>
+          </div>
+          <p class="calc-out" aria-live="polite"><span id="calc-total">$3.93</span> <span id="calc-detail" class="calc-detail"></span></p>
+        </form>
+        <script>
+          const RATES = {
+            cax31: [[0.04, 24.99]],
+            cpx42: [[0.1314, 81.99]],
+            shared: [[0.001, 0.60], [76.70 / 625, 76.70]],
+          };
+          const MONTH_H = 730;
+          const itemCost = (h, [rate, cap]) => {
+            const full = Math.floor(h / MONTH_H);
+            return full * cap + Math.min((h - full * MONTH_H) * rate, cap);
+          };
+          const sv = document.getElementById('calc-server');
+          const nv = document.getElementById('calc-n');
+          const uv = document.getElementById('calc-unit');
+          const out = document.getElementById('calc-total');
+          const det = document.getElementById('calc-detail');
+          const calc = () => {
+            const n = Math.max(0, Number(nv.value) || 0);
+            const h = n * Number(uv.value);
+            const items = [...RATES[sv.value], ...RATES.shared];
+            const total = items.reduce((t, it) => t + itemCost(h, it), 0);
+            out.textContent = '$' + total.toFixed(2);
+            det.textContent = `for ${h.toLocaleString()} hours: ${sv.value} server, IPv4 address and 1000 GB volume`;
+          };
+          [sv, nv, uv].forEach((el) => el.addEventListener('input', calc));
+          calc();
+        </script>
       </section>
 
       <section class="wrap closing" aria-labelledby="close-title">
