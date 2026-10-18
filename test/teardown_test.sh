@@ -35,4 +35,10 @@ rc=0; out3="$(PATH="$T/bin:$PATH" env -u HCLOUD_TOKEN CONFIRM=snapchain-read-nod
 ok "missing HCLOUD_TOKEN: clear error, nothing deleted" '[ "$rc" != 0 ] && grep -q "HCLOUD_TOKEN is not set" <<<"$out3"'
 rc=0; out4="$(PATH="$T/bin:$PATH" HCLOUD_TOKEN=x CONFIRM=wrong bash "$ROOT/teardown.sh" 2>&1)" || rc=$?
 ok "wrong confirmation: nothing deleted" '[ "$rc" != 0 ] && grep -q "nothing deleted" <<<"$out4"'
+# A same-named server that this checkout didn't create (recorded ID differs): nothing deleted.
+touch "$R/server.snapchain-read-node"; mkdir -p "$T/state"; echo 999 >"$T/state/server-snapchain-read-node.id"
+rc=0; out5="$(PATH="$T/bin:$PATH" HCLOUD_TOKEN=x CONFIRM=snapchain-read-node STATE_DIR="$T/state" bash "$ROOT/teardown.sh" 2>&1)" || rc=$?
+ok "server ID differs from the one provision.sh recorded: stops, nothing deleted" '[ "$rc" != 0 ] && grep -q "this checkout created ID 999" <<<"$out5" && [ -f "$R/server.snapchain-read-node" ]'
+rc=0; out6="$(PATH="$T/bin:$PATH" HCLOUD_TOKEN=x CONFIRM=snapchain-read-node STATE_DIR="$T/state" OTHER_SERVER_OK=1 RETRIES=2 bash "$ROOT/teardown.sh" 2>&1)" || rc=$?
+ok "OTHER_SERVER_OK=1 overrides and deletes" '[ "$rc" = 0 ] && [ ! -f "$R/server.snapchain-read-node" ]'
 echo; echo "passed: $pass  failed: $fail"; [ "$fail" = 0 ]

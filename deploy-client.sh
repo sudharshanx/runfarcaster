@@ -52,13 +52,22 @@ run scp -q -r "$HERE/client/dist/." "$TARGET:$REMOTE_DIR/dist.new/"
 run ssh "$TARGET" "cd '$REMOTE_DIR' && rm -rf dist.old && mv dist dist.old && mv dist.new dist && rm -rf dist.old \
   && printf 'SITE_ADDRESS=%s\n' '$SITE' > .env && docker compose up -d && docker compose restart caddy"
 
-echo "[deploy-client] waiting for HTTPS on https://$SITE ..."
+echo "[deploy-client] waiting for HTTPS on https://$SITE (up to 5 minutes; the first certificate can take 1-2) ..."
 if [[ "$DRY_RUN" != "1" ]]; then
-  for _ in $(seq 1 30); do
-    if curl -fsS --max-time 10 "https://$SITE/v1/info" >/dev/null 2>&1; then
+  for i in $(seq 1 30); do
+    app=$(curl -sS -o /dev/null -w '%{http_code}' --max-time 10 "https://$SITE/" 2>/dev/null || true)
+    api=$(curl -sS -o /dev/null -w '%{http_code}' --max-time 10 "https://$SITE/v1/info" 2>/dev/null || true)
+    if [[ "$app" == "200" && "$api" == "200" ]]; then
       echo "[deploy-client] OK: https://$SITE (client) and https://$SITE/v1/info (node, proxied)"
       exit 0
     fi
+    if [[ "$app" == "200" && "$api" =~ ^50[234]$ ]]; then
+      # Caddy is serving the app, but the node's API is not listening yet (e.g. still loading the
+      # snapshot from step 2). The app shows "Node still starting" until it answers.
+      echo "[deploy-client] OK: app is up at https://$SITE. The node isn't answering yet (HTTP $api on /v1/info): it is probably still loading its snapshot. The app says \"Node still starting\" until it does; nothing else to run."
+      exit 0
+    fi
+    echo "[deploy-client] attempt $i/30: app HTTP ${app:-000}, node API HTTP ${api:-000}; retrying in 10 s"
     sleep 10
   done
   echo "[deploy-client] not reachable yet. Check: ssh $TARGET 'cd $REMOTE_DIR && docker compose logs caddy'" >&2

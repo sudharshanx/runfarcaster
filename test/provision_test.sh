@@ -78,4 +78,47 @@ ok "unknown LOCATION: fails and lists the locations" '[ "$rc" != 0 ] && grep -q 
 rc=0; out="$(cst SERVER_TYPE=cx22 LOCATION=fsn1)" || rc=$?
 ok "unknown server type: plain error, no hint" '[ "$rc" != 0 ] && grep -q "server type cx22: unknown server type" <<<"$out"'
 
+# Shared-project guards against a fake hcloud whose answers come from files in $T/proj
+P="$T/proj"; mkdir -p "$P" "$T/bin2"
+cat >"$T/bin2/hcloud" <<S
+#!/usr/bin/env bash
+P="$P"
+S
+cat >>"$T/bin2/hcloud" <<'S'
+case "$1 $2" in
+  "server describe"|"volume describe") [[ -f "$P/$1.$3" ]] || exit 1; cat "$P/$1.$3" ;;
+  "firewall describe") [[ -f "$P/firewall.$3" ]] || exit 1; cat "$P/firewall.$3" ;;
+  "volume list") cat "$P/volumes.json" 2>/dev/null || echo '[]' ;;
+  *) echo "fake hcloud: unexpected $*" >&2; exit 2 ;;
+esac
+S
+chmod +x "$T/bin2/hcloud"
+ge() { ( export PATH="$T/bin2:$PATH" "$@"; source "$ROOT/provision.sh"; guard_existing && echo GUARD-PASSED ) 2>&1; }
+echo '{"id":1}' >"$P/server.snapchain-read-node"
+rc=0; out="$(ge)" || rc=$?
+ok "server with the same name exists: refuses, says nothing was changed" '[ "$rc" != 0 ] && grep -q "already has: server snapchain-read-node" <<<"$out" && grep -q "Nothing was created or changed" <<<"$out" && grep -q "empty Hetzner project" <<<"$out"'
+rc=0; out="$(ge REUSE=1)" || rc=$?
+ok "REUSE=1 continues with it" '[ "$rc" = 0 ] && grep -q "GUARD-PASSED" <<<"$out"'
+rm -f "$P/server.snapchain-read-node"; echo '{"applied_to":[]}' >"$P/firewall.snapchain-read-node-fw"
+rc=0; out="$(ge)" || rc=$?
+ok "leftover firewall not applied to any server: reused without REUSE" '[ "$rc" = 0 ] && grep -q "GUARD-PASSED" <<<"$out"'
+echo '{"applied_to":[{"type":"server"}]}' >"$P/firewall.snapchain-read-node-fw"
+rc=0; out="$(ge)" || rc=$?
+ok "firewall applied to a server: refuses" '[ "$rc" != 0 ] && grep -q "applied to 1 server" <<<"$out"'
+rm -f "$P/firewall.snapchain-read-node-fw"
+rc=0; out="$(ge NAME=snapchain-read-node-2)" || rc=$?
+ok "another NAME in the same project: passes" '[ "$rc" = 0 ]'
+vq() { ( export PATH="$T/bin2:$PATH" "$@"; source "$ROOT/provision.sh"; NEED_VOLUME=1; check_volume_quota && echo QUOTA-OK ) 2>&1; }
+echo '[{"size":1000}]' >"$P/volumes.json"
+rc=0; out="$(vq VOLUME_GB=1000)" || rc=$?
+ok "1000 GB volume already in the project + 1000 GB: stops before creating anything" '[ "$rc" != 0 ] && grep -q "already use 1000 GB" <<<"$out" && grep -q "Nothing was created" <<<"$out"'
+rc=0; out="$(vq VOLUME_GB=20)" || rc=$?
+ok "a volume that fits the quota passes" '[ "$rc" = 0 ] && grep -q QUOTA-OK <<<"$out"'
+rc=0; out="$(vq VOLUME_GB=1000 VOLUME_QUOTA_GB=4096)" || rc=$?
+ok "a raised VOLUME_QUOTA_GB passes" '[ "$rc" = 0 ]'
+rc=0; out="$( ( export ESTIMATE_ONLY=1 DRY_RUN=1; source "$ROOT/provision.sh"; preflight ) 2>&1 )" || rc=$?
+ok "price check (ESTIMATE_ONLY) does not warn about SSH" '[ "$rc" = 0 ] && ! grep -q "open to the whole internet" <<<"$out"'
+rc=0; out="$(sw2() { ( export STATE_DIR="$T/state9" WATCHDOG_CMD="$T/wd-good" WATCHDOG_START_WAIT=1 MAX_USD=5 HOME="$T" MAX_WALL_SECS=7200; source "$ROOT/provision.sh"; start_watchdog ) 2>&1; }; sw2)" || rc=$?
+ok "MAX_WALL_SECS on provision.sh reaches the watchdog" 'grep -q "wall=7200" "$T/state9/watchdog.out" && grep -q "after 2 h even" <<<"$out"'
+
 echo; echo "passed: $pass  failed: $fail"; [ "$fail" = 0 ]

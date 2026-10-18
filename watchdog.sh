@@ -157,10 +157,11 @@ do_teardown() {
   done
   if [[ -n "$SSH_KEY_NAME" ]]; then hcloud ssh-key delete "$SSH_KEY_NAME" >>"$LOG" 2>&1 || true; fi
   local left
-  left="$(api volumes | jq '.volumes | length'):$(api servers | jq '.servers | length'):$(api firewalls | jq '.firewalls | length')"
-  runlog "after teardown: volumes:servers:firewalls remaining = $left"
-  if [[ "$left" == "0:0:0" ]]; then runlog "CONFIRMED: no volumes, servers or firewalls left"
-  else runlog "WARNING: resources remain - check manually"; fi
+  # Count only this run's resources (by name): other servers in a shared project are not ours.
+  left="$(api volumes | jq --arg n "$NAME-data" '[.volumes[]? | select(.name == $n)] | length'):$(api servers | jq --arg n "$NAME" '[.servers[]? | select(.name == $n)] | length'):$(api firewalls | jq --arg n "$NAME-fw" '[.firewalls[]? | select(.name == $n)] | length')"
+  runlog "after teardown: $NAME volumes:servers:firewalls remaining = $left"
+  if [[ "$left" == "0:0:0" ]]; then runlog "CONFIRMED: no volume, server or firewall named for $NAME left (other resources in the project were not checked)"
+  else runlog "WARNING: resources named for $NAME remain - check manually"; fi
   echo "$1" >"$STATE_DIR/watchdog.fired"
   exit 0
 }

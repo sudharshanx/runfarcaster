@@ -9,6 +9,9 @@
 # Required: HCLOUD_TOKEN (env; never printed). Confirm by typing the server name, or set
 #           CONFIRM=<NAME> for non-interactive use.
 # Optional: NAME=snapchain-read-node (must match provision.sh), DRY_RUN=1.
+#           If this checkout's provision.sh recorded the server's ID (.provision-state/server-NAME.id)
+#           and the server named NAME now has another ID, it stops: that server isn't the one you
+#           created. OTHER_SERVER_OK=1 overrides.
 # Safe to run twice: things already deleted are reported as not found (works on bash 3.2, macOS).
 
 set -euo pipefail
@@ -51,6 +54,20 @@ preflight() {
     read -r answer
   fi
   [[ "$answer" == "$NAME" ]] || die "confirmation did not match; nothing deleted"
+  check_owner
+}
+
+STATE_DIR="${STATE_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/.provision-state}"
+check_owner() {
+  [[ "$DRY_RUN" == "1" ]] && return 0
+  local f="$STATE_DIR/server-$NAME.id" want got
+  [[ -f "$f" ]] || return 0
+  want="$(cat "$f")"
+  exists server "$NAME" || return 0
+  got="$(hcloud server describe "$NAME" -o json | jq -r '.id')"
+  if [[ "$got" != "$want" && "${OTHER_SERVER_OK:-0}" != "1" ]]; then
+    die "server $NAME has ID $got, but this checkout created ID $want. It may be someone else's node; nothing deleted. Check NAME, or set OTHER_SERVER_OK=1 if you're sure."
+  fi
 }
 
 # Collect volume IDs: attached to the server, plus the named volume (even if detached).
@@ -108,6 +125,7 @@ verify() {
   if exists firewall "$FIREWALL_NAME"; then log "STILL PRESENT: firewall $FIREWALL_NAME"; left=1; fi
   if (( left )); then die "some resources remain; check the lists above"; fi
   log "verified: server, volume(s) and firewall are gone."
+  rm -f "$STATE_DIR/server-$NAME.id"
 }
 
 main() {

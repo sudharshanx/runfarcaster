@@ -49,11 +49,17 @@
 #   DRY_RUN=1                  Print the hcloud commands instead of running them (needs no token).
 #   WATCHDOG=1                 Start watchdog.sh in the background before creating anything (output in
 #                              .provision-state/watchdog.out). It passes MAX_USD, WATCHDOG_MAX_WALL_SECS
-#                              (as MAX_WALL_SECS, default 86400) and SSH_KEY_FILE (default
+#                              (as MAX_WALL_SECS; MAX_WALL_SECS is accepted too; default 86400) and SSH_KEY_FILE (default
 #                              ~/.ssh/id_ed25519 if it exists). It deletes everything after 24 h by
 #                              design. Skipped if one is already running. WATCHDOG=0 to skip.
+#   REUSE=0                    If a server named NAME, or the volume NAME-data, already exists, stop
+#                              before changing anything: it may belong to someone else in a shared
+#                              project. REUSE=1 continues with them (your own earlier run).
+#   VOLUME_QUOTA_GB=1024       Account-wide volume quota (new Hetzner accounts: 1024 GB across all
+#                              projects). Volumes already in this project count against it; other
+#                              projects cannot be seen with this token. Raise it if Hetzner raised yours.
 #
-# Idempotent: existing firewall/volume/server with the same names are reused, not duplicated.
+# Re-running after a failure: a firewall named NAME-fw that is not applied to any server is reused.
 
 set -euo pipefail
 set +x  # never trace: keeps HCLOUD_TOKEN out of any xtrace output
@@ -75,6 +81,9 @@ MAX_USD="${MAX_USD:-2}"
 EXPECTED_HOURS="${EXPECTED_HOURS:-6}"
 ESTIMATE_ONLY="${ESTIMATE_ONLY:-0}"
 WATCHDOG="${WATCHDOG:-1}"
+REUSE="${REUSE:-0}"
+VOLUME_QUOTA_GB="${VOLUME_QUOTA_GB:-1024}"
+WALL_SECS="${WATCHDOG_MAX_WALL_SECS:-${MAX_WALL_SECS:-86400}}"
 WATCHDOG_CMD="${WATCHDOG_CMD:-$HERE/watchdog.sh}"   # overridable for tests
 STATE_DIR="${STATE_DIR:-$HERE/.provision-state}"
 LABEL_KEY="app"
@@ -107,7 +116,7 @@ preflight() {
   for c in "${_cidrs[@]}"; do
     [[ "$c" =~ ^[0-9a-fA-F.:]+/[0-9]{1,3}$ ]] || die "SSH_SOURCE_CIDRS has an invalid entry '$c' (expected like 203.0.113.7/32). Did 'curl -4 -s https://ifconfig.me' fail?"
   done
-  if [[ "$SSH_SOURCE_CIDRS" == "0.0.0.0/0,::/0" ]]; then
+  if [[ "$SSH_SOURCE_CIDRS" == "0.0.0.0/0,::/0" && "$ESTIMATE_ONLY" != "1" ]]; then
     log "NOTE: SSH (22/tcp) open to the whole internet. Set SSH_SOURCE_CIDRS=YOUR_IP/32 to narrow it (curl -4 https://ifconfig.me)."
   fi
 }
@@ -160,6 +169,7 @@ check_server_type() {
   if [[ "$DRY_RUN" == "1" ]]; then
     SERVER_TYPE="${SERVER_TYPE:-${SERVER_TYPE_CANDIDATES%% *}}"
     log "dry-run: using $SERVER_TYPE, assuming local disk < ${REQUIRED_DISK_GB} GB -> volume needed"
+    log "dry-run: availability is not checked. A live run skips sold-out types and may pick another one; ESTIMATE_ONLY=1 shows the live pick."
     NEED_VOLUME=1; return 0
   fi
   local t problem
@@ -245,6 +255,40 @@ firewall_rules() {
   ' "${files[@]}"
 }
 
+# Stops before anything is created or changed if NAME is taken in this project (shared projects:
+# another person's node, volume or firewall must never be reused or rewritten by accident).
+guard_existing() {
+  [[ "$DRY_RUN" == "1" ]] && return 0
+  local taken=() applied
+  exists server "$NAME" && taken+=("server $NAME")
+  exists volume "$VOLUME_NAME" && taken+=("volume $VOLUME_NAME")
+  if exists firewall "$FIREWALL_NAME"; then
+    applied="$(hcloud firewall describe "$FIREWALL_NAME" -o json | jq '[.applied_to[]?] | length')"
+    (( applied > 0 )) && taken+=("firewall $FIREWALL_NAME (applied to $applied server(s))")
+  fi
+  (( ${#taken[@]} == 0 )) && return 0
+  if [[ "$REUSE" == "1" ]]; then log "REUSE=1: continuing with existing ${taken[*]}"; return 0; fi
+  die "this project already has: ${taken[*]}. It may be someone else's node. Nothing was created or changed.
+  New node: pick another name, e.g. export NAME=snapchain-read-node-2, and run it again (use the same NAME for teardown).
+  Your own earlier run: REUSE=1 ./provision.sh continues with it.
+  Best: use an empty Hetzner project for this guide."
+}
+
+# Hetzner's volume quota is per account; this sees only this project's volumes.
+check_volume_quota() {
+  (( NEED_VOLUME == 1 )) || return 0
+  [[ "$DRY_RUN" == "1" ]] && return 0
+  exists volume "$VOLUME_NAME" && return 0  # reused, no new space
+  local used
+  used="$(hcloud volume list -o json | jq '[.[]?.size] | add // 0')" || used=0
+  if (( used + VOLUME_SIZE_GB > VOLUME_QUOTA_GB )); then
+    die "volumes in this project already use ${used} GB; adding ${VOLUME_SIZE_GB} GB would pass the ${VOLUME_QUOTA_GB} GB account quota (https://console.hetzner.cloud/limits, shared by all projects). Nothing was created.
+  Lower VOLUME_GB, delete an old volume, or ask Hetzner to raise the limit and set VOLUME_QUOTA_GB to the new value."
+  fi
+  log "volume quota: ${used} GB used in this project + ${VOLUME_SIZE_GB} GB new <= ${VOLUME_QUOTA_GB} GB (other projects not visible; if they hold volumes, Hetzner may still refuse)"
+}
+
+CREATED_FIREWALL=0
 ensure_firewall() {
   local rules; rules="$(mktemp)"
   firewall_rules > "$rules"
@@ -252,6 +296,7 @@ ensure_firewall() {
     log "firewall $FIREWALL_NAME exists; replacing its rules"
   else
     hc firewall create --name "$FIREWALL_NAME" --label "$LABEL_KEY=$LABEL_VAL" >/dev/null
+    CREATED_FIREWALL=1
   fi
   hc firewall replace-rules --rules-file "$rules" "$FIREWALL_NAME" >/dev/null
   rm -f "$rules"
@@ -263,12 +308,16 @@ ensure_volume() {
   if exists volume "$VOLUME_NAME"; then
     log "volume $VOLUME_NAME exists; reusing it"
   else
-    hc volume create --name "$VOLUME_NAME" --size "$VOLUME_SIZE_GB" --location "$LOCATION" \
-      --format ext4 --label "$LABEL_KEY=$LABEL_VAL" >/dev/null \
-      || die "volume create failed. If the error was 'volumes size limit exceeded (resource_limit_exceeded)',
+    if ! hc volume create --name "$VOLUME_NAME" --size "$VOLUME_SIZE_GB" --location "$LOCATION" \
+      --format ext4 --label "$LABEL_KEY=$LABEL_VAL" >/dev/null; then
+      if (( CREATED_FIREWALL == 1 )); then
+        hcloud firewall delete "$FIREWALL_NAME" >/dev/null 2>&1 && log "removed the firewall $FIREWALL_NAME this run created"
+      fi
+      die "volume create failed. If the error was 'volumes size limit exceeded (resource_limit_exceeded)',
 your ACCOUNT's total volume quota (https://console.hetzner.cloud/limits, shared by all projects) is
-below ${VOLUME_SIZE_GB} GB. Request a limit increase there (reviewed manually by Hetzner), then re-run;
-the firewall created so far is reused. No server was created."
+below ${VOLUME_SIZE_GB} GB. Request a limit increase there (reviewed manually by Hetzner), then re-run.
+No server or volume was created."
+    fi
   fi
   if [[ "$DRY_RUN" == "1" ]]; then VOLUME_DEVICE="/dev/disk/by-id/scsi-0HC_Volume_DRYRUN"; return 0; fi
   VOLUME_DEVICE="$(hcloud volume describe "$VOLUME_NAME" -o json | jq -r '.linux_device')"
@@ -305,6 +354,11 @@ ensure_server() {
   [[ -n "$VOLUME_DEVICE" ]] && args+=(--volume "$VOLUME_NAME")
   hc "${args[@]}" >/dev/null
   rm -f "$ud"
+  # teardown.sh compares this ID before deleting, so it never removes a same-named server it didn't create.
+  if [[ "$DRY_RUN" != "1" ]]; then
+    mkdir -p "$STATE_DIR"
+    hcloud server describe "$NAME" -o json | jq -r '.id' > "$STATE_DIR/server-$NAME.id" || true
+  fi
 }
 
 print_ip() {
@@ -313,7 +367,7 @@ print_ip() {
   else ip="$(hcloud server ip "$NAME")"; fi
   local free_env=""
   (( NEED_VOLUME == 1 && VOLUME_SIZE_GB < 1500 )) && free_env=" MIN_FREE_GB=$(( VOLUME_SIZE_GB * 9 / 10 ))"
-  log "done. Next (in a new terminal, get the IP back with: IP=\$(hcloud server ip $NAME)):"
+  log "done. Next (in a new terminal, get the IP back with: IP=\$(hcloud server ip \"$NAME\")):"
   log "  ssh root@${ip%% *} \"SNAPCHAIN_AGREE_NO_REWARDS=yes${free_env} bash -s\" < node.sh"
   log "  ./deploy-client.sh ${ip%% *}"
   # The IP is the only thing on stdout, so `IP=$(./provision.sh)` works.
@@ -333,7 +387,7 @@ start_watchdog() {
   fi
   [[ -z "$key" && -f "$HOME/.ssh/id_ed25519" ]] && key="$HOME/.ssh/id_ed25519"
   rm -f "$pidf"
-  MAX_USD="$MAX_USD" MAX_WALL_SECS="${WATCHDOG_MAX_WALL_SECS:-86400}" SSH_KEY_FILE="$key" NAME="$NAME" STATE_DIR="$STATE_DIR" \
+  MAX_USD="$MAX_USD" MAX_WALL_SECS="$WALL_SECS" SSH_KEY_FILE="$key" NAME="$NAME" STATE_DIR="$STATE_DIR" \
     nohup "$WATCHDOG_CMD" >>"$STATE_DIR/watchdog.out" 2>&1 </dev/null &
   local wpid=$!
   sleep "${WATCHDOG_START_WAIT:-2}"
@@ -341,7 +395,7 @@ start_watchdog() {
     tail -n 5 "$STATE_DIR/watchdog.out" >&2 || true
     die "watchdog did not start (see $STATE_DIR/watchdog.out). Nothing was created. Fix it, or set WATCHDOG=0 to go without."
   fi
-  log "watchdog started (pid $wpid). It deletes everything when the bill would pass MAX_USD=$MAX_USD, after $(( ${WATCHDOG_MAX_WALL_SECS:-86400} / 3600 )) h even if the node is healthy, or after 2 h without progress${key:+ (progress check over SSH with $key)}."
+  log "watchdog started (pid $wpid). It deletes everything when the bill would pass MAX_USD=$MAX_USD, after $(( WALL_SECS / 3600 )) h even if the node is healthy, or after 2 h without progress${key:+ (progress check over SSH with $key)}."
   log "  log: $STATE_DIR/watchdog.log  stop without deleting: touch $STATE_DIR/watchdog.disarm"
 }
 
@@ -350,6 +404,8 @@ main() {
   check_server_type
   cost_guard
   if [[ "$ESTIMATE_ONLY" == "1" ]]; then log "ESTIMATE_ONLY=1: nothing created."; return 0; fi
+  guard_existing
+  check_volume_quota
   start_watchdog
   ensure_firewall
   ensure_volume
