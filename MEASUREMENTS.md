@@ -97,3 +97,19 @@ The volume hourly figure is the monthly price divided by the server's monthly/ho
 These are `provision.sh` outputs with `ESTIMATE_ONLY=1`, which creates nothing, except the cx43 row, which was worked out by hand because the script refuses an unavailable type.
 
 **The budget depends on sync time, which is not known.** At ≈$0.29/h, $2 buys about 7 hours. The README says the snapshot "can take up to 2 hours", and the docs site says "a few hours" and "several hundred gigabytes". A 200-300 MB/s volume may well be slower than that. `EXPECTED_HOURS=6` is an assumption. Run `teardown.sh` as soon as the measurements are taken.
+
+## Server availability check (2026-10-18 18:48 IST, read-only)
+
+`hcloud server-type list -o json` and `hcloud server-type describe cax31 -o json`, no resources created. Saved as `test/fixtures/server-types-2026-10-18.json`. Types with at least 16 GB RAM, gross prices in the account currency (USD):
+
+| Type | CPU, RAM, disk | For sale now in | $/h in fsn1 | $/mo in fsn1 |
+|---|---|---|---|---|
+| cax31 | ARM64 shared, 8 vCPU, 16 GB, 160 GB | none (offered in fsn1, nbg1, hel1) | 0.04 | 24.99 |
+| cax41 | ARM64 shared, 16 vCPU, 32 GB, 320 GB | none (offered in fsn1, nbg1, hel1) | 0.0777 | 48.49 |
+| cx43 | x86 shared, 8 vCPU, 16 GB, 160 GB | none (offered in fsn1, nbg1, hel1) | 0.0296 | 18.49 |
+| cx53 | x86 shared, 16 vCPU, 32 GB, 320 GB | none (offered in fsn1, nbg1, hel1) | 0.0561 | 34.99 |
+| cpx42 | x86 shared, 8 vCPU, 16 GB, 320 GB | fsn1, nbg1, hel1, sin | 0.1314 | 81.99 |
+| ccx23 | x86 dedicated, 4 vCPU, 16 GB, 160 GB | fsn1, nbg1, hel1, ash, hil, sin | 0.1626 | 101.49 |
+| cpx41 | x86 shared, 8 vCPU, 16 GB, 240 GB | ash, hil only ($0.2267/h there) | 0.0609 | 37.99 |
+
+cpx42 in fsn1 with IPv4 ($0.60/mo) and a 1000 GB volume ($76.70/mo): about $159.29 a month. Not run by us.

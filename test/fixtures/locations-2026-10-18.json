@@ -1,0 +1,38 @@
+[
+  {
+    "id": 1,
+    "name": "fsn1",
+    "city": "Falkenstein",
+    "network_zone": "eu-central"
+  },
+  {
+    "id": 2,
+    "name": "nbg1",
+    "city": "Nuremberg",
+    "network_zone": "eu-central"
+  },
+  {
+    "id": 3,
+    "name": "hel1",
+    "city": "Helsinki",
+    "network_zone": "eu-central"
+  },
+  {
+    "id": 4,
+    "name": "ash",
+    "city": "Ashburn, VA",
+    "network_zone": "us-east"
+  },
+  {
+    "id": 5,
+    "name": "hil",
+    "city": "Hillsboro, OR",
+    "network_zone": "us-west"
+  },
+  {
+    "id": 6,
+    "name": "sin",
+    "city": "Singapore",
+    "network_zone": "ap-southeast"
+  }
+]

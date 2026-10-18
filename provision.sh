@@ -23,7 +23,10 @@
 #   EXPECTED_HOURS=6           Expected lifetime of a test run (sync + testing + teardown). Docs: the
 #                              snapshot "can take up to 2 hours" (README) / "a few hours" (docs site).
 #   ESTIMATE_ONLY=1            Read-only: pick the type, print the cost estimate, create nothing.
-#   LOCATION=fsn1              Hetzner location (server and volume must share it).
+#   LOCATION=fsn1              Hetzner location (server and volume must share it): fsn1, nbg1, hel1,
+#                              ash, hil or sin (`hcloud location list`). If SERVER_TYPE is not available
+#                              there, the error lists where it is available and which types with
+#                              >= MIN_RAM_GB RAM are available in LOCATION, cheapest first.
 #   IMAGE=ubuntu-24.04
 #   REQUIRED_DISK_GB=2000      Disk the node needs (docs site: 2 TB; repo README: 1.5 TB).
 #                              A volume is added only if the server type's local disk is smaller.
@@ -121,6 +124,36 @@ type_problem() {
     else empty end' <<<"$st"
 }
 
+# Read-only. Explains a "not available" error: where TYPE ($1, may be empty) is available now,
+# and which types with >= MIN_RAM_GB RAM are available in LOCATION, cheapest first.
+availability_hint() {
+  local t="$1" where="" alts all
+  if [[ -n "$t" ]]; then
+    where="$(hcloud server-type describe "$t" -o json 2>/dev/null \
+      | jq -r '[.locations[]? | select(.available == true) | .name] | join(", ")' 2>/dev/null)" || where=""
+    echo "$t is available now in: ${where:-no location}."
+  fi
+  all="$(hcloud server-type list -o json 2>/dev/null)" || all='[]'
+  alts="$(jq -r --arg loc "$LOCATION" --argjson min "$MIN_RAM_GB" '
+    [ .[] | select(.deprecated != true and .deprecation == null and .memory >= $min)
+          | select([.locations[]? | select(.name == $loc and .available == true)] | length > 0)
+          | { name, arch: .architecture, mem: .memory,
+              h: ([.prices[]? | select(.location == $loc) | .price_hourly.gross | tonumber] | first) } ]
+    | sort_by(.h // 1e9) | .[:4]
+    | map("\(.name) (\(.arch), \(.mem) GB RAM\(if .h then ", \(.h * 10000 | round / 10000) an hour" else "" end))")
+    | join(", ")' <<<"$all" 2>/dev/null)" || alts=""
+  echo "Available in $LOCATION with at least $MIN_RAM_GB GB RAM, cheapest first: ${alts:-none}."
+  echo "Set SERVER_TYPE=<type> and/or LOCATION=<location> and run it again. Nothing was created."
+}
+
+# Fails with the list of locations if LOCATION is not a Hetzner location. Read-only API call.
+check_location() {
+  hcloud location describe "$LOCATION" -o json >/dev/null 2>&1 && return 0
+  local names
+  names="$(hcloud location list -o json 2>/dev/null | jq -r 'map(.name) | join(", ")' 2>/dev/null)" || names=""
+  die "unknown LOCATION=$LOCATION. Hetzner locations: ${names:-see hcloud location list}. Nothing was created."
+}
+
 # Picks SERVER_TYPE (if unset) and sets NEED_VOLUME=0/1 from the type's local disk.
 NEED_VOLUME=1
 check_server_type() {
@@ -130,16 +163,22 @@ check_server_type() {
     NEED_VOLUME=1; return 0
   fi
   local t problem
+  check_location
   if [[ -z "$SERVER_TYPE" ]]; then
     for t in $SERVER_TYPE_CANDIDATES; do
       problem="$(type_problem "$t")"
       if [[ -z "$problem" ]]; then SERVER_TYPE="$t"; break; fi
       log "skipping $t: $problem"
     done
-    [[ -n "$SERVER_TYPE" ]] || die "none of [$SERVER_TYPE_CANDIDATES] is usable in $LOCATION; set SERVER_TYPE or LOCATION"
+    [[ -n "$SERVER_TYPE" ]] || die "none of [$SERVER_TYPE_CANDIDATES] is usable in $LOCATION. $(availability_hint "" | tr '\n' ' ')"
   else
     problem="$(type_problem "$SERVER_TYPE")"
-    [[ -z "$problem" ]] || die "server type $SERVER_TYPE: $problem"
+    if [[ -n "$problem" ]]; then
+      case "$problem" in
+        not\ *) die "server type $SERVER_TYPE: $problem. $(availability_hint "$SERVER_TYPE" | tr '\n' ' ')" ;;
+        *) die "server type $SERVER_TYPE: $problem" ;;
+      esac
+    fi
   fi
   local st disk
   st="$(hcloud server-type describe "$SERVER_TYPE" -o json)"
