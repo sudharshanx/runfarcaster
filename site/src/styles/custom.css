@@ -1,8 +1,9 @@
-/* Light only: white page, dark ink, one grey line colour, system sans. */
+/* Light only: white page, dark ink, one grey line colour. Same type and accent as the landing page
+   (src/styles/landing.css): DM Sans, IBM Plex Mono, accent #244af0, hairlines #dfe2e7. */
 :root, :root[data-theme="light"] {
   color-scheme: light;
-  --sl-font: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-  --sl-font-mono: ui-monospace, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
+  --sl-font: "DM Sans Variable", "DM Sans", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+  --sl-font-mono: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
   --sl-color-white: #15191f;      /* strongest text */
   --sl-color-gray-1: #24292f;
   --sl-color-gray-2: #353a41;
@@ -12,10 +13,10 @@
   --sl-color-gray-6: #f3f4f6;
   --sl-color-gray-7: #f8f9fc;     /* panels */
   --sl-color-black: #ffffff;      /* page */
-  --sl-color-accent-low: #eef0f3;
-  --sl-color-accent: #15191f;
-  --sl-color-accent-high: #15191f;
-  --sl-color-text-accent: #15191f;
+  --sl-color-accent-low: #eef2ff;
+  --sl-color-accent: #244af0;
+  --sl-color-accent-high: #1b3bd0;
+  --sl-color-text-accent: #244af0;
   --sl-color-hairline: #dfe2e7;
   --sl-color-hairline-light: #eceef1;
   --sl-color-hairline-shade: #dfe2e7;
@@ -30,10 +31,16 @@
   --sl-content-width: 46rem;
 }
 body { background: #ffffff; color: var(--sl-color-gray-2); }
-.header { border-bottom: 1px solid var(--sl-color-hairline); }
-.site-title { font-weight: 600; font-size: 1rem; color: var(--sl-color-white); }
+
+:root { --sl-nav-height: 4.5rem; }
+.sl-markdown-content h1, h1#_top { font-weight: 500; letter-spacing: -1px; color: var(--sl-color-white); }
+/* Sidebar: current page in the accent, like the landing page links. */
+nav.sidebar a[aria-current="page"] { background: var(--sl-color-accent-low); color: var(--sl-color-accent-high); font-weight: 600; }
+/* The header links take the place of the social icons; hide the divider Starlight draws after them. */
+.social-icons::after { display: none; }
+@media (max-width: 68rem) { .social-icons .hl a:not(:last-child) { display: none; } }
 .sl-markdown-content a, .hero a { text-decoration-thickness: 1px; text-underline-offset: 3px; }
-.sl-markdown-content :is(h2, h3) { font-weight: 600; letter-spacing: -0.01em; }
+.sl-markdown-content :is(h2, h3) { font-weight: 550; letter-spacing: -0.02em; }
 .sl-markdown-content h2 { margin-top: 3rem; }
 /* Asides: quiet panels. AUTHOR notes stay visible but calm. */
 .starlight-aside { border: 1px solid var(--sl-color-hairline); border-inline-start-width: 3px; border-radius: 6px; background: var(--sl-color-gray-7); }
@@ -43,34 +50,6 @@ body { background: #ffffff; color: var(--sl-color-gray-2); }
 .starlight-aside--tip { border-inline-start-color: #2f855a; background: #f0fff4; }
 .starlight-aside__title { color: var(--sl-color-white); }
 .sl-markdown-content code { overflow-wrap: anywhere; }
-
-/* Home hero */
-.hero .eyebrow {
-  display: block;
-  font-family: var(--__sl-font-mono, ui-monospace, monospace);
-  font-size: 0.8rem;
-  font-weight: 500;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--sl-color-gray-3);
-  margin-bottom: 1rem;
-}
-.hero { padding-block: 3.5rem 1.5rem; }
-.hero h1 { line-height: 1.08; font-weight: 600; letter-spacing: -0.02em; color: var(--sl-color-white); }
-.hero .tagline { color: var(--sl-color-gray-3); font-size: 1.15rem; }
-.hero .actions a.primary { background: #15191f; color: #fff; border-color: #15191f; border-radius: 6px; }
-.hero .actions a.primary:hover { background: #2b313a; }
-.hero .actions a { min-height: 44px; }
-@media (max-width: 50rem) { .hero .actions, .hero .actions a { width: 100%; justify-content: center; } }
-.proof { font-size: var(--sl-text-sm); color: var(--sl-color-gray-3); border-top: 1px solid var(--sl-color-hairline); padding-top: 0.75rem; }
-
-/* Numbered sections: 01 / NODE ... */
-.numbered { display: grid; gap: 0; grid-template-columns: 1fr; margin-top: 2rem; }
-.numbered section { border-top: 1px solid var(--sl-color-hairline); padding: 1.25rem 0; margin: 0; }
-.numbered .label { font-family: var(--__sl-font-mono, ui-monospace, monospace); font-size: 0.75rem; letter-spacing: 0.1em; color: var(--sl-color-gray-3); margin: 0; }
-.numbered .claim { font-size: var(--sl-text-xl); font-weight: 600; margin: 0.25rem 0 0.5rem; color: var(--sl-color-white); }
-.numbered p { margin: 0; }
-@media (min-width: 60rem) { .numbered { grid-template-columns: repeat(3, 1fr); column-gap: 2rem; } }
 
 /* At a glance */
 .glance { border: 1px solid var(--sl-color-hairline); border-radius: 6px; padding: 1rem 1.25rem; background: var(--sl-color-gray-7); }
@@ -102,7 +81,7 @@ body { background: #ffffff; color: var(--sl-color-gray-2); }
 pre.diagram { font-size: var(--sl-text-xs); line-height: 1.4; overflow-x: auto; }
 
 /* Web interface guideline fixes */
-.sl-markdown-content :is(h1, h2, h3), .hero h1 { text-wrap: balance; }
+.sl-markdown-content :is(h1, h2, h3) { text-wrap: balance; }
 .sl-markdown-content p { text-wrap: pretty; }
 .sl-markdown-content td, .glance dd { font-variant-numeric: tabular-nums; }
 .copy-prompt button { touch-action: manipulation; transition: border-color 0.15s; }

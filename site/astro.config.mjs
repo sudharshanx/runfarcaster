@@ -5,7 +5,8 @@ import starlight from "@astrojs/starlight";
 import { REPO, remarkRepoUrl, rehypeTableScroll } from "./src/config.mjs";
 
 // GitHub Pages: set SITE_URL=https://<user>.github.io and BASE_PATH=/snapchain-tutorial/ (the repo name).
-// Local preview: leave both unset (served at /).
+// Defaults below; CI sets them from the repository. The home page is src/pages/index.astro (custom
+// landing); every other page is Starlight.
 const site = process.env.SITE_URL ?? "https://sudharshanx.github.io";
 const base = process.env.BASE_PATH ?? "/snapchain-tutorial/";
 // The repo URL lives in src/config.mjs (REPO_URL env). CI sets it from the GitHub repository.
@@ -22,13 +23,15 @@ export default defineConfig({
       title: "Farcaster node in 3 simple steps",
       description:
         "Run your own Farcaster node in 3 simple steps: a Snapchain read node and a web app on Hetzner. Measured time and cost, what we tested, and how it works.",
-      social: [{ icon: "github", label: "Source on GitHub", href: repo }],
       editLink: { baseUrl: `${repo}/edit/main/site/` },
-      customCss: ["./src/styles/custom.css"],
+      // Self-hosted fonts (no font CDN), the same as the landing page in src/pages/index.astro.
+      customCss: ["@fontsource-variable/dm-sans", "@fontsource/ibm-plex-mono/400.css", "./src/styles/custom.css"],
       // Light only (white page, dark text). Starlight's dark default and theme picker are replaced.
       components: {
         ThemeProvider: "./src/components/LightThemeProvider.astro",
         ThemeSelect: "./src/components/NoThemeSelect.astro",
+        SiteTitle: "./src/components/SiteTitle.astro",
+        SocialIcons: "./src/components/HeaderLinks.astro",
       },
       // Wrap long command lines on phones instead of scrolling sideways (copy still copies the original).
       expressiveCode: {

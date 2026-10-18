@@ -4,7 +4,8 @@ import { REPO } from "../prompts";
 
 export const GET: APIRoute = async ({ site }) => {
   const base = new URL(import.meta.env.BASE_URL, site).href.replace(/\/?$/, "/");
-  const list = (await pages()).map((e) => `- [${e.data.title}](${base}${e.id === "index" ? "" : `${e.id}/`}): ${e.data.description ?? ""}`).join("\n");
+  const home = `- [Home](${base}): Rent a server, run the Snapchain read node on it, and open a small Farcaster app served by that node.`;
+  const list = home + "\n" + (await pages()).map((e) => `- [${e.data.title}](${base}${e.id === "index" ? "" : `${e.id}/`}): ${e.data.description ?? ""}`).join("\n");
   const body = `# Run your own Farcaster node in 3 simple steps
 
 > Rent a Hetzner server. Start a Snapchain read node on it with the official bootstrap. Open a small web app served from the same server over HTTPS. You need no API keys. From one mainnet run on 2026-10-18: 14 h 06 m from renting the server to synced, about $2.31 at $0.164 an hour, a 557.86 GB database. Writes (gasless KEY_ADD, casts) have not been tried on mainnet.

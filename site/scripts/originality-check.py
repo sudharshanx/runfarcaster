@@ -3,7 +3,7 @@
 """Originality check: shared 5-grams and 4-grams between our prose and other published guides.
 
 Competitor text is fetched once into a cache dir (default /workspace/comp/cache; override with
-ORIG_CACHE) and reused. Ours: site/src/content/docs/*.mdx, site/src/prompts.ts, site/src/components,
+ORIG_CACHE) and reused. Ours: site/src/content/docs/*.mdx, site/src/prompts.ts, site/src/components, site/src/pages/*.astro,
 README.md, VOUCHER.md, SECURITY.md. Code blocks, inline code, commands, URLs and HTML/MDX tags are
 removed; the words "Farcaster" and "Snapchain read node" act as phrase breaks.
 
@@ -119,7 +119,7 @@ def ngrams(text, n):
 def ours():
     files = sorted((ROOT / "site/src/content/docs").glob("*.mdx")) + [ROOT / "README.md", ROOT / "VOUCHER.md", ROOT / "SECURITY.md"]
     out = {str(f.relative_to(ROOT)): prose(f.read_text(), "md") for f in files if f.exists()}
-    for f in [ROOT / "site/src/prompts.ts", *sorted((ROOT / "site/src/components").glob("*.astro"))]:
+    for f in [ROOT / "site/src/prompts.ts", *sorted((ROOT / "site/src/components").glob("*.astro")), *sorted((ROOT / "site/src/pages").glob("*.astro"))]:
         out[str(f.relative_to(ROOT))] = prose(f.read_text(), "ts" if f.suffix == ".ts" else "md")
     return out
 

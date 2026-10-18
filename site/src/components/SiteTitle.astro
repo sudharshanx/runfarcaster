@@ -1,0 +1,6 @@
+---
+// Starlight override: the docs header shows the same wordmark as the landing page.
+import Wordmark from "./Wordmark.astro";
+const { siteTitleHref } = Astro.locals.starlightRoute;
+---
+<Wordmark href={siteTitleHref} />

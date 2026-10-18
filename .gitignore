@@ -10,3 +10,4 @@ research/
 
 # Raw live-run log (server IP, IDs). Public sanitized copy: run-log.md
 run-log.raw.md
+__pycache__/

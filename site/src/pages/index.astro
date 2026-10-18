@@ -1,0 +1,317 @@
+---
+// SPDX-License-Identifier: MIT
+// Landing page. Layout follows the system documented in /workspace/xmtp-ref/notes.md (patterns only).
+// The docs stay in Starlight (src/content/docs). Numbers come from MEASUREMENTS.md and the Proof page.
+import "@fontsource-variable/dm-sans";
+import "@fontsource/ibm-plex-mono/400.css";
+import "../styles/landing.css";
+import { Image } from "astro:assets";
+import Wordmark from "../components/Wordmark.astro";
+import desktopShot from "../assets/client-desktop.png";
+import { REPO, prompts } from "../prompts";
+
+const base = import.meta.env.BASE_URL.replace(/\/?$/, "/");
+const u = (p: string) => `${base}${p}`;
+const blob = (p: string) => `${REPO}/blob/main/${p}`;
+const title = "Run your own Farcaster node in 3 simple steps";
+const description =
+  "Rent a server, run the Snapchain read node on it, and open a small Farcaster app served by that node. Time and cost measured on one mainnet run.";
+const canonical = new URL(base, Astro.site).href;
+
+const steps = [
+  {
+    n: "01", label: "Rent", title: "Rent a server.",
+    text: "provision.sh rents a Hetzner cax31 with a 1000 GB volume and a firewall that opens SSH only to your IP. It checks the price first and starts a watchdog.",
+    cmd: `MY_IP=$(curl -4 -s https://ifconfig.me)
+IP=$(SSH_KEY=my-key \\
+  SERVER_TYPE=cax31 \\
+  VOLUME_GB=1000 \\
+  MAX_USD=5 \\
+  EXPECTED_HOURS=16 \\
+  SSH_SOURCE_CIDRS="$MY_IP/32" \\
+  ./provision.sh)`,
+  },
+  {
+    n: "02", label: "Start", title: "Start the node.",
+    text: "node.sh installs Docker, runs the official Snapchain bootstrap and waits until every shard is in sync. It took 14 h 06 m for us.",
+    cmd: `ssh root@$IP \\
+  "SNAPCHAIN_AGREE_NO_REWARDS=yes MIN_FREE_GB=900 bash -s" \\
+  < node.sh`,
+  },
+  {
+    n: "03", label: "Open", title: "Open the app.",
+    text: "deploy-client.sh builds the app on your computer and serves it with Caddy over HTTPS, next to the node's /v1 API.",
+    cmd: `./deploy-client.sh "$IP"`,
+  },
+];
+
+const stats = [
+  { v: "14 h 06 m", l: "From renting the server to a synced node" },
+  { v: "$2.31", l: "About, to reach sync at $0.164 an hour" },
+  { v: "557.86 GB", l: "Database once synced, from a snapshot of about 500 GB" },
+  { v: "914M", l: "Messages on the node (914,243,963)" },
+];
+
+const scripts = [
+  ["provision.sh", "Step 1: rent the server"],
+  ["node.sh", "Step 2: start the node"],
+  ["deploy-client.sh", "Step 3: open the app"],
+  ["teardown.sh", "Delete everything"],
+  ["watchdog.sh", "Spending cap"],
+  ["client/src/signer.ts", "The KEY_ADD signer"],
+];
+
+const master = prompts.master;
+const goalRaw = /Goal: (.*)/.exec(master)?.[1] ?? "";
+const goal = goalRaw.charAt(0).toUpperCase() + goalRaw.slice(1);
+const arrow = `<svg aria-hidden="true" width="12" height="12" viewBox="0 0 12 12"><path d="M2.5 9.5 9.5 2.5M4 2.5h5.5V8" fill="none" stroke="currentColor" stroke-width="1.5"/></svg>`;
+const right = `<svg aria-hidden="true" width="12" height="12" viewBox="0 0 12 12"><path d="M1.5 6h9M6.5 2l4 4-4 4" fill="none" stroke="currentColor" stroke-width="1.5"/></svg>`;
+---
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{title}</title>
+    <meta name="description" content={description} />
+    <link rel="canonical" href={canonical} />
+    <link rel="icon" href={u("favicon.svg")} type="image/svg+xml" />
+    <meta property="og:title" content={title} />
+    <meta property="og:description" content={description} />
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content={canonical} />
+    <link rel="sitemap" href={u("sitemap-index.xml")} />
+  </head>
+  <body class="lp">
+    <a class="skip" href="#main">Skip to content</a>
+    <header class="lp-header">
+      <div class="wrap lp-header-row">
+        <Wordmark href={base} />
+        <nav class="lp-nav" aria-label="Main">
+          <a href={u("quickstart/")}>Quickstart</a>
+          <a href={u("tutorial/")}>Tutorial</a>
+          <a href={u("hetzner/")}>Hetzner</a>
+          <a href={u("proof/")}>Proof</a>
+          <a href={REPO}>GitHub<Fragment set:html={arrow} /></a>
+          <a class="btn btn-sm" href={u("quickstart/")}>Run the 3 steps</a>
+        </nav>
+        <details class="lp-menu">
+          <summary>Menu</summary>
+          <nav aria-label="Main, small screens">
+            <a href={u("quickstart/")}>Quickstart</a>
+            <a href={u("tutorial/")}>Tutorial</a>
+            <a href={u("hetzner/")}>Hetzner</a>
+            <a href={u("proof/")}>Proof</a>
+            <a href={REPO}>GitHub</a>
+          </nav>
+        </details>
+      </div>
+    </header>
+
+    <main id="main">
+      <section class="wrap hero" aria-labelledby="hero-title">
+        <p class="eyebrow">Snapchain read node · MIT · No API keys</p>
+        <h1 id="hero-title">Run your own Farcaster node in 3 simple steps<span class="dot">.</span></h1>
+        <p class="hero-sub">Rent a server. Start the node. Open the app.</p>
+        <div class="hero-ctas">
+          <a class="btn" href={u("quickstart/")}>Start the quickstart<Fragment set:html={arrow} /></a>
+          <a class="textlink" href={REPO}>View on GitHub<Fragment set:html={right} /></a>
+        </div>
+        <p class="hero-note">
+          <svg aria-hidden="true" width="14" height="14" viewBox="0 0 14 14"><circle cx="7" cy="7" r="6" fill="none" stroke="currentColor" stroke-width="1.2"/><path d="M4.3 7.2 6.2 9l3.5-4" fill="none" stroke="currentColor" stroke-width="1.3"/></svg>
+          We ran it once on mainnet, on 2026-10-18.
+        </p>
+        {/* AUTHOR: your intro line, one or two sentences in your own words: who you are and why you wanted your own node. */}
+      </section>
+
+      <section class="wrap trio" aria-label="The 3 steps">
+        {steps.map((s) => (
+          <div>
+            <p class="eyebrow">{s.n} / {s.label}</p>
+            <h2 class="h-sm">{s.title}</h2>
+            <p>{s.text}</p>
+          </div>
+        ))}
+      </section>
+
+      <section class="wrap split cmds" aria-labelledby="cmd-title">
+        <div>
+          <p class="eyebrow">From your computer</p>
+          <h2 id="cmd-title" class="h-md">3 commands, run from the repo folder.</h2>
+          <p>Clone the repo first. You need a Hetzner token in <code>HCLOUD_TOKEN</code>, an SSH key uploaded to Hetzner, and Node.js 22.12 or later (22.x, 24.x or 26+).</p>
+          <p>Step 1 starts a watchdog. It deletes everything before the bill reaches <code>MAX_USD</code>, or 24 hours later even if the node is healthy.</p>
+          <a class="textlink" href={u("quickstart/")}>What each command prints<Fragment set:html={right} /></a>
+        </div>
+        <div class="terminal" role="group" aria-label="The 3 commands">
+          {steps.map((s, i) => (
+            <div class="term-step">
+              <div class="term-head">
+                <span class="eyebrow">{s.n} / {s.label}</span>
+                <button type="button" class="copy" data-copy={`cmd-${i}`}>Copy</button>
+              </div>
+              <pre id={`cmd-${i}`} tabindex="0" aria-label={`Step ${i + 1} command`}><code>{s.cmd}</code></pre>
+            </div>
+          ))}
+          <p class="term-foot">When you are done: <code>CONFIRM=snapchain-read-node ./teardown.sh</code></p>
+          <span class="sr-only" role="status" aria-live="polite" data-copy-status></span>
+        </div>
+      </section>
+
+      <section class="wrap stats" aria-labelledby="stats-title">
+        <h2 id="stats-title" class="eyebrow">Measured on our run</h2>
+        <dl>
+          {stats.map((s) => (
+            <div>
+              <dt>{s.l}</dt>
+              <dd>{s.v}</dd>
+            </div>
+          ))}
+        </dl>
+        <p class="stats-note">Hetzner cax31 (ARM64, 16 GB RAM), 1000 GB volume. Cost from Hetzner's price list; we have not seen the invoice. <a href={u("proof/")}>How we measured</a></p>
+      </section>
+
+      <section class="wrap split noline" aria-labelledby="how-title">
+        <div>
+          <p class="eyebrow">How it works</p>
+          <h2 id="how-title" class="h-md">Your app reads from your node, and your node reads from the validators.</h2>
+          <p>The read node has no account with anyone. You need no API keys.</p>
+          <a class="textlink" href={u("tutorial/")}>Read the tutorial<Fragment set:html={right} /></a>
+        </div>
+        <ol class="rows">
+          <li>
+            <h3>Validators</h3>
+            <p>They make the blocks. Your node gets each new block from them over gossip on UDP 3382.</p>
+          </li>
+          <li>
+            <h3>Your read node</h3>
+            <p>It loads a snapshot, then keeps up block by block. A message you send, it checks and passes on to the validators. It keeps no mempool.</p>
+          </li>
+          <li>
+            <h3>Your app</h3>
+            <p>Static files. Caddy serves them and the node's <code>/v1</code> API from one HTTPS address, so the browser never makes a cross-site call.</p>
+          </li>
+        </ol>
+      </section>
+
+      <section class="wrap panel split" aria-labelledby="acct-title">
+        <div>
+          <p class="eyebrow">Keys</p>
+          <h2 id="acct-title" class="h-md">Your account stays yours.</h2>
+          <p>Posting needs an app key. You add it with one gasless <code>KEY_ADD</code> that your custody address signs. Mainnet has accepted these since engine version V16 on 2026-05-07.</p>
+          <a class="textlink" href={u("first-cast/")}>Your first cast<Fragment set:html={right} /></a>
+        </div>
+        <div>
+          <h3 class="h-sm">The recovery phrase stays on your computer.</h3>
+          <p>For this one step you run the app on <code>localhost</code>. It signs the <code>KEY_ADD</code>, then drops the phrase. Nothing stores, logs or sends it.</p>
+          <h3 class="h-sm">An app key can only post.</h3>
+          <p>It signs casts, likes and follows for its lifetime: 7 days by default, 90 at most. It cannot move money or approve other keys.</p>
+          <details class="more">
+            <summary>What we have not tried yet</summary>
+            <p>A real <code>KEY_ADD</code>, cast, like or follow on mainnet. Unit tests and a local mock node cover this part.</p>
+          </details>
+        </div>
+      </section>
+
+      <section class="wrap split" aria-labelledby="ai-title">
+        <div>
+          <p class="eyebrow">With your AI assistant</p>
+          <h2 id="ai-title" class="h-md">Let your coding assistant run the 3 steps.</h2>
+          <p>Copy one prompt. The assistant does one step at a time and waits for your OK before the next.</p>
+          <a class="textlink" href={u("ai-assistant/")}>All prompts<Fragment set:html={right} /></a>
+        </div>
+        <div class="card">
+          <p class="eyebrow">Prompt for a coding assistant</p>
+          <p class="mono">{goal}</p>
+          <button type="button" class="btn" data-copy="master-prompt">Copy the prompt<Fragment set:html={arrow} /></button>
+          <span class="sr-only" role="status" aria-live="polite" data-copy-status></span>
+          <details class="more">
+            <summary>Show the whole prompt</summary>
+            <pre id="master-prompt" tabindex="0" aria-label="Full prompt">{master}</pre>
+          </details>
+          <p class="fine">Never paste a recovery phrase or a token into an AI assistant.</p>
+        </div>
+      </section>
+
+      <section class="wrap split" aria-labelledby="proof-title">
+        <div>
+          <p class="eyebrow">Proof</p>
+          <h2 id="proof-title" class="h-md">We ran it once on mainnet.</h2>
+          <p>Logs, numbers and screenshots from 2026-10-18. Our read-only browser test passed 17 of 17 checks against the synced node.</p>
+          <p>We sent one deliberately broken message, and the node rejected it. We have not sent a real cast yet.</p>
+          <a class="textlink" href={u("proof/")}>See the proof<Fragment set:html={right} /></a>
+          {/* AUTHOR: one line on what it felt like when the feed first loaded from your own node. */}
+        </div>
+        <figure class="shot">
+          <Image src={desktopShot} alt="The app on a desktop screen: node status (Connected, version 0.14.3), then the app key box with the Address check warning" widths={[640, 1024]} sizes="(max-width: 900px) 100vw, 520px" loading="lazy" />
+          <figcaption>The app on our synced node. The server's address is replaced.</figcaption>
+        </figure>
+        {/* AUTHOR: 59 s vertical video (9:16): rent the server, a synced /v1/info, the feed on a phone. Put it here with a caption that says how you made it. */}
+      </section>
+
+      <section class="wrap split last" aria-labelledby="src-title">
+        <div>
+          <p class="eyebrow">Open source · MIT</p>
+          <h2 id="src-title" class="h-md">Read every script before you run it.</h2>
+          <p>Each script is plain bash or TypeScript. The tokens come from your environment and are never printed.</p>
+        </div>
+        <ul class="linkgrid">
+          {scripts.map(([f, d]) => (
+            <li><a href={blob(f)}><span class="lg-t">{f}<Fragment set:html={arrow} /></span><span class="lg-d">{d}</span></a></li>
+          ))}
+        </ul>
+      </section>
+    </main>
+
+    <footer class="wrap lp-footer">
+      <div class="f-brand">
+        <Wordmark href={base} />
+        <p>Rent a server. Start the node. Open the app.</p>
+      </div>
+      <nav aria-label="Docs">
+        <h2>Docs</h2>
+        <a href={u("before-you-start/")}>Before you start</a>
+        <a href={u("quickstart/")}>Quickstart</a>
+        <a href={u("tutorial/")}>Tutorial</a>
+        <a href={u("first-cast/")}>Your first cast</a>
+        <a href={u("troubleshooting/")}>Troubleshooting</a>
+        <a href={u("reference/")}>Reference</a>
+      </nav>
+      <nav aria-label="Project">
+        <h2>Project</h2>
+        <a href={u("proof/")}>Proof</a>
+        <a href={u("docs-issues/")}>Docs issues we found</a>
+        <a href={u("how-ai-was-used/")}>How AI was used</a>
+        <a href={u("llms.txt")}>llms.txt</a>
+      </nav>
+      <nav aria-label="License and source">
+        <h2>Source</h2>
+        <a href={blob("LICENSE")}>MIT license</a>
+        <a href={REPO}>GitHub</a>
+        <a href={blob("SECURITY.md")}>Security</a>
+      </nav>
+      <p class="f-fine">中文: a person will write the Chinese version. We will not publish a machine translation.</p>
+    </footer>
+
+    <script>
+      const status = (el: Element, msg: string) => {
+        const s = el.closest(".terminal, .card")?.querySelector("[data-copy-status]");
+        if (s) s.textContent = msg;
+      };
+      for (const btn of document.querySelectorAll<HTMLButtonElement>("[data-copy]")) {
+        btn.addEventListener("click", async () => {
+          const text = document.getElementById(btn.dataset.copy ?? "")?.textContent ?? "";
+          const label = btn.querySelector("svg") ? null : btn.textContent;
+          try {
+            await navigator.clipboard.writeText(text);
+            status(btn, "Copied to clipboard");
+            btn.dataset.state = "copied";
+            if (label) btn.textContent = "Copied";
+          } catch {
+            status(btn, "Copy failed. Select the text and copy it by hand.");
+          }
+          setTimeout(() => { delete btn.dataset.state; if (label) btn.textContent = label; }, 2000);
+        });
+      }
+    </script>
+  </body>
+</html>
