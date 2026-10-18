@@ -2,8 +2,9 @@
 
 This repo gives you three steps: rent a server, turn it into a Snapchain read node, and serve a small web
 client from that node. The client reads the feed, posts casts, follows and reacts. You need no API key
-from anyone. Status: built and tested **locally only** (see "What has been tested"). No node has been run
-yet, and nothing has been sent to mainnet.
+from anyone. Status: one live run on 2026-10-18 (Hetzner cax31 + 1000 GB volume): provision to fully synced took
+≈14 h, and the client was served over HTTPS from the node and tested read-only. No valid message has been
+sent to mainnet. Numbers are in `MEASUREMENTS.md`, the full log in `run-log.md`.
 
 ## Quickstart
 
@@ -89,9 +90,9 @@ node URL can be changed in the client UI. An empty value means same origin.
 | `e2e/` | Headless-browser test: real Caddyfile, mock node |
 | `SOURCES.md` | Every fact and where it came from: URLs and SHAs |
 | `DOCS_ISSUES.md` | Outdated or wrong official docs found along the way |
-| `MEASUREMENTS.md` | Template for real-run numbers, plus cost estimates |
+| `MEASUREMENTS.md` | Numbers from the first live run, plus cost estimates |
 
-## What has been tested (locally, on the box only)
+## What has been tested
 
 ```bash
 shellcheck -x -P SCRIPTDIR *.sh test/*.sh e2e/*.sh
@@ -101,7 +102,9 @@ cd e2e && npm ci && CADDY=caddy CHROME=/path/to/chrome ./run.sh   # Caddy + mock
 ```
 
 - `provision.sh` and `teardown.sh`: shellcheck and `DRY_RUN` only. `provision.sh` was also run with `ESTIMATE_ONLY=1`, which makes read-only API calls.
-- **Not tested:** a real VM, the real bootstrap, a real sync, real mainnet writes, the ARM type cax31, and Let's Encrypt issuance.
+- **Live run (2026-10-18):** `provision.sh` (cax31, `VOLUME_GB=1000`), `node.sh` (official bootstrap, full sync, idempotent re-run), `deploy-client.sh` (Let's Encrypt via sslip.io) and `SITE=https://<ip-with-dashes>.sslip.io CHROME=... node e2e/real-node.mjs` (read-only; its only write is an invalid `submitMessage`, which the node rejects with 400). 16/16 passed.
+- **Not tested:** real mainnet writes (KEY_ADD, casts, likes, follows) and `teardown.sh` against real resources.
+- Use `SSH_OPTS="-i key -o UserKnownHostsFile=..." ./deploy-client.sh IP` if you need a specific SSH key.
 
 ## Assumptions
 

@@ -19,8 +19,8 @@ const browser = await chromium.launch({ executablePath: process.env.CHROME, head
 const ctx = await browser.newContext({ viewport: { width: 1280, height: 900 } });
 const page = await ctx.newPage();
 const consoleMsgs = [], requests = [];
-page.on("console", (m) => consoleMsgs.push(`${m.type()}: ${m.text()}`));
-page.on("pageerror", (e) => consoleMsgs.push(`pageerror: ${e.message}`));
+page.on("console", (m) => consoleMsgs.push({ text: `${m.type()}: ${m.text()}`, url: m.location()?.url ?? "" }));
+page.on("pageerror", (e) => consoleMsgs.push({ text: `pageerror: ${e.message}`, url: "" }));
 page.on("request", (r) => requests.push({ url: r.url(), method: r.method() }));
 const step = async (name, fn) => { try { return await fn(); } catch (e) { check(name, false, String(e).split("\n")[0]); return undefined; } };
 
@@ -39,6 +39,8 @@ await page.fill("#watch-fids", WATCH);
 await page.click("#refresh");
 await step("real casts in feed", async () => {
   await page.waitForFunction(() => document.querySelectorAll("#feed .cast").length > 0, null, { timeout: 60000 });
+  // wait for the refresh to finish, otherwise a cast from the initial (pre-refresh) feed gets picked below
+  await page.waitForFunction(() => !(document.getElementById("feed-meta")?.textContent ?? "").startsWith("Loading"), null, { timeout: 60000 });
   check("real casts in feed", true, `${await page.locator("#feed .cast").count()} rendered; ${await page.textContent("#feed-meta")}`);
 });
 await page.screenshot({ path: `${OUT}/desktop-feed.png`, fullPage: false });
@@ -49,7 +51,7 @@ const before = await page.locator("#feed .cast").count();
 await page.locator("#filters input").nth(0).fill(String(firstFid));
 await page.locator("#filters button", { hasText: "Add" }).nth(0).click();
 const afterMute = await page.locator("#feed .cast .muted", { hasText: `FID ${firstFid} ` }).count();
-check(`mute FID ${firstFid} hides its casts`, afterMute === 0, `${before} -> ${await page.locator("#feed .cast").count()}`);
+check(`mute FID ${firstFid} hides its casts`, Number.isFinite(firstFid) && afterMute === 0 && (await page.locator("#feed .cast").count()) < before, `${before} -> ${await page.locator("#feed .cast").count()}`);
 await page.reload();
 await page.waitForFunction(() => document.getElementById("node-status")?.textContent?.startsWith("Connected"), null, { timeout: 30000 });
 check("mute persists across reload", ((await page.textContent("#filters")) ?? "").includes(String(firstFid)));
@@ -69,6 +71,10 @@ check(`/v1/signersByFid?fid=${TEST_FID} readable`, api.signers.status === 200 &&
 check(`reads for FID ${TEST_FID}`, api.casts.status === 200 && api.user.status === 200, `casts=${api.casts.n} userData=${api.user.n}`);
 check(`storage for FID ${TEST_FID} readable`, api.storage.status === 200, JSON.stringify(api.storage.body?.limits?.map?.((l) => [l.storeType, l.limit]) ?? api.storage.body).slice(0, 200));
 
+// the Caddyfile must hide the node's /v1/mesh admin view
+const meshStatus = await page.evaluate(async () => (await fetch("/v1/mesh")).status);
+check("/v1/mesh blocked by Caddy (404)", meshStatus === 404, `HTTP ${meshStatus}`);
+
 // invalid submit: must be rejected, cannot have any effect on mainnet
 const bad = await page.evaluate(async () => {
   const junk = crypto.getRandomValues(new Uint8Array(64));
@@ -82,8 +88,11 @@ const origin = new URL(SITE).origin;
 const foreign = requests.filter((r) => !r.url.startsWith(origin) && !r.url.startsWith("data:"));
 check("no mixed content / no third-party requests", foreign.length === 0, foreign.slice(0, 3).map((r) => r.url).join(" "));
 check("no app key or seed in storage (read-only test)", await page.evaluate(() => !localStorage.getItem("appKey.v1") && !Object.values(localStorage).some((v) => / \w+ \w+ \w+ \w+ \w+ \w+ \w+ \w+ \w+ \w+ \w+ /.test(v))));
-const errs = consoleMsgs.filter((m) => m.startsWith("error") || m.startsWith("pageerror"));
-check("no console errors / CSP violations", errs.length === 0, errs.join(" | ").slice(0, 300));
+// Chrome logs "Failed to load resource: 400" for the deliberately invalid submitMessage above; that one is expected.
+const errs = consoleMsgs.filter((m) => (m.text.startsWith("error") || m.text.startsWith("pageerror"))
+  && !(m.url.endsWith("/v1/submitMessage") && m.text.includes("status of 400"))
+  && !(m.url.endsWith("/v1/mesh") && m.text.includes("status of 404")));
+check("no console errors / CSP violations (except the expected invalid-submit 400)", errs.length === 0, errs.map((m) => `${m.text} ${m.url}`).join(" | ").slice(0, 300));
 
 // mobile layout with real data
 const mctx = await browser.newContext({ viewport: { width: 375, height: 812 }, isMobile: true, hasTouch: true, deviceScaleFactor: 2 });
@@ -91,7 +100,8 @@ const m = await mctx.newPage();
 await m.goto(SITE);
 await m.fill("#watch-fids", WATCH);
 await m.click("#refresh");
-await step("mobile feed", () => m.waitForFunction(() => document.querySelectorAll("#feed .cast").length > 0, null, { timeout: 60000 }));
+await step("mobile feed", () => m.waitForFunction(() => document.querySelectorAll("#feed .cast").length > 0
+  && !(document.getElementById("feed-meta")?.textContent ?? "").startsWith("Loading"), null, { timeout: 60000 }));
 const mm = await m.evaluate(() => ({ sw: document.documentElement.scrollWidth, cw: document.documentElement.clientWidth }));
 check("mobile 375px: no horizontal overflow with real casts", mm.sw <= mm.cw, `scrollWidth=${mm.sw} clientWidth=${mm.cw}`);
 await m.screenshot({ path: `${OUT}/mobile-feed.png`, fullPage: false });

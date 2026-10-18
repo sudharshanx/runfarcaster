@@ -12,8 +12,13 @@
 {$SITE_ADDRESS} {
 	encode zstd gzip
 
+	# Must be its own handle block: Caddy sorts `handle` before `respond`, so a bare
+	# `respond @admin 404` next to `handle /v1/*` never fires (found on the live run: /v1/mesh was 200).
+	# handle blocks are mutually exclusive and the most specific path matcher is tried first.
 	@admin path /v1/mesh /v1/mesh/*
-	respond @admin 404
+	handle @admin {
+		respond 404
+	}
 
 	handle /v1/* {
 		reverse_proxy {$NODE_UPSTREAM:127.0.0.1:3381}

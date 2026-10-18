@@ -8,7 +8,8 @@
 #   dns-name: a DNS A record pointing at <server-ip>. Let's Encrypt needs a name.
 #             If omitted, <ip-with-dashes>.sslip.io is used (third-party wildcard DNS service;
 #             see README "Assumptions"). Ports 80 and 443 must be open (provision.sh opens them).
-# Env: SSH_USER=root, REMOTE_DIR=/opt/snapchain-client, DRY_RUN=1 (print only).
+# Env: SSH_USER=root, REMOTE_DIR=/opt/snapchain-client, DRY_RUN=1 (print only),
+#      SSH_OPTS="-i key -o UserKnownHostsFile=..." (extra options for ssh/scp, word-split).
 #
 # No secrets are copied: only client/dist, the Caddyfile and a compose file.
 
@@ -22,6 +23,10 @@ SSH_USER="${SSH_USER:-root}"
 REMOTE_DIR="${REMOTE_DIR:-/opt/snapchain-client}"
 DRY_RUN="${DRY_RUN:-0}"
 TARGET="$SSH_USER@$IP"
+# shellcheck disable=SC2206
+SSH_OPTS_ARR=(${SSH_OPTS:-})
+ssh() { command ssh "${SSH_OPTS_ARR[@]}" "$@"; }
+scp() { command scp "${SSH_OPTS_ARR[@]}" "$@"; }
 
 run() { if [[ "$DRY_RUN" == "1" ]]; then printf '[dry-run] %s\n' "$*"; else "$@"; fi; }
 

@@ -1,17 +1,60 @@
 # Measurements
 
-No node has been run yet. Every value below is **NOT YET MEASURED**. Fill them in from a real run of
-`provision.sh` → `node.sh` → `deploy-client.sh` → `teardown.sh`.
+Measured on the **first live run**, 2026-10-18 (all times IST, UTC+5:30). Hetzner **cax31** (ARM64, 8 vCPU,
+16 GB RAM, fsn1) + **1000 GB volume** + firewall `snapchain-read-node-fw`; snapchain **v0.14.3**
+(`farcasterxyz/snapchain:latest`), mainnet. Raw log: `run-log.md`. Anything marked **unmeasured** was not measured.
 
-| Field | Value | How to measure |
+## Timeline
+
+| Phase | Value | Notes |
 |---|---|---|
-| Disk used after sync | NOT YET MEASURED | `du -sh ~/snapchain/.rocks` and `df -h /root/snapchain` after `node.sh wait` succeeds |
-| Time to sync | NOT YET MEASURED | node.sh prints start time and "in sync" time; snapshot vs block catch-up split from `docker compose logs` |
-| RAM use (steady / peak) | NOT YET MEASURED | `docker stats --no-stream`; peak from Grafana (tunnel: `ssh -L 3000:127.0.0.1:3000`) |
-| Ports truly required | NOT YET MEASURED | start with the docs profile (3381/tcp, 3382/udp, 3383/tcp); check peers in `/v1/info` and logs; then remove one rule at a time |
-| Cost per hour (actual) | NOT YET MEASURED | Hetzner console usage after teardown |
-| Server type actually used | NOT YET MEASURED | |
-| Submit → visible on read node latency | NOT YET MEASURED | client pending panel timestamps (relayed → confirmed) |
+| Provision (`provision.sh`) | **35 s** | server + volume + firewall, started 01:26:33 |
+| Snapshot download | **≈5 h 24 m** for ≈520 GB (5689 chunks), ≈**27 MB/s** avg | shard 1 01:37–04:11, shard 2 05:34–08:24 (download, gunzip, untar are sequential per shard) |
+| Snapshot restore, total wall time | **≈8 h 34 m** | download start ≈01:37 → node process start 10:11:13 |
+| Block catch-up after restore | **≈5 h 15 m** at **4.3–4.6 blocks/s per shard** (net) | node start 10:11 → all shards at tip ≈15:32 (shard 1 first, ≈14:32) |
+| **Provision → fully synced** | **≈14 h 06 m** | 01:26:33 → ≈15:32; "synced" = every shard blockDelay < 10 |
+
+## Resources at sync (15:32–16:16)
+
+| Field | Value | How measured |
+|---|---|---|
+| DB size | **557.86 GB** (`dbStats.approxSize`); `du .rocks` = 556G: shard-0 37G, shard-1 261G, shard-2 259G, global 4.2M | `/v1/info`, `du -sh` |
+| Messages / FIDs | **914,243,963** messages (914,244,196 at 16:04), **3,355,148** FID registrations | `/v1/info` dbStats |
+| Disk used after sync | **557G used / 378G free (60%) of 984G** | `df -h /root/snapchain` |
+| Peak disk during restore | **699G (75%)** at 09:37 (shard 2 tar + shard 1 DB + partial shard 2 DB) | `df`, 10-min logger; ≈5-min resolution, true peak could be slightly higher |
+| RAM, host | **2.4–2.6 GiB used** (+≈13 GiB page cache, 12.7 GiB available) | `free -m`, 16:01–16:16 |
+| RAM, containers | snapchain **1.53 GiB**, statsd 264 MiB, grafana 68 MiB, caddy 12 MiB | `docker stats --no-stream` 16:01 |
+| RAM, snapchain cgroup peak | **5.94 GB** `memory.peak` since 10:11 (cgroup peak includes page cache, so an upper bound) | `/sys/fs/cgroup/.../memory.peak`; Grafana peak **unmeasured** |
+| CPU / load | snapchain ≈1.3% CPU at tip; load avg **≈0.7–1.5** on 8 vCPU throughout catch-up and at tip | `docker stats`, `/proc/loadavg` |
+| RAM during snapshot download | ≈0.8–0.9 GiB used | progress logger |
+
+## Network and ports
+
+| Field | Value |
+|---|---|
+| Listening on VM | 3381/tcp (HTTP), 3383/tcp (gRPC), 3382/udp (gossip QUIC), 22/tcp; also 3000/tcp grafana, 8126/tcp + 8125/udp statsd bound to 0.0.0.0 but **not** opened in the Hetzner firewall (verified filtered from outside) |
+| 3381/tcp from outside | reachable: `/v1/info` 200 in ≈0.2–0.9 s from the box |
+| 3383/tcp from outside | reachable: gRPC `HubService/GetInfo` → grpc-status 0 |
+| Peers | **5 connected, all mainnet validators** (`/v1/mesh`, node-local); 3 of them in our `mempool` mesh |
+| `InsufficientPeers ("read-node-peers")` | ≈**18/min** (540 in 30 min, 6364 in 6 h). No connected peer subscribes to the `read-node-peers` topic, so publishes on it fail; sync is unaffected. Two bootstrap peers (34.195.157.114, 44.197.255.20) fail with QUIC `HandshakeTimedOut` every 30 s. |
+| Ports truly required | **Partly measured.** Removing inbound 3382/udp for 2 min (16:07–16:09) changed nothing: peers 5/5, blockDelay 0–2 (stateful firewall, node dials out). Long-term effect of no inbound 3382/udp (discovery, new peers) **unmeasured**. 3381/3383 are only needed if clients outside the VM read from the node; the web client goes through Caddy on 443. Rule restored. |
+
+## Cost
+
+| Field | Value |
+|---|---|
+| Server type actually used | **cax31** (cx43 unavailable) + 1000 GB volume + primary IPv4 |
+| Cost per hour | **≈$0.164/h** estimate from the price list (cax31 $0.040 + IPv4 $0.001 + 1000 GB volume ≈$0.123); actual Hetzner invoice **unmeasured** |
+| Spend so far | ≈**$2.43** of the $5 cap at 16:16 (watchdog estimate, ≈14 h 50 m since provision) |
+| Cost to reach sync | ≈$2.31 (provision → 15:32) |
+
+## Client
+
+| Field | Value |
+|---|---|
+| HTTPS deploy (`deploy-client.sh`) | ≈35 s incl. caddy image pull; Let's Encrypt cert (http-01) issued 16:10:46 for `<SERVER_IP_DASHED>.sslip.io` |
+| Read latency through Caddy | ≈0.2 s per `/v1/*` read from the box |
+| Submit → visible on read node latency | **unmeasured** (no valid mainnet write was made on purpose; the only write was an invalid submit, rejected with HTTP 400) |
 
 Test account for a future live run: FID <TEST_FID> (@<TEST_USERNAME>), custody <TEST_CUSTODY_ADDRESS>. Checked onchain with a read-only call, see `e2e/test-account.example.env`.
 
@@ -21,7 +64,7 @@ Test account for a future live run: FID <TEST_FID> (@<TEST_USERNAME>), custody <
 - **What we used:** the run uses **cax31 + a 1000 GB volume** (`VOLUME_GB=1000`). That is below the documented 1.5 TB (README) and 2 TB (docs site), so it is an **experiment**. The supporting evidence is one synced-DB example in the docs at about 549 GB, and a snapshot of 5689 chunks of about 91 MB (≈520 GB compressed) according to the node's own log.
 - **Safety net:** `disk-guard.sh` stops the node at 90% full rather than letting RocksDB hit ENOSPC.
 - **Cost:** estimated 0.040 + 0.001 + 1000 × 0.0767 / 624.7 ≈ **$0.164/h**, about $2.62 for 16 h. This is an estimate from the price list.
-- Measured results go in the table above when the run finishes.
+- Result: it fit. 557 GB DB, peak 699G (75%) during restore, 60% after sync; the guard never fired.
 
 ## ESTIMATE (from the price list, not a measurement)
 
