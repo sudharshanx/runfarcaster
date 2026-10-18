@@ -5,7 +5,7 @@ import { prompts, REPO, type PromptKey } from "./prompts";
 
 export const ORDER = [
   "quickstart", "how-farcaster-works", "server-and-node", "first-cast", "ai-assistant",
-  "reference", "glossary", "fix", "proof", "docs-issues", "how-ai-was-used",
+  "build-on-your-node", "recipes", "client-code", "reference", "glossary", "fix", "proof", "docs-issues", "how-ai-was-used",
 ];
 
 const GLANCE = `| | |

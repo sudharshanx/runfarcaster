@@ -49,4 +49,5 @@ Read the reference file for a step before you run it. For an error, read [refere
 
 - Guide: https://sudharshanx.github.io/runfarcaster/ (each page also as Markdown, for example https://sudharshanx.github.io/runfarcaster/quickstart.md)
 - Whole guide as one file: https://sudharshanx.github.io/runfarcaster/llms-full.txt
+- Building apps, bots or analytics on the node once it is synced: https://sudharshanx.github.io/runfarcaster/build-on-your-node/ and https://sudharshanx.github.io/runfarcaster/recipes/ (tested HTTP API examples)
 - Snapchain docs: https://snapchain.farcaster.xyz/

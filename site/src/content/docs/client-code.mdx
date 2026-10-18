@@ -1,0 +1,79 @@
+---
+title: Reuse the client code
+description: The RunFarcaster app is a reference implementation, not a product. Where its node access, feed, app-name and signing code lives, how to lift it into your own app or bot, and how to run and test it against your node.
+---
+
+import RepoLink from "../../components/RepoLink.astro";
+
+The RunFarcaster app exists to show that a client can read from and post through a node you run. Its interface is deliberately plain. Build your own interface; take the parts that talk to the node, which are small, commented and MIT licensed.
+
+## Where the node code lives
+
+Everything is in `client/src`. The files that matter for your own app have no UI code in them:
+
+| File | What it does | Reuse it for |
+|---|---|---|
+| <RepoLink path="client/src/api.ts" /> | `NodeApi`: one method per endpoint the app uses, plus `submitMessage`. Turns error bodies into `NodeApiError` with `isNotFound` and `isDuplicate`. | Any app that reads from a node |
+| <RepoLink path="client/src/feed.ts" /> | `toFeedCast`, `loadFeed`, `fcTimeToDate`, `loadProfiles`: casts and profiles in a shape a UI can render | Simple feeds and profile cards |
+| <RepoLink path="client/src/timeline.ts" /> | The paged Following timeline. It only shows casts newer than the oldest loaded cast of every account that still has older pages, so a busy account cannot push a quiet one out of order. | Infinite-scroll feeds |
+| <RepoLink path="client/src/apps.ts" /> | Signer to app FID, from the key metadata in `signersByFid`, cached per key | "Posted with" labels and filters |
+| <RepoLink path="client/src/filters.ts" /> | Mute and include rules by FID and keyword | Client-side filtering |
+| <RepoLink path="client/src/messages.ts" /> | `buildCast`, `buildReaction`, `buildFollow` with `@farcaster/core`. Builds and signs; never sends. | Bots and apps that post |
+| <RepoLink path="client/src/pending.ts" /> | After `submitMessage`: fetch the message back, resend the same bytes if it does not appear, and give up with a reason | Anything that posts through a read node |
+| <RepoLink path="client/src/signer.ts" /> | The gasless `KEY_ADD`, signed with the custody key | Only if your app adds its own app keys |
+
+`main.ts` is the UI: plain DOM, no framework. Replace it.
+
+## Use the modules from a script
+
+`api.ts` and `feed.ts` use only `fetch`, so they run outside the browser too. This script prints the newest casts from the accounts FID 3 follows:
+
+```ts title="reuse.ts"
+// reuse.ts, in the repo root. Run: node --experimental-transform-types reuse.ts (Node.js 22.7 or later)
+import { NodeApi } from "./client/src/api.ts";
+import { loadFeed, fcTimeToDate } from "./client/src/feed.ts";
+
+const api = new NodeApi("https://<your node>");
+const feed = await loadFeed(api, 3, [], 20, 3); // dwr's Following feed: 20 accounts, 3 casts each
+for (const c of feed.slice(0, 3)) console.log(fcTimeToDate(c.timestamp).toISOString(), c.fid, c.text.slice(0, 50));
+```
+
+```text title="Output (trimmed)"
+2026-10-18T15:07:55.000Z 7237 You, specifically, getting banned was a big driver
+2026-10-18T14:21:36.000Z 7237 Hanlon’s razor tells me it wasn’t that deep. He wa
+```
+
+`loadFeed` caps the number of accounts and casts per account, and fetches 6 accounts at a time. For a bigger job, copy `NodeApi` into your project and add the endpoints you need in the same style; the [Recipes](../recipes/) show the parameters for each.
+
+## Run the app against your node
+
+```bash title="your computer, in client/"
+npm ci
+SNAPCHAIN_NODE_URL=https://<your node> npm run dev
+```
+
+Open `http://localhost:5317`. The dev server passes `/v1/*` to `SNAPCHAIN_NODE_URL`, the same way Caddy does on the server, so the browser makes no cross-origin requests and posting works. Without the variable it uses `http://127.0.0.1:3381`, which suits an SSH tunnel.
+
+To add a feature, the usual path is:
+
+1. Add a method to `NodeApi` in `api.ts` for the endpoint you need. Check its parameters against a recipe or the [official reference](https://snapchain.farcaster.xyz/reference/httpapi/httpapi).
+2. Put the data shaping in its own module, next to `feed.ts` or `timeline.ts`, with no DOM code, so it can be tested.
+3. Add a test in `client/test/` with a fake `fetch`, as `api-feed.test.ts` does.
+4. Wire it into the UI in `main.ts`, or into your own UI.
+
+## Tests
+
+```bash title="in client/"
+npm test           # unit tests (vitest), no network
+npm run typecheck
+```
+
+On 18 October 2026, `npm test` ran 69 tests in 9 files, all passing. They cover paging, the timeline merge, app names from key metadata, filters, message building and the `KEY_ADD` signatures.
+
+<RepoLink path="e2e/run.sh" /> goes further: it builds the app, serves it with the real `deploy/Caddyfile` in front of a fake node (<RepoLink path="e2e/mock_node.py" />) and drives it with headless Chromium. It needs `caddy`, `python3` and Chromium.
+
+## License
+
+The client, the scripts and this site are MIT licensed (<RepoLink path="LICENSE" />). Copy, change and ship the code in your own app, open or closed; keep the copyright notice. Third-party code and fonts in the client keep their own licenses, listed in <RepoLink path="client/THIRD_PARTY_NOTICES.md" />.
+
+If your app asks users for a recovery phrase, read the warning at the top of <RepoLink path="client/src/signer.ts" /> first.

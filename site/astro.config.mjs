@@ -70,6 +70,14 @@ export default defineConfig({
           ],
         },
         {
+          label: "Build on your node",
+          items: [
+            { label: "Overview and first request", slug: "build-on-your-node" },
+            { label: "Recipes", slug: "recipes" },
+            { label: "Reuse the client code", slug: "client-code" },
+          ],
+        },
+        {
           label: "Reference",
           items: [
             { label: "Scripts and settings", slug: "reference" },

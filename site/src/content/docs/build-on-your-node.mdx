@@ -1,0 +1,218 @@
+---
+title: Build on your node
+description: Use your node's HTTP API from your own code. Base URL, a first request, paging, Farcaster time and errors, each checked against a synced mainnet node. Read it before the recipes.
+---
+
+import { Tabs, TabItem } from "@astrojs/starlight/components";
+
+Your node already holds every Farcaster message, and it answers plain HTTP requests. Apps, bots and analytics jobs can read from it directly instead of from a paid data API. This page covers what you need before the [recipes](../recipes/): where to send requests, what comes back, how paging works and what errors look like.
+
+<p class="byline">Every example on these pages ran against a synced mainnet node (Snapchain v0.14.3) on 18 October 2026. Responses are trimmed; field names and values are real.</p>
+
+:::note[How this differs from the official docs]
+The [Snapchain HTTP API reference](https://snapchain.farcaster.xyz/reference/httpapi/httpapi) lists every endpoint and field, and it stays the place to look up details. These pages are task-first instead: each recipe solves one job end to end, ran against a real node, and links to the reference page for the fields it uses. Where the node behaved differently from the reference, the recipe says so, and [Docs issues](../docs-issues/) keeps the list.
+:::
+
+## Base URL
+
+The app's address is also the API's address. Caddy, set up by step 3, passes every `/v1/` request to the node:
+
+```bash
+export NODE=https://<your node>
+```
+
+Port 3381, the node's own HTTP port, stays closed to the internet. From the server itself, or through an SSH tunnel (`ssh -N -L 3381:127.0.0.1:3381 root@$IP`), `http://127.0.0.1:3381` works too.
+
+There is no API key and no sign-in. Anyone who knows the address can read from it, which is fine for public Farcaster data. Caddy blocks only the node's admin pages (`/v1/mesh`).
+
+## A first request
+
+<Tabs syncKey="lang">
+<TabItem label="curl">
+
+```bash
+curl -s "$NODE/v1/info" | jq '{version, dbStats, shards: [.shardInfos[] | {shardId, blockDelay}]}'
+```
+
+</TabItem>
+<TabItem label="JavaScript">
+
+```js
+const NODE = "https://<your node>";
+
+const res = await fetch(`${NODE}/v1/info`);
+const info = await res.json();
+console.log(info.version, info.dbStats.numMessages, info.shardInfos.map((s) => s.blockDelay));
+```
+
+</TabItem>
+</Tabs>
+
+```json title="Response (trimmed)"
+{
+  "version": "0.14.3",
+  "dbStats": { "numMessages": 914247971, "numFidRegistrations": 3355185, "approxSize": 557895406561 },
+  "shards": [
+    { "shardId": 0, "blockDelay": 1 },
+    { "shardId": 1, "blockDelay": 1 },
+    { "shardId": 2, "blockDelay": 0 }
+  ]
+}
+```
+
+**What this returns:** the node's version, how many messages it stores, and how many seconds each shard trails the newest block. Single digits everywhere means your reads are current.
+
+The JavaScript examples use the global `fetch` in Node.js 18 or later and in browsers. `GET` responses carry `Access-Control-Allow-Origin: *`, so a page on another origin can read from your node. `POST` is different; see [Post a cast](../recipes/#post-a-cast).
+
+## What a message looks like
+
+Most endpoints return Farcaster **messages**. Each one has the same envelope, and `data.type` says which body it carries:
+
+```json title="One cast from GET /v1/castsByFid (trimmed)"
+{
+  "data": {
+    "type": "MESSAGE_TYPE_CAST_ADD",
+    "fid": 37,
+    "timestamp": 182827068,
+    "network": "FARCASTER_NETWORK_MAINNET",
+    "castAddBody": {
+      "text": "One mechanism for proof of human is vouching. …",
+      "parentCastId": { "fid": 3355261, "hash": "0xec42f9dde49d50dca69034c62bc890f37903b521" },
+      "mentions": [],
+      "mentionsPositions": [],
+      "embeds": []
+    }
+  },
+  "hash": "0xc87cfa68811e39167f5e38264a16c67b99dd6ff1",
+  "signer": "0x0766980c52e24fda5fb1784d430d94f3555ca3f71f63f0c0411849401c63ee5d"
+}
+```
+
+- `data.fid` is the author's account number. `hash` identifies the message; with the FID it identifies a cast.
+- `signer` is the app key that signed it. [Filter casts by app](../recipes/#filter-casts-by-the-app-that-posted-them) turns it into an app name.
+- Hashes, keys and addresses are `0x` hex. Signatures are base64. So is `castRemoveBody.targetHash`, even though it is a hash.
+- Enum values come as strings, such as `MESSAGE_TYPE_CAST_ADD` and `REACTION_TYPE_LIKE`.
+- The body field matches the type: `castAddBody`, `reactionBody`, `linkBody`, `userDataBody`. A list endpoint can mix types: `castsByFid` also returns `MESSAGE_TYPE_CAST_REMOVE` messages, so check `data.type` before you read `castAddBody`.
+
+Field-by-field details: [Message reference](https://snapchain.farcaster.xyz/reference/httpapi/message).
+
+## Farcaster time
+
+`data.timestamp` counts seconds since 2021-01-01 00:00:00 UTC, not since 1970. Add 1609459200 to get Unix time.
+
+<Tabs syncKey="lang">
+<TabItem label="curl">
+
+```bash
+date -u -d @$((1609459200 + 182789250)) +%Y-%m-%dT%H:%M:%SZ
+```
+
+</TabItem>
+<TabItem label="JavaScript">
+
+```js
+const FARCASTER_EPOCH = Date.UTC(2021, 0, 1); // 2021-01-01T00:00:00Z, in milliseconds
+
+const toDate = (farcasterSeconds) => new Date(FARCASTER_EPOCH + farcasterSeconds * 1000);
+const toFarcasterSeconds = (date) => Math.floor((date.getTime() - FARCASTER_EPOCH) / 1000);
+
+console.log(toDate(182789250).toISOString());
+console.log(toFarcasterSeconds(new Date("2026-10-18T00:00:00Z")));
+```
+
+</TabItem>
+</Tabs>
+
+```text title="Output"
+2026-10-17T14:47:30.000Z
+182822400
+```
+
+## Paging
+
+List endpoints take three query parameters and return a `nextPageToken`:
+
+| Parameter | Meaning |
+|---|---|
+| `pageSize` | Messages per page. Always set it: without it, `castsByFid?fid=3` returned 10,000 casts in one response. |
+| `reverse` | `reverse=true` returns newest first. It must be the word `true` or `false`; `reverse=1` gets HTTP 400. |
+| `pageToken` | The `nextPageToken` from the previous response. Leave it out for the first page. |
+
+<Tabs syncKey="lang">
+<TabItem label="curl">
+
+```bash
+# First page: the 2 newest casts by FID 37
+curl -s "$NODE/v1/castsByFid?fid=37&pageSize=2&reverse=true" | jq '{n: (.messages | length), nextPageToken}'
+# Next page: pass nextPageToken back as pageToken
+TOKEN=$(curl -s "$NODE/v1/castsByFid?fid=37&pageSize=2&reverse=true" | jq -r .nextPageToken)
+curl -s "$NODE/v1/castsByFid?fid=37&pageSize=2&reverse=true&pageToken=$TOKEN" | jq '[.messages[].data.timestamp]'
+```
+
+</TabItem>
+<TabItem label="JavaScript">
+
+```js
+const NODE = "https://<your node>";
+
+// Yields every message from a paged endpoint, following nextPageToken until it comes back empty.
+async function* pages(path, params) {
+  let pageToken = "";
+  do {
+    const qs = new URLSearchParams({ ...params, ...(pageToken ? { pageToken } : {}) });
+    const res = await fetch(`${NODE}${path}?${qs}`);
+    if (!res.ok) throw new Error(`${res.status} ${await res.text()}`);
+    const body = await res.json();
+    yield* body.messages;
+    pageToken = body.nextPageToken ?? "";
+  } while (pageToken);
+}
+
+let n = 0;
+for await (const m of pages("/v1/castsByFid", { fid: 37, pageSize: 100, reverse: true })) n++;
+console.log(`FID 37 has ${n} casts on this node`);
+```
+
+</TabItem>
+</Tabs>
+
+```text title="Output"
+{ "n": 2, "nextPageToken": "AwAAACUBCuVU8goF1cgycmWFyXMTt3RTGbTtHSXO" }
+[182796605, 182796543]
+
+FID 37 has 788 casts on this node
+```
+
+Two kinds of endpoint page differently:
+
+- **One account** (`castsByFid`, `linksByFid`, `reactionsByFid`, `userDataByFid`): the account lives on one shard. A page holds up to `pageSize` messages, and the last page returns an empty `nextPageToken`.
+- **Many accounts** (`castsByParent`, `reactionsByCast`, `linksByTargetFid`): the node asks every account shard and joins the answers, so a page can hold up to `pageSize` **per shard**. `pageSize=2` returned 4 replies. `castsByParent` also never returns an empty token: its last page carries one `null` per shard, and sending that token starts over from the first page. [Read the replies to a cast](../recipes/#read-the-replies-to-a-cast) shows how to stop.
+
+## Errors
+
+| What you sent | HTTP | Body |
+|---|---|---|
+| A bad or missing parameter | 400 | Plain text, such as ``Invalid query parameters: missing field `fid` `` |
+| A valid lookup that finds nothing | 400 | JSON `{"error": "Failed to get cast", "error_detail": "…NotFound…"}` |
+| A path that does not exist | 404 | Plain text `Not Found` |
+
+A missing cast or username is a 400, not a 404. To tell it apart from a malformed request, check that the body is JSON and that `error_detail` contains `NotFound`.
+
+```bash title="Two errors"
+curl -s -w '  [HTTP %{http_code}]\n' "$NODE/v1/castsByFid?fid=37&reverse=1"
+curl -s -w '  [HTTP %{http_code}]\n' "$NODE/v1/castById?fid=37&hash=0x0000000000000000000000000000000000000000"
+```
+
+```text title="Output (trimmed)"
+Invalid query parameters: provided string was not `true` or `false`  [HTTP 400]
+{"error":"Failed to get cast","error_detail":"status: NotFound, message: \"cast not found\", …"}  [HTTP 400]
+```
+
+## Limits
+
+The node's HTTP server has no rate limit, and the Caddy setup from step 3 adds none. The limit is your server: a heavy job competes with the node for CPU and disk. Run large scans with `pageSize` of a few hundred, a few requests in parallel, and from the server itself (`http://127.0.0.1:3381`) when you can. If you share the address, set a rate limit in Caddy.
+
+## Next
+
+- [Recipes](../recipes/): look up users, read casts and feeds, follow replies and reactions, filter by app, watch for new messages and post.
+- [Reuse the client code](../client-code/): the RunFarcaster app as a reference implementation, with the files to copy into your own project.

@@ -29,6 +29,10 @@ import RepoLink from "../../components/RepoLink.astro";
 | 17 | Getting Started | Snapshot restore keeps chunks + tar + DB until the end; explains the 1.5 to 2 TB figure but no doc says so |
 | 29 | writing-messages | Imports from `@farcaster/hub-web` with gRPC `hub-nodejs` code (likely; snippet not run) |
 | 31 | several | Leftover "Hub"/"Hubble" wording; logo alt text copied from the firewall image |
+| 32 | [Casts](https://snapchain.farcaster.xyz/reference/httpapi/casts) | `castsByParent` never returns an empty `nextPageToken`: the last page carries `[null,null]` (base64), and sending it starts over ([Recipes](../recipes/#read-the-replies-to-a-cast)) |
+| 33 | HTTP API | On endpoints that read every shard (`castsByParent`, `reactionsByCast`, `linksByTargetFid`), `pageSize` applies per shard: `pageSize=2` returned 4 messages |
+| 34 | [User data](https://snapchain.farcaster.xyz/reference/httpapi/userdata) | `user_data_type` is ignored over HTTP; every field comes back |
+| 35 | [Reactions](https://snapchain.farcaster.xyz/reference/httpapi/reactions) | `reaction_type` takes `Like`/`Recast`; the enum names the responses use (`REACTION_TYPE_LIKE`) get HTTP 400 |
 
 ## docs.farcaster.xyz
 

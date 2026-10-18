@@ -1,0 +1,549 @@
+---
+title: Recipes
+description: Task-first examples for apps, bots and analytics on your own node, each in curl and JavaScript with a real trimmed response. Look up users, read casts and feeds, follow replies, filter by app, watch for new messages and post.
+tableOfContents:
+  maxHeadingLevel: 2
+---
+
+import { Tabs, TabItem } from "@astrojs/starlight/components";
+import RepoLink from "../../components/RepoLink.astro";
+
+Each recipe is one job, with the request in curl and in JavaScript and a trimmed response from a synced mainnet node. Set `NODE` first, as in [Build on your node](../build-on-your-node/#base-url). The examples use two public accounts: `balajis` (FID 37) and `dwr` (FID 3).
+
+<p class="byline">All examples ran against a synced mainnet node (Snapchain v0.14.3) on 18 October 2026, apart from the final post, which ran as a dry run.</p>
+
+## Look up an FID from a username
+
+Every endpoint takes an FID, the account number. People know each other by username. Your node keeps a signed proof for every fname and ENS name, so it can answer the lookup itself.
+
+<Tabs syncKey="lang">
+<TabItem label="curl">
+
+```bash
+curl -s "$NODE/v1/userNameProofByName?name=balajis" | jq '{name, fid, type}'
+```
+
+</TabItem>
+<TabItem label="JavaScript">
+
+```js
+const NODE = "https://<your node>";
+
+async function fidForName(name) {
+  const res = await fetch(`${NODE}/v1/userNameProofByName?name=${encodeURIComponent(name)}`);
+  if (!res.ok) return null; // the node answers 400 "Username proof not found" for unknown names
+  return (await res.json()).fid;
+}
+
+console.log(await fidForName("balajis"), await fidForName("dwr"));
+```
+
+</TabItem>
+</Tabs>
+
+```json title="Response (trimmed)"
+{ "name": "balajis", "fid": 37, "type": "USERNAME_TYPE_FNAME" }
+```
+
+```text title="Output"
+37 3
+```
+
+**What this returns:** the FID that owns the name today, and whether it is an fname or an ENS name (`USERNAME_TYPE_ENS_L1`). An unknown name gets HTTP 400 with `Username proof not found`.
+
+**Official reference:** [Username proofs](https://snapchain.farcaster.xyz/reference/httpapi/usernameproof)
+
+## Get a profile
+
+A profile is a set of `USER_DATA_ADD` messages, one per field: display name, username, bio, picture, links and primary addresses.
+
+<Tabs syncKey="lang">
+<TabItem label="curl">
+
+```bash
+curl -s "$NODE/v1/userDataByFid?fid=37" | jq '[.messages[].data.userDataBody | {(.type): .value}] | add'
+```
+
+</TabItem>
+<TabItem label="JavaScript">
+
+```js
+const NODE = "https://<your node>";
+
+async function profile(fid) {
+  const res = await fetch(`${NODE}/v1/userDataByFid?fid=${fid}`);
+  const { messages } = await res.json();
+  const out = {};
+  // One message per field type; keep the newest if a type appears twice.
+  for (const m of messages.sort((a, b) => a.data.timestamp - b.data.timestamp)) {
+    const { type, value } = m.data.userDataBody;
+    out[type.replace(/^USER_DATA_(TYPE_)?/, "").toLowerCase()] = value;
+  }
+  return out;
+}
+
+const p = await profile(37);
+console.log(p.display, p.username, p.bio);
+```
+
+</TabItem>
+</Tabs>
+
+```json title="Response, folded into one object (trimmed)"
+{
+  "USER_DATA_TYPE_DISPLAY": "balajis",
+  "USER_DATA_TYPE_USERNAME": "balajis.eth",
+  "USER_DATA_TYPE_URL": "https://ns.com",
+  "USER_DATA_TYPE_PFP": "https://imagedelivery.net/BXluQx4ige9GuW0Ia56BHw/16e9ecaa-0837-4243-4316-ceeb9db19600/original",
+  "USER_DATA_TYPE_BIO": "Author of the Network State.\nFounder of the Network School.\nJoin us at ns.com.",
+  "USER_DATA_PRIMARY_ADDRESS_ETHEREUM": "0x1a21C1f29FabEbce8cc160BD48f9802A30d9608e"
+}
+```
+
+**What this returns:** one message per field the account has set. The picture is a URL on someone else's server; your app decides whether to load it.
+
+**Official reference:** [User data](https://snapchain.farcaster.xyz/reference/httpapi/userdata). The reference lists a `user_data_type` filter; this node ignored it and returned every field, so filter in your code.
+
+## Get someone's recent casts
+
+`castsByFid` lists one account's casts. With `reverse=true` the newest come first.
+
+<Tabs syncKey="lang">
+<TabItem label="curl">
+
+```bash
+curl -s "$NODE/v1/castsByFid?fid=37&pageSize=3&reverse=true" \
+  | jq '.messages[] | select(.data.type == "MESSAGE_TYPE_CAST_ADD") | {hash, timestamp: .data.timestamp, text: .data.castAddBody.text[0:60], reply: (.data.castAddBody.parentCastId != null)}'
+```
+
+</TabItem>
+<TabItem label="JavaScript">
+
+```js
+const NODE = "https://<your node>";
+const FARCASTER_EPOCH = Date.UTC(2021, 0, 1);
+
+const res = await fetch(`${NODE}/v1/castsByFid?fid=37&pageSize=3&reverse=true`);
+const { messages } = await res.json();
+for (const m of messages.filter((m) => m.data.type === "MESSAGE_TYPE_CAST_ADD")) {
+  const { text, parentCastId } = m.data.castAddBody;
+  const when = new Date(FARCASTER_EPOCH + m.data.timestamp * 1000).toISOString();
+  console.log(when, parentCastId ? "(reply)" : "", text.slice(0, 60));
+}
+```
+
+</TabItem>
+</Tabs>
+
+```json title="Response, one cast (trimmed)"
+{
+  "hash": "0xc87cfa68811e39167f5e38264a16c67b99dd6ff1",
+  "timestamp": 182827068,
+  "text": "One mechanism for proof of human is vouching. Spoke to you t",
+  "reply": true
+}
+```
+
+```text title="Output (trimmed)"
+2026-10-18T01:17:48.000Z (reply) One mechanism for proof of human is vouching. Spoke to you t
+2026-10-17T18:14:10.000Z (reply) Three quick clarifications: …
+```
+
+**What this returns:** casts and replies together; a reply has `parentCastId`. Deleted casts show up as `MESSAGE_TYPE_CAST_REMOVE` messages in the same list, which is why both examples check the type.
+
+**Official reference:** [Casts](https://snapchain.farcaster.xyz/reference/httpapi/casts)
+
+## Build a following feed
+
+A node has no home timeline. You build one: list the accounts someone follows, fetch each one's newest casts, and merge them newest first. The RunFarcaster app does the same in <RepoLink path="client/src/feed.ts" />.
+
+<Tabs syncKey="lang">
+<TabItem label="curl">
+
+```bash
+# 1. Who does FID 37 follow?
+curl -s "$NODE/v1/linksByFid?fid=37&link_type=follow&pageSize=100&reverse=true" \
+  | jq '[.messages[].data.linkBody.targetFid] | length'
+# 2. Then, for each FID, the newest casts:
+curl -s "$NODE/v1/castsByFid?fid=3&pageSize=5&reverse=true" | jq '[.messages[].data.timestamp]'
+```
+
+</TabItem>
+<TabItem label="JavaScript">
+
+```js
+const NODE = "https://<your node>";
+const get = async (path) => (await fetch(`${NODE}${path}`)).json();
+
+async function followingFeed(fid, perAccount = 5) {
+  const links = await get(`/v1/linksByFid?fid=${fid}&link_type=follow&pageSize=100&reverse=true`);
+  const fids = [fid, ...links.messages.map((m) => m.data.linkBody.targetFid)];
+  const pages = await Promise.all(
+    fids.map((f) => get(`/v1/castsByFid?fid=${f}&pageSize=${perAccount}&reverse=true`)),
+  );
+  return pages
+    .flatMap((p) => p.messages ?? [])
+    .filter((m) => m.data.type === "MESSAGE_TYPE_CAST_ADD") // castsByFid also returns CAST_REMOVE
+    .sort((a, b) => b.data.timestamp - a.data.timestamp); // newest first
+}
+
+const feed = await followingFeed(37);
+console.log(feed.length, feed.slice(0, 3).map((m) => `${m.data.fid}: ${m.data.castAddBody.text.slice(0, 40)}`));
+```
+
+</TabItem>
+</Tabs>
+
+```text title="Output (trimmed)"
+57
+[182745002, 182744608, 182651500, 182651424, 182651058]
+
+260 [
+  "347: oh so we're time traveling now?",
+  "3854: CROPS = censorship resistant, open sourc",
+  "3854: Super fair. For as long as you want to d"
+]
+```
+
+**What this returns:** FID 37 follows 57 accounts; with 5 casts each, plus FID 37's own, the merged feed held 260 casts. For an account that follows more than 100, page through `linksByFid` with `pageToken`.
+
+**Official reference:** [Links](https://snapchain.farcaster.xyz/reference/httpapi/links), [Casts](https://snapchain.farcaster.xyz/reference/httpapi/casts)
+
+## Read the replies to a cast
+
+A cast is identified by its author's FID and its hash. `castsByParent` returns the direct replies; call it again on a reply to go one level deeper. The example uses the bounty cast this guide was written for.
+
+<Tabs syncKey="lang">
+<TabItem label="curl">
+
+```bash
+curl -s "$NODE/v1/castsByParent?fid=37&hash=0x50184b62b4c52fd76628713562e1eda3dccaf63d&pageSize=2" \
+  | jq '{n: (.messages | length), replies: [.messages[] | {fid: .data.fid, text: .data.castAddBody.text[0:50]}]}'
+```
+
+</TabItem>
+<TabItem label="JavaScript">
+
+```js
+const NODE = "https://<your node>";
+
+// castsByParent reads every shard. Its last page still carries a token, one null per shard
+// ("[null,null]" in base64). Sending that token starts again from the first page, so stop there.
+const isLastPage = (token) => !token || JSON.parse(atob(token)).every((t) => t === null);
+
+async function replies(fid, hash) {
+  const out = [];
+  let pageToken = "";
+  do {
+    const qs = new URLSearchParams({ fid, hash, pageSize: 100, ...(pageToken ? { pageToken } : {}) });
+    const body = await (await fetch(`${NODE}/v1/castsByParent?${qs}`)).json();
+    out.push(...body.messages);
+    pageToken = isLastPage(body.nextPageToken) ? "" : body.nextPageToken;
+  } while (pageToken);
+  return out.sort((a, b) => a.data.timestamp - b.data.timestamp); // oldest first, like a thread
+}
+
+const r = await replies(37, "0x50184b62b4c52fd76628713562e1eda3dccaf63d");
+console.log(`${r.length} direct replies; first from FID ${r[0].data.fid}`);
+```
+
+</TabItem>
+</Tabs>
+
+```json title="Response (trimmed)"
+{
+  "n": 4,
+  "replies": [
+    { "fid": 4167, "text": " curate news" },
+    { "fid": 217261, "text": "Farcaster clients are a great thing, but do you ha" }
+  ]
+}
+```
+
+```text title="Output"
+37 direct replies; first from FID 875356
+```
+
+**What this returns:** direct replies only, from every shard. `pageSize=2` returned 4 because each of the two account shards sent 2. The JavaScript stops on the last-page token described in [Paging](../build-on-your-node/#paging); without that check the loop never ends.
+
+**Official reference:** [Casts: castsByParent](https://snapchain.farcaster.xyz/reference/httpapi/casts). It also takes `url=` instead of `fid` and `hash`, for casts posted under a URL such as a channel.
+
+## Count likes and recasts on a cast
+
+Reactions are messages too. `reactionsByCast` lists them for one cast and one reaction type.
+
+<Tabs syncKey="lang">
+<TabItem label="curl">
+
+```bash
+curl -s "$NODE/v1/reactionsByCast?target_fid=37&target_hash=0x50184b62b4c52fd76628713562e1eda3dccaf63d&reaction_type=Like&pageSize=2" \
+  | jq '.messages[0].data | {fid, type: .reactionBody.type, target: .reactionBody.targetCastId}'
+```
+
+</TabItem>
+<TabItem label="JavaScript">
+
+```js
+const NODE = "https://<your node>";
+
+async function countReactions(fid, hash, reactionType) {
+  let n = 0, pageToken = "";
+  do {
+    const qs = new URLSearchParams({ target_fid: fid, target_hash: hash, reaction_type: reactionType, pageSize: 500, ...(pageToken ? { pageToken } : {}) });
+    const body = await (await fetch(`${NODE}/v1/reactionsByCast?${qs}`)).json();
+    n += body.messages.length;
+    pageToken = body.nextPageToken ?? "";
+  } while (pageToken);
+  return n;
+}
+
+const hash = "0x50184b62b4c52fd76628713562e1eda3dccaf63d";
+console.log("likes", await countReactions(37, hash, "Like"), "recasts", await countReactions(37, hash, "Recast"));
+```
+
+</TabItem>
+</Tabs>
+
+```json title="Response, first reaction (trimmed)"
+{
+  "fid": 37,
+  "type": "REACTION_TYPE_LIKE",
+  "target": { "fid": 37, "hash": "0x50184b62b4c52fd76628713562e1eda3dccaf63d" }
+}
+```
+
+```text title="Output"
+likes 197 recasts 49
+```
+
+**What this returns:** one message per account that liked or recast the cast, with its FID. Pass `reaction_type=Like` or `reaction_type=Recast`; the full enum name `REACTION_TYPE_LIKE` gets HTTP 400 here, though the response uses it.
+
+**Official reference:** [Reactions](https://snapchain.farcaster.xyz/reference/httpapi/reactions)
+
+## Find casts that mention an account
+
+A bot usually starts here: who mentioned me? `castsByMention` answers from every shard.
+
+<Tabs syncKey="lang">
+<TabItem label="curl">
+
+```bash
+curl -s "$NODE/v1/castsByMention?fid=37&pageSize=1&reverse=true" \
+  | jq '.messages[0].data | {fid, text: .castAddBody.text[0:50], mentions: .castAddBody.mentions, mentionsPositions: .castAddBody.mentionsPositions}'
+```
+
+</TabItem>
+<TabItem label="JavaScript">
+
+```js
+const NODE = "https://<your node>";
+
+// The node stores text without the @names. Put them back at their byte offsets.
+function withMentions({ text, mentions = [], mentionsPositions = [] }, names) {
+  const bytes = new TextEncoder().encode(text);
+  const dec = new TextDecoder();
+  let out = "", last = 0;
+  mentionsPositions.forEach((pos, i) => {
+    out += dec.decode(bytes.slice(last, pos)) + `@${names[mentions[i]] ?? `fid:${mentions[i]}`}`;
+    last = pos;
+  });
+  return out + dec.decode(bytes.slice(last));
+}
+
+const res = await fetch(`${NODE}/v1/castsByMention?fid=37&pageSize=5&reverse=true`);
+const { messages } = await res.json();
+for (const m of messages) console.log(m.data.fid, withMentions(m.data.castAddBody, { 37: "balajis" }).slice(0, 60));
+```
+
+</TabItem>
+</Tabs>
+
+```json title="Response (trimmed)"
+{
+  "fid": 1001428,
+  "text": " we allowed to do honest takes or its a felony?",
+  "mentions": [37],
+  "mentionsPositions": [0]
+}
+```
+
+```text title="Output (trimmed)"
+1001428 @balajis we allowed to do honest takes or its a felony?
+846887 @fid:4877 has angrily blocked @balajis
+```
+
+**What this returns:** casts that mention the FID. The `@name` is not in `text`: `mentions` holds the FIDs and `mentionsPositions` the byte offsets where each name goes, which `withMentions` puts back.
+
+**Official reference:** [Casts: castsByMention](https://snapchain.farcaster.xyz/reference/httpapi/casts)
+
+## Filter casts by the app that posted them
+
+Each cast names the app key that signed it (`signer`). When an account approves a key, the requesting app goes into the key's metadata as an FID, so your node can tell you which app a cast came from. The app's **Posted with** filter works this way, in <RepoLink path="client/src/apps.ts" />.
+
+<Tabs syncKey="lang">
+<TabItem label="curl">
+
+```bash
+# The key that signed a cast is in its "signer" field
+curl -s "$NODE/v1/castsByFid?fid=37&pageSize=1&reverse=true" | jq -r '.messages[0].signer'
+# The account's keys, each with ABI-encoded metadata that starts with the app's FID
+curl -s "$NODE/v1/signersByFid?fid=37" \
+  | jq '.signers[] | {key: .key[0:18], source, metadata: (.onChainEvent.signerEventBody.metadata // .metadata)[0:24]}'
+```
+
+</TabItem>
+<TabItem label="JavaScript">
+
+```js
+const NODE = "https://<your node>";
+const get = async (path) => (await fetch(`${NODE}${path}`)).json();
+
+// SignedKeyRequestMetadata is abi.encode((uint256 requestFid, address, bytes, uint256)).
+// The first 32-byte word is the offset 0x20; the second is requestFid, the app's FID.
+function appFid(metadataBase64) {
+  const bytes = Uint8Array.from(atob(metadataBase64), (c) => c.charCodeAt(0));
+  const word = (i) => bytes.slice(i * 32, i * 32 + 32).reduce((v, b) => (v << 8n) | BigInt(b), 0n);
+  return Number(word(word(0) === 32n ? 1 : 0));
+}
+
+async function appsByKey(fid) {
+  const { signers } = await get(`/v1/signersByFid?fid=${fid}`);
+  return new Map(signers.map((s) => [s.key, appFid(s.onChainEvent?.signerEventBody?.metadata ?? s.metadata)]));
+}
+
+const apps = await appsByKey(37);
+const { messages } = await get("/v1/castsByFid?fid=37&pageSize=20&reverse=true");
+const byApp = Object.groupBy(messages, (m) => apps.get(m.signer) ?? "unknown");
+for (const [app, casts] of Object.entries(byApp)) {
+  const { messages: ud } = await get(`/v1/userDataByFid?fid=${app}`);
+  const name = ud.find((m) => m.data.userDataBody.type === "USER_DATA_TYPE_USERNAME")?.data.userDataBody.value;
+  console.log(`app FID ${app} (@${name}): ${casts.length} of the last 20 casts`);
+}
+```
+
+</TabItem>
+</Tabs>
+
+```json title="Response (trimmed)"
+"0x0766980c52e24fda5fb1784d430d94f3555ca3f71f63f0c0411849401c63ee5d"
+{ "key": "0x0766980c52e24fda", "source": "SIGNER_SOURCE_ONCHAIN", "metadata": "AAAAAAAAAAAAAAAAAAAAAAAA" }
+```
+
+```text title="Output"
+app FID 9152 (@warpcast): 20 of the last 20 casts
+```
+
+**What this returns:** every active key of the account, onchain and gasless, with the metadata that names the requesting app's FID. Casts signed with a key that was since removed match no entry; show them as an unknown app.
+
+**Official reference:** `signersByFid` is missing from the official HTTP reference ([Docs issues #6](../docs-issues/)). [How Farcaster works](../how-farcaster-works/#app-keys-are-gasless-now) explains keys and their metadata.
+
+## Watch for new messages
+
+The HTTP API has no push. Poll `/v1/events` instead: remember the last event ID and ask for everything after it. Accounts are split between shard 1 and shard 2, so watch both; shard 0 carries gasless key changes.
+
+<Tabs syncKey="lang">
+<TabItem label="curl">
+
+```bash
+# Newest event on shard 1 (accounts are split between shard 1 and shard 2)
+curl -s "$NODE/v1/events?shard_index=1&pageSize=1&reverse=true" | jq '.events[0] | {id, type, blockNumber}'
+# Everything after an event id you already have
+curl -s "$NODE/v1/events?shard_index=1&from_event_id=<id>&pageSize=100" \
+  | jq '[.events[] | select(.type == "HUB_EVENT_TYPE_MERGE_MESSAGE") | .mergeMessageBody.message.data | {type, fid}]'
+```
+
+</TabItem>
+<TabItem label="JavaScript">
+
+```js
+const NODE = "https://<your node>";
+const get = async (path) => (await fetch(`${NODE}${path}`)).json();
+
+// Poll one shard for new messages. Call it once per shard (1 and 2 hold the accounts).
+async function watch(shard, onMessage, intervalMs = 2000, rounds = Infinity) {
+  const latest = await get(`/v1/events?shard_index=${shard}&pageSize=1&reverse=true`);
+  let next = latest.events[0].id + 1;
+  for (let i = 0; i < rounds; i++) {
+    await new Promise((r) => setTimeout(r, intervalMs));
+    const { events } = await get(`/v1/events?shard_index=${shard}&from_event_id=${next}&pageSize=1000`);
+    for (const e of events) {
+      if (e.type === "HUB_EVENT_TYPE_MERGE_MESSAGE") onMessage(e.mergeMessageBody.message);
+      next = e.id + 1;
+    }
+  }
+}
+
+let seen = 0;
+await watch(1, (m) => { if (seen++ < 3) console.log(m.data.type, "from FID", m.data.fid); }, 3000, 5);
+console.log(`${seen} new messages on shard 1 in about 15 seconds`);
+```
+
+</TabItem>
+</Tabs>
+
+```json title="Response (trimmed)"
+{ "id": 802851454976, "type": "HUB_EVENT_TYPE_BLOCK_CONFIRMED", "blockNumber": 49002164 }
+[
+  { "type": "MESSAGE_TYPE_REACTION_ADD", "fid": 1079922 },
+  { "type": "MESSAGE_TYPE_REACTION_ADD", "fid": 8636 }
+]
+```
+
+```text title="Output"
+MESSAGE_TYPE_CAST_ADD from FID 1455330
+MESSAGE_TYPE_REACTION_ADD from FID 777135
+MESSAGE_TYPE_REACTION_ADD from FID 1076895
+5 new messages on shard 1 in about 15 seconds
+```
+
+**What this returns:** events in order: `HUB_EVENT_TYPE_MERGE_MESSAGE` for each new message, `HUB_EVENT_TYPE_PRUNE_MESSAGE` when storage limits push an old one out, and `HUB_EVENT_TYPE_BLOCK_CONFIRMED` once per block. The official reference says nodes keep about 3 days of events; store the last ID you processed and resume from it.
+
+**Official reference:** [Events](https://snapchain.farcaster.xyz/reference/httpapi/events). The gRPC API on port 3383 has a streaming `Subscribe` call; this guide keeps that port closed and has not tested it.
+
+## Post a cast
+
+Posting means building a signed protobuf message and sending its bytes to `POST /v1/submitMessage`. You need an app key that the account has approved; [Post with an app key](../first-cast/) adds one. `@farcaster/core` builds and signs the message.
+
+```js title="post.mjs"
+// npm install @farcaster/core
+import { CastType, FarcasterNetwork, Message, NobleEd25519Signer, makeCastAdd } from "@farcaster/core";
+
+const NODE = "https://<your node>";
+const FID = Number(process.env.FID); // the account that approved the app key
+const appKey = Uint8Array.from(Buffer.from(process.env.APP_KEY_HEX, "hex")); // 32-byte ed25519 private key
+const DRY_RUN = process.env.DRY_RUN !== "0"; // true: validate only, nothing is posted
+
+const signer = new NobleEd25519Signer(appKey);
+const built = await makeCastAdd(
+  { text: "Hello from my own node", embeds: [], embedsDeprecated: [], mentions: [], mentionsPositions: [], type: CastType.CAST },
+  { fid: FID, network: FarcasterNetwork.MAINNET },
+  signer,
+);
+if (built.isErr()) throw built.error;
+const bytes = Message.encode(built.value).finish();
+
+const path = DRY_RUN ? "/v1/validateMessage" : "/v1/submitMessage";
+const res = await fetch(`${NODE}${path}`, {
+  method: "POST",
+  headers: { "Content-Type": "application/octet-stream" },
+  body: bytes,
+});
+console.log(res.status, DRY_RUN ? (await res.json()).valid : await res.text());
+```
+
+```bash title="Run it"
+FID=<your fid> APP_KEY_HEX=<app key, 64 hex characters> node post.mjs            # validate only
+FID=<your fid> APP_KEY_HEX=<app key, 64 hex characters> DRY_RUN=0 node post.mjs  # post
+```
+
+```text title="Output (validate only)"
+200 true
+```
+
+**What this returns:** with the default dry run, `/v1/validateMessage` checks the message's format and signature and posts nothing. It does not check that the key is approved, so a random key also passes. With `DRY_RUN=0`, `submitMessage` returns the message as JSON once your node has checked it and passed it on to the validators. A `200` there does not mean the cast is in a block yet: fetch it back with `castById` until it appears. [Where a post goes from a read node](../how-farcaster-works/#where-a-post-goes-from-a-read-node) explains why, and <RepoLink path="client/src/pending.ts" /> does the retries.
+
+Keep the app key out of your code and your logs. The dry run above ran against a synced node with a random key; the real post path ran once on mainnet ([Proof](../proof/#posted-to-mainnet)).
+
+`submitMessage` must come from the same origin as the node. It needs `Content-Type: application/octet-stream`, and a browser on another origin first sends a CORS preflight (`OPTIONS`) that the node does not answer. A script on a server, or a page served by the Caddy setup from step 3, has no such problem.
+
+**Official reference:** [Message API](https://snapchain.farcaster.xyz/reference/httpapi/message). The app's own builders: <RepoLink path="client/src/messages.ts" />.
