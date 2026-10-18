@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 // Screenshots of the built site, reusing the repo's e2e playwright-core install.
-// Usage: BASE=http://127.0.0.1:4321/snapchain-tutorial/ CHROME=/usr/bin/google-chrome OUT=/workspace/site-preview node scripts/screenshots.mjs
+// Usage: BASE=http://127.0.0.1:4321/runfarcaster/ CHROME=/usr/bin/google-chrome OUT=/workspace/site-preview node scripts/screenshots.mjs
 import { createRequire } from "node:module";
 import { mkdirSync } from "node:fs";
 const require = createRequire(new URL("../../e2e/package.json", import.meta.url));

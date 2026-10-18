@@ -4,11 +4,11 @@ import { defineConfig } from "astro/config";
 import starlight from "@astrojs/starlight";
 import { REPO, remarkRepoUrl, rehypeTableScroll } from "./src/config.mjs";
 
-// GitHub Pages: set SITE_URL=https://<user>.github.io and BASE_PATH=/snapchain-tutorial/ (the repo name).
+// GitHub Pages: set SITE_URL=https://<user>.github.io and BASE_PATH=/runfarcaster/ (the repo name).
 // Defaults below; CI sets them from the repository. The home page is src/pages/index.astro (custom
 // landing); every other page is Starlight.
 const site = process.env.SITE_URL ?? "https://sudharshanx.github.io";
-const base = process.env.BASE_PATH ?? "/snapchain-tutorial/";
+const base = process.env.BASE_PATH ?? "/runfarcaster/";
 // The repo URL lives in src/config.mjs (REPO_URL env). CI sets it from the GitHub repository.
 const repo = REPO;
 

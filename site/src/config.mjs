@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 // One place for the repo URL. CI sets REPO_URL (see .github/workflows/pages.yml); everything on
 // the site, including code blocks (the {{REPO_URL}} token), prompts and llms.txt, reads it here.
-export const REPO = (process.env.REPO_URL ?? "https://github.com/sudharshanx/snapchain-tutorial").replace(/\/+$/, "");
+export const REPO = (process.env.REPO_URL ?? "https://github.com/sudharshanx/runfarcaster").replace(/\/+$/, "");
 export const REPO_TOKEN = "{{REPO_URL}}";
 
 // remark plugin: replace {{REPO_URL}} in text, inline code, code blocks, links and raw HTML.

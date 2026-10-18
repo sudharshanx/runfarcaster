@@ -19,6 +19,13 @@ You need `hcloud`, `jq`, `ssh`, `curl`, Node.js 22.12 or later (22.x, 24.x or 26
 token (Read & Write) and an SSH key uploaded to the Hetzner project. Posting needs a Farcaster account; use a test
 account. Run everything from this folder on your own computer.
 
+Get the code:
+
+```bash
+git clone https://github.com/sudharshanx/runfarcaster
+cd runfarcaster
+```
+
 Set the token first, on its own (the prompt hides what you type):
 
 ```bash
@@ -141,9 +148,9 @@ cd site && npm ci
 npm run build
 ```
 
-The defaults are `REPO_URL=https://github.com/sudharshanx/snapchain-tutorial`,
-`SITE_URL=https://sudharshanx.github.io` and `BASE_PATH=/snapchain-tutorial/`. Set those variables to build a
-fork, for example `REPO_URL=https://github.com/<you>/snapchain-tutorial SITE_URL=https://<you>.github.io npm run build`.
+The defaults are `REPO_URL=https://github.com/sudharshanx/runfarcaster`,
+`SITE_URL=https://sudharshanx.github.io` and `BASE_PATH=/runfarcaster/`. Set those variables to build a
+fork, for example `REPO_URL=https://github.com/<you>/runfarcaster SITE_URL=https://<you>.github.io npm run build`.
 `REPO_URL` sets every repo link and the `git clone` command; `SITE_URL` and `BASE_PATH` set the address.
 `.github/workflows/pages.yml` sets all three for GitHub Pages.
 
