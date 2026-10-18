@@ -4,7 +4,7 @@ import { getCollection } from "astro:content";
 import { prompts, REPO, type PromptKey } from "./prompts";
 
 export const ORDER = [
-  "before-you-start", "quickstart", "tutorial", "hetzner", "proof", "first-cast", "troubleshooting",
+  "before-you-start", "quickstart", "tutorial", "hetzner", "proof", "first-cast", "fix",
   "docs-issues", "reference", "glossary", "ai-assistant", "how-ai-was-used",
 ];
 

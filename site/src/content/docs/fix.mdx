@@ -1,0 +1,268 @@
+---
+title: Fix a problem
+description: The problems we hit while running the 3 steps, and how we fixed each one. Every entry says where we saw it.
+---
+
+import CopyPrompt from "../../components/CopyPrompt.astro";
+import RepoLink from "../../components/RepoLink.astro";
+
+These are the problems we saw while building and running this guide. Each entry gives what you see, why it happens and the command that fixes it.
+
+Each entry also says where we saw it:
+- **Hit on our run** means it happened during our mainnet run on 18 Oct 2026. The run log has the details: <RepoLink path="run-log.md" />
+- **Found in review** means a tester found it while checking the guide against our node or our code.
+- **Reproduced in testing** means we caused it on purpose to record the exact message.
+
+## Step 1: rent a server
+
+### Hetzner refuses the volume
+
+**You see:** `volumes size limit exceeded (resource_limit_exceeded)`
+
+**Why:** New Hetzner accounts can rent at most 1024 GB of volumes in total. We first asked for 2000 GB.
+
+**Fix:** Ask for 1000 GB, as the Quickstart does. Your limits are at [console.hetzner.cloud/limits](https://console.hetzner.cloud/limits).
+
+```bash
+VOLUME_GB=1000
+```
+
+**Where:** Hit on our run, at 01:23 IST. Nothing was created, so it cost nothing.
+
+### The server type is sold out
+
+**You see:** `server type cax31: not available in fsn1 right now.` The same error lists the types you can rent there, cheapest first.
+
+**Why:** Hetzner sells out of server types. When we started, cx43 was sold out, so we used cax31. At 18:48 IST the same day, cax31 was sold out in every location that offers it.
+
+**Fix:** Run step 1 again with a type from the list, or with another location. We have only run the node on cax31.
+
+```bash
+SERVER_TYPE=cpx42      # or another type from the error
+LOCATION=nbg1          # fsn1, nbg1, hel1, ash, hil or sin
+```
+
+A typo in `LOCATION` gives `unknown LOCATION=…`, followed by the list of valid names.
+
+**Where:** Hit on our run. cx43 at 01:20 IST, cax31 at 18:48 IST.
+
+### SSH stops working
+
+**You see:** SSH to the server hangs, then times out. It worked before.
+
+**Why:** The firewall lets SSH in only from the address in `SSH_SOURCE_CIDRS`. Your public address changed. Home connections do this.
+
+**Fix:** Run step 1 again with your new address. It updates the firewall and keeps the server. Pass every setting, not only the address.
+
+```bash
+SSH_KEY=my-key SERVER_TYPE=cax31 VOLUME_GB=1000 WATCHDOG=0 \
+  SSH_SOURCE_CIDRS="$(curl -4 -s https://ifconfig.me)/32" ./provision.sh
+```
+
+**Where:** Hit on our run, at 01:35 IST. Our address kept changing, so we opened SSH to every address and kept key-only login.
+
+### `$IP` is empty
+
+**You see:** `ssh: Could not resolve hostname : Name or service not known` on Linux. The name after `hostname` is empty.
+
+**Why:** `$IP` lives only in the terminal where step 1 ran. A new terminal does not have it.
+
+**Fix:**
+
+```bash
+IP=$(hcloud server ip snapchain-read-node)
+```
+
+**Where:** Found in review, while a tester checked the steps. Reproduced in testing for the exact message.
+
+### The watchdog deletes the node during the sync
+
+This only applies if you left out `WATCHDOG=0` in step 1.
+
+**You see:** The server is gone. `.provision-state/watchdog.log` gives the reason, for example `wall-clock cap 86400s reached`.
+
+**Why:** The watchdog deletes everything 24 hours after step 1, even if the node is healthy. Our sync took 14 hours. An earlier version would also have deleted it 2 hours into the sync when it had no SSH key file, because it could not see any progress.
+
+**Fix:** To keep the node, stop the watchdog. Nothing is deleted.
+
+```bash
+touch .provision-state/watchdog.disarm
+```
+
+The current watchdog turns its progress check off when it has no SSH key file.
+
+**Where:** Found in review, by reading the code.
+
+### The watchdog never started
+
+**You see:** `watchdog did not start (see …/watchdog.out). Nothing was created.` The file says `HCLOUD_TOKEN not set. NOT RUNNING: no spending cap is active.`
+
+**Why:** A new terminal does not have your Hetzner token.
+
+**Fix:** Set the token in this terminal, then run step 1 again.
+
+```bash
+read -rsp 'Hetzner token: ' HCLOUD_TOKEN && export HCLOUD_TOKEN && echo
+```
+
+**Where:** Found in review. Our tests now check this message.
+
+## Step 2: start the node
+
+### The disk fills while the snapshot loads
+
+**You see:** The data disk fills up hours into step 2. If `/root/snapchain-DISK-FULL` exists, `disk-guard.sh` stopped the node at 90% full.
+
+**Why:** The official restore keeps every downloaded chunk, an unpacked copy of each shard and the database until the end. For about 500 GB of snapshot, that does not fit on a 1000 GB volume.
+
+**Fix:** On disks under 1500 GB, `node.sh` installs two helpers. `snapshot-space-saver.sh` deletes chunks the node has already read. `disk-guard.sh` stops the node before the disk is full. Check that they run:
+
+```bash
+ssh root@$IP systemctl status snapchain-space-saver snapchain-disk-guard.timer
+```
+
+**Where:** Hit on our run, at 01:44 IST. We installed the helpers by hand before the disk filled. The disk peaked at 699 GB (75%). The automatic install in `node.sh` has unit tests but has not run during a real sync yet.
+
+### The API does not answer for hours
+
+**You see:** `HTTP API not answering yet (snapshot download in progress?).`
+
+**Why:** The node serves no API while it loads the snapshot. That took us 8 h 34 m.
+
+**Fix:** Wait. The used space on the server should keep growing:
+
+```bash
+ssh root@$IP df -h /root/snapchain
+```
+
+**Where:** Hit on our run, from 01:38 to 10:11 IST.
+
+### `node.sh` stops waiting before the node is in sync
+
+**You see:** `not in sync after 43200s. Re-run './node.sh wait' later; it is safe to re-run.`
+
+**Why:** `node.sh` waits for a set time. It was 12 hours on our run, and our sync took 14 h 06 m. It is 24 hours now, so the message says `86400s`.
+
+**Fix:** Wait again. The node kept syncing the whole time.
+
+```bash
+ssh root@$IP 'bash -s wait' < node.sh
+```
+
+**Where:** Hit on our run, at 13:39 IST.
+
+### Your computer sleeps or SSH drops
+
+**You see:** The terminal running step 2 stops, or SSH disconnects.
+
+**Why:** The node runs on the server, not on your computer.
+
+**Fix:** Reconnect and wait again:
+
+```bash
+IP=$(hcloud server ip snapchain-read-node)
+ssh root@$IP 'bash -s wait' < node.sh
+```
+
+**Where:** Hit on our run. The computer running our steps paused at least 13 times during the sync. The node kept syncing each time.
+
+### Warnings about peers in the node log
+
+**You see:** About 18 `InsufficientPeers ("read-node-peers")` warnings a minute. `HandshakeTimedOut` to two bootstrap peers every 30 seconds.
+
+**Why:** None of the connected peers listen on the `read-node-peers` topic. The two bootstrap peers do not answer.
+
+**Fix:** Nothing, while `blockDelay` stays in single digits. If `blockDelay` keeps growing, the validators may have stopped making blocks. The Snapchain docs say read nodes log this warning nonstop during such a halt ([node-types](https://snapchain.farcaster.xyz/node-types)).
+
+```bash
+ssh root@$IP 'curl -s 127.0.0.1:3381/v1/info' | jq '.shardInfos[] | {shardId, blockDelay}'
+```
+
+**Where:** Hit on our run, for the whole sync.
+
+## Step 3: open the app
+
+### Node.js is too old
+
+**You see:** `[deploy-client] ERROR: Node.js 22.12+ (22.x), 24.x or 26+ is required (found: v20.19.2).`
+
+**Why:** The app's build tools need Node.js 22.12 or later.
+
+**Fix:** Install a current Node.js from [nodejs.org](https://nodejs.org/), then check:
+
+```bash
+node --version
+```
+
+**Where:** Reproduced in testing with Node.js 20.19.2. Found in review first, when the site build failed on Node.js 20.
+
+### Port 5317 is already in use
+
+**You see:** `Error: Port 5317 is already in use` when you run `npm run dev` for the local copy of the app.
+
+**Why:** The local copy always uses port 5317. That keeps its saved app key apart from other apps on your computer. If the port is busy, it stops instead of moving.
+
+**Fix:** Find the program that uses the port, stop it, then start the app again:
+
+```bash
+lsof -i :5317
+```
+
+**Where:** Reproduced in testing. Found in review first: the app used to run on port 5173, the default for Vite projects.
+
+### Port 3381 does not answer from outside
+
+**You see:** `curl http://<server-ip>:3381/v1/info` hangs, then times out.
+
+**Why:** `provision.sh` keeps the node's own ports 3381 and 3383 closed to the internet. An earlier version left them open, so anyone could read the node and send it messages.
+
+**Fix:** Ask through the app's address, or open an SSH tunnel:
+
+```bash
+curl -s https://<name>/v1/info
+# or
+ssh -N -L 3381:127.0.0.1:3381 root@$IP     # then, in another terminal:
+curl -s 127.0.0.1:3381/v1/info
+```
+
+**Where:** Found in review. The first review reached port 3381 from outside. The second confirmed it now times out.
+
+## Reading from the node
+
+### `reverse=1` returns 400
+
+**You see:** `provided string was not true or false`
+
+**Why:** The node accepts only `true` or `false`.
+
+**Fix:** Use `reverse=true`.
+
+**Where:** Found in review, on our node.
+
+### A repeated parameter returns 400
+
+**You see:** `Multiple values for one key: "requesterFids"`
+
+**Why:** The node wants list parameters with brackets.
+
+**Fix:** Use `requesterFids[]=1&requesterFids[]=2`.
+
+**Where:** Found in review, on our node.
+
+### `mempoolSize` shows 4294967295
+
+**You see:** `"mempoolSize": 4294967295` for shards 1 and 2 in `/v1/info`.
+
+**Why:** A read node has no mempool. The number is a placeholder.
+
+**Fix:** Nothing.
+
+**Where:** Seen on our node.
+
+{/* AUTHOR: add any problem you hit that is not on this page, in your own words. */}
+
+## Ask an assistant
+
+Paste your exact command and its output, after removing tokens, IPs and hostnames:
+
+<CopyPrompt id="debug" label="Copy debugging prompt" show />

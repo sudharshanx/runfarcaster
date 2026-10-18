@@ -108,7 +108,7 @@ What it printed (tokens, IPs and hostnames removed):
 
 What the guide said I should see: <expected output>
 
-Tell me the most likely cause, based on the repo scripts and the guide's Troubleshooting page, and give me one next command to run. Stay with what the output shows.
+Tell me the most likely cause, based on the repo scripts and the guide's Fix a problem page, and give me one next command to run. Stay with what the output shows.
 
 ${SAFETY}`,
 } as const;

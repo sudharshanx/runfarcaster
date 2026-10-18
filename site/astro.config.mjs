@@ -16,7 +16,10 @@ export default defineConfig({
   site,
   base,
   trailingSlash: "always",
-  redirects: { "/receipts/": `${base.replace(/\/$/, "")}/proof/` },
+  redirects: {
+    "/receipts/": `${base.replace(/\/$/, "")}/proof/`,
+    "/troubleshooting/": `${base.replace(/\/$/, "")}/fix/`,
+  },
   markdown: { remarkPlugins: [remarkRepoUrl], rehypePlugins: [rehypeTableScroll] },
   integrations: [
     starlight({
@@ -48,7 +51,7 @@ export default defineConfig({
         { label: "Do it on Hetzner", slug: "hetzner" },
         { label: "Proof: what we ran", slug: "proof" },
         { label: "Your first cast", slug: "first-cast" },
-        { label: "Troubleshooting", slug: "troubleshooting" },
+        { label: "Fix a problem", slug: "fix" },
         { label: "Docs issues we found", slug: "docs-issues" },
         { label: "Reference", slug: "reference" },
         { label: "Glossary", slug: "glossary" },

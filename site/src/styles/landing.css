@@ -136,6 +136,7 @@ body.lp { margin: 0; background: #fff; color: var(--text); font-family: var(--sa
 .linkgrid a { color: var(--text); display: flex; flex-direction: column; padding: 16px 0 14px; text-decoration: none; min-height: 44px; }
 .lg-t { display: inline-flex; align-items: center; gap: 6px; font-family: var(--mono); font-size: 14px; color: var(--ink); }
 .lg-d { font-size: 13px; }
+.linkgrid.plain .lg-t { font-family: var(--sans); font-size: 16px; font-weight: 550; }
 .linkgrid a:hover .lg-t { color: var(--accent); }
 
 /* Footer */

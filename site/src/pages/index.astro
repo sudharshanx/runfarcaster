@@ -43,11 +43,11 @@ IP=$(SSH_KEY=my-key \\
   },
 ];
 
-const stats = [
-  { v: "14 h", l: "to sync" },
-  { v: "About $102", l: "a month for the server we used" },
-  { v: "914M", l: "messages on our node" },
-  { v: "0", l: "API keys needed" },
+const fixes = [
+  ["The server type is sold out", "Step 1", "the-server-type-is-sold-out"],
+  ["SSH stops working", "Step 1", "ssh-stops-working"],
+  ["The disk fills while the snapshot loads", "Step 2", "the-disk-fills-while-the-snapshot-loads"],
+  ["Node.js is too old", "Step 3", "nodejs-is-too-old"],
 ];
 
 const scripts = [
@@ -91,6 +91,7 @@ const right = `<svg aria-hidden="true" width="12" height="12" viewBox="0 0 12 12
           <a href={u("tutorial/")}>Tutorial</a>
           <a href={u("hetzner/")}>Hetzner</a>
           <a href={u("proof/")}>Proof</a>
+          <a href={u("fix/")}>Fix a problem</a>
           <a href={REPO}>GitHub<Fragment set:html={arrow} /></a>
           <a class="btn btn-sm" href={u("quickstart/")}>Run the 3 steps</a>
         </nav>
@@ -101,6 +102,7 @@ const right = `<svg aria-hidden="true" width="12" height="12" viewBox="0 0 12 12
             <a href={u("tutorial/")}>Tutorial</a>
             <a href={u("hetzner/")}>Hetzner</a>
             <a href={u("proof/")}>Proof</a>
+            <a href={u("fix/")}>Fix a problem</a>
             <a href={REPO}>GitHub</a>
           </nav>
         </details>
@@ -155,18 +157,6 @@ const right = `<svg aria-hidden="true" width="12" height="12" viewBox="0 0 12 12
         </div>
       </section>
 
-      <section class="wrap stats" aria-labelledby="stats-title">
-        <h2 id="stats-title" class="eyebrow">Our run</h2>
-        <dl>
-          {stats.map((s) => (
-            <div>
-              <dt>{s.l}</dt>
-              <dd>{s.v}</dd>
-            </div>
-          ))}
-        </dl>
-        <p class="stats-note">We worked out the cost from Hetzner&rsquo;s price list. <a href={u("proof/")}>How we measured<Fragment set:html={right} /></a></p>
-      </section>
 
       <section class="wrap split noline" aria-labelledby="how-title">
         <div>
@@ -231,9 +221,10 @@ const right = `<svg aria-hidden="true" width="12" height="12" viewBox="0 0 12 12
 
       <section class="wrap split" aria-labelledby="proof-title">
         <div>
-          <p class="eyebrow">Proof</p>
-          <h2 id="proof-title" class="h-md">See what we ran.</h2>
-          <p>The proof page has the logs, numbers and screenshots from our run on 18 Oct 2026.</p>
+          <p class="eyebrow">Proof of work</p>
+          <h2 id="proof-title" class="h-md">We ran it ourselves.</h2>
+          <p>We synced our own node on 18 Oct 2026. It took 14 hours. When it finished, it held 914M messages.</p>
+          <p>The proof page has our logs, screenshots and every number we measured.</p>
           <a class="textlink" href={u("proof/")}>See the proof<Fragment set:html={right} /></a>
           {/* AUTHOR: one line on what it felt like when the feed first loaded from your own node. */}
         </div>
@@ -242,6 +233,20 @@ const right = `<svg aria-hidden="true" width="12" height="12" viewBox="0 0 12 12
           <figcaption>The app on our synced node. We replaced the server&rsquo;s address.</figcaption>
         </figure>
         {/* AUTHOR: 59 s vertical video (9:16): rent the server, a synced /v1/info, the feed on a phone. Put it here with a caption that says how you made it. */}
+      </section>
+
+      <section class="wrap split" aria-labelledby="fix-title">
+        <div>
+          <p class="eyebrow">Fix a problem</p>
+          <h2 id="fix-title" class="h-md">If something breaks, start here.</h2>
+          <p>These are the problems we hit while running the 3 steps, and how we fixed each one.</p>
+          <a class="textlink" href={u("fix/")}>Fix a problem<Fragment set:html={right} /></a>
+        </div>
+        <ul class="linkgrid plain">
+          {fixes.map(([t, d, a]) => (
+            <li><a href={u(`fix/#${a}`)}><span class="lg-t">{t}</span><span class="lg-d">{d}</span></a></li>
+          ))}
+        </ul>
       </section>
 
       <section class="wrap split last" aria-labelledby="src-title">
@@ -269,7 +274,7 @@ const right = `<svg aria-hidden="true" width="12" height="12" viewBox="0 0 12 12
         <a href={u("quickstart/")}>Quickstart</a>
         <a href={u("tutorial/")}>Tutorial</a>
         <a href={u("first-cast/")}>Your first cast</a>
-        <a href={u("troubleshooting/")}>Troubleshooting</a>
+        <a href={u("fix/")}>Fix a problem</a>
         <a href={u("reference/")}>Reference</a>
       </nav>
       <nav aria-label="Project">
