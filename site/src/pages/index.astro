@@ -19,7 +19,8 @@ const canonical = new URL(base, Astro.site).href;
 const ogImage = new URL(`${base}og.png`, Astro.site).href;
 const ogAlt = "RunFarcaster: Read and post on Farcaster from your own server. 01 Rent a server, 02 Start the node, 03 Open the app.";
 
-const heroCmd = `# 1. Rent a server
+const heroCmd = `# After the exports in "Set up first" (Full run page)
+# 1. Rent a server
 IP=$(./provision.sh)
 # 2. Start the node
 ssh root@$IP "SNAPCHAIN_AGREE_NO_REWARDS=yes MIN_FREE_GB=900 bash -s" < node.sh
@@ -31,6 +32,7 @@ const steps = [
     n: "01", label: "Rent", step: "Provision compute", title: "A server you control.",
     text: "provision.sh rents a Hetzner server with a disk big enough for Farcaster's data. You log in with your own SSH key, and the firewall can limit SSH to your address.",
     cmd: `MY_IP=$(curl -4 -s https://ifconfig.me)
+export NAME=snapchain-read-node
 IP=$(SSH_KEY=my-key \\
   SERVER_TYPE="" \\
   VOLUME_GB=1000 \\
@@ -182,7 +184,7 @@ const right = `<svg aria-hidden="true" width="12" height="12" viewBox="0 0 12 12
               <pre id={`cmd-${i}`} tabindex="0" aria-label={`Step ${i + 1} command`}><code>{s.cmd}</code></pre>
             </div>
           ))}
-          <p class="term-foot">When you&rsquo;re done, delete everything: <code>CONFIRM=snapchain-read-node ./teardown.sh</code></p>
+          <p class="term-foot">When you&rsquo;re done, delete everything: <code>CONFIRM="$NAME" ./teardown.sh</code></p>
           <span class="sr-only" role="status" aria-live="polite" data-copy-status></span>
         </div>
       </section>
@@ -322,6 +324,7 @@ const right = `<svg aria-hidden="true" width="12" height="12" viewBox="0 0 12 12
         <a href={u("build-on-your-node/")}>Build on your node</a>
         <a href={u("fix/")}>Fix a problem</a>
         <a href={u("reference/")}>Scripts and settings</a>
+        <a href={u("glossary/")}>Glossary</a>
       </nav>
       <nav aria-label="Project">
         <h2>Project</h2>

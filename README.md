@@ -46,6 +46,7 @@ Then the 3 steps:
 ```bash
 MY_IP=$(curl -4 -s https://ifconfig.me)
 echo "$MY_IP"                       # must print your address
+export NAME=snapchain-read-node     # server name; the volume, firewall and teardown.sh follow it
 
 # 1. Rent a server: the first 16 GB type for sale, a 1000 GB volume and a firewall. Prints the IP. Under a minute.
 IP=$(SSH_KEY=my-key SERVER_TYPE="" VOLUME_GB=1000 WATCHDOG=0 \
@@ -58,7 +59,11 @@ ssh root@$IP "SNAPCHAIN_AGREE_NO_REWARDS=yes MIN_FREE_GB=900 bash -s" < node.sh
 ./deploy-client.sh "$IP"            # prints https://<ip-with-dashes>.sslip.io (or pass your own DNS name)
 ```
 
-In a new terminal, get the IP back with `IP=$(hcloud server ip snapchain-read-node)`.
+Use an empty Hetzner project. If the project already has a server named `$NAME` or the volume `$NAME-data`,
+`provision.sh` stops and changes nothing; pick another `NAME`, or set `REUSE=1` for your own earlier run.
+Step 3 can run while the node is still loading its snapshot; the app then shows "Node still starting".
+
+In a new terminal, set `NAME` again and get the IP back with `IP=$(hcloud server ip "$NAME")`.
 
 `WATCHDOG=0` keeps the server until you delete it. For a trial run, leave it out and add
 `MAX_USD=5 EXPECTED_HOURS=16`: `provision.sh` then starts `watchdog.sh`, which deletes everything
@@ -69,7 +74,7 @@ and/or `LOCATION` (fsn1, nbg1, hel1, ash, hil, sin) and run it again.
 When you no longer need the node, delete the server, the volume and the firewall. Safe to run twice:
 
 ```bash
-CONFIRM=snapchain-read-node ./teardown.sh
+CONFIRM="$NAME" ./teardown.sh
 ```
 
 Notes:

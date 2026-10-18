@@ -15,7 +15,7 @@ You need:
 - Your node from the [Full run](../quickstart/), and the HTTPS address that `deploy-client.sh` printed. On an [Instant run](../instant-run/), use the node address from that page.
 
 :::note[If you started the watchdog]
-If you started the watchdog in step 1 ([Only trying it?](../quickstart/#try-it)), it deletes the server, the volume and the firewall 24 hours after it started, even if the node is healthy. To keep the node: `touch .provision-state/watchdog.disarm`. Within a minute, `tail -n 1 .provision-state/watchdog.log` should show `disarmed by …`.
+If you started the watchdog in step 1 ([A trial server that deletes itself](../quickstart/#try-it)), it deletes the server, the volume and the firewall 24 hours after it started, even if the node is healthy. To keep the node: `touch .provision-state/watchdog.disarm`. Within a minute, `tail -n 1 .provision-state/watchdog.log` should show `disarmed by …`.
 :::
 
 :::danger
@@ -138,6 +138,6 @@ curl -s "https://<your node>/v1/castsByFid?fid=<your-fid>&pageSize=1&reverse=tru
 
 - **Remove from this browser** (Settings, App key) deletes the key from this browser. The network still accepts it until it expires.
 - A key you stop using expires when its lifetime runs out.
-- This app cannot revoke keys yet. A gasless key is cancelled with a `KEY_REMOVE` message signed by your custody address; removing a key through the KeyRegistry contract does not apply to it. A 1-day expiry keeps a test key short-lived.
+- This app cannot revoke keys yet. When the app says your account's wallet can revoke the key, it means this: a gasless key is cancelled with a `KEY_REMOVE` message signed by your custody address, sent to a node. Removing a key through the KeyRegistry contract does not apply to it. This guide has no tested way to send a `KEY_REMOVE`, so pick a 1-day expiry for a test key and let it run out.
 
 When you are done on `localhost`, press **Remove from this browser**, so no other page on `localhost:5317` can read the key later. Then stop the dev server with Ctrl-C.

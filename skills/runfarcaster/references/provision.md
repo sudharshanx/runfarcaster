@@ -1,13 +1,14 @@
 # Step 1: rent a server
 
-`provision.sh` creates one Hetzner server named `snapchain-read-node`, a volume `snapchain-read-node-data` and a firewall `snapchain-read-node-fw`. It prints the server's IPv4 address on stdout.
+`provision.sh` creates one Hetzner server named `$NAME` (default `snapchain-read-node`), a volume `$NAME-data` and a firewall `$NAME-fw`. It prints the server's IPv4 address on stdout.
 
 ## Before you run it
 
 1. Check the tools: `hcloud version`, `jq --version`, `ssh -V`, `curl --version`.
 2. Check the token without printing it: `[ -n "$HCLOUD_TOKEN" ] && echo set`.
 3. Run `hcloud ssh-key list` and ask the user which key name to use.
-4. Get the user's public IP and show it. If it is empty, stop.
+4. Ask the user to use an empty Hetzner project. Set the name: `export NAME=snapchain-read-node`.
+5. Get the user's public IP and show it. If it is empty, stop.
 
 ```bash
 MY_IP=$(curl -4 -s https://ifconfig.me)
@@ -34,6 +35,8 @@ IP=$(SSH_KEY=<key-name> SERVER_TYPE="" VOLUME_GB=1000 WATCHDOG=0 SSH_SOURCE_CIDR
 
 Expected: `[provision] cost guard OK`, then `[provision] WATCHDOG=0: no watchdog started`, then a `[provision] done. Next` line on stderr, and the IPv4 address on stdout. It takes under a minute.
 
+If it stops with `this project already has: …`, a server, volume or applied firewall with that name exists and may be someone else's; nothing was changed. Ask the user: another name (`export NAME=snapchain-read-node-2`) for a new node, or `REUSE=1` only if it is their own earlier run. If it stops with `would pass the 1024 GB account quota`, show the message: the volume quota is full.
+
 Tell the user: the server keeps running, and Hetzner bills it by the hour, until they delete it with `teardown.sh`.
 
 ## Server type and location
@@ -56,12 +59,14 @@ If the user only wants a trial run, leave out `WATCHDOG=0` and add `MAX_USD=5 EX
 Ask first. Then:
 
 ```bash
-CONFIRM=snapchain-read-node ./teardown.sh
+CONFIRM="$NAME" ./teardown.sh
 ```
 
 Expected: it deletes the server, the volume and the firewall, and ends with `[teardown] verified: server, volume(s) and firewall are gone.` Running it twice is safe. It keeps the uploaded SSH key.
 
-Then check that nothing named `snapchain-read-node` is left:
+If it says `It may be someone else's node; nothing deleted`, stop and show the user. Only they decide on `OTHER_SERVER_OK=1`.
+
+Then check that nothing named `$NAME` is left:
 
 ```bash
 hcloud server list

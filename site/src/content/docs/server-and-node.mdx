@@ -48,12 +48,14 @@ You need to run that `read` line again in every new terminal.
 | `hcloud` | Talks to Hetzner | [hetznercloud/cli](https://github.com/hetznercloud/cli) (macOS: `brew install hcloud`) |
 | `jq` | Reads JSON in the scripts | `brew install jq` or `sudo apt install jq` |
 | `ssh`, `curl` | Reach the server | Already on macOS and most Linux systems |
-| Node.js 22.12 or later (22.x, 24.x or 26+), npm | Builds the app | [nodejs.org](https://nodejs.org/) |
+| Node.js 22.12 or later (22.x, 24.x or 26+), npm | Builds the app | `nvm install 24 && nvm use 24` ([nvm](https://github.com/nvm-sh/nvm#installing-and-updating)), or [nodejs.org/en/download](https://nodejs.org/en/download) |
 
 ```bash title="check"
 hcloud version && jq --version && ssh -V && curl --version && node --version && npm --version
 hcloud server list        # works once HCLOUD_TOKEN is set; an empty list is fine
 ```
+
+Install Node.js 22.12+ or 24: `nvm install 24 && nvm use 24` ([nvm install docs](https://github.com/nvm-sh/nvm#installing-and-updating)), or download it from [nodejs.org](https://nodejs.org/en/download). Node.js 20.19 can run `npm run dev`, but not the tests that `deploy-client.sh` runs.
 
 ## SSH key
 
@@ -72,7 +74,7 @@ hcloud ssh-key list
 
 | Limit | What you see | What to do |
 |---|---|---|
-| New accounts may rent at most 1024 GB of volumes in total, across all projects. The official docs ask for 1.5 to 2 TB. Your limits: [console.hetzner.cloud/limits](https://console.hetzner.cloud/limits). | `volumes size limit exceeded (resource_limit_exceeded)` | Use `VOLUME_GB=1000`, the tested size. `node.sh` then adds two disk helpers so the snapshot fits. |
+| New accounts may rent at most 1024 GB of volumes in total, across all projects. The official docs ask for 1.5 to 2 TB. Your limits: [console.hetzner.cloud/limits](https://console.hetzner.cloud/limits). | `volumes size limit exceeded (resource_limit_exceeded)`, or from `provision.sh` before it creates anything: `would pass the 1024 GB account quota` | Use `VOLUME_GB=1000`, the tested size. `node.sh` then adds two disk helpers so the snapshot fits. If you already run a node with a 1000 GB volume, a second one needs a higher limit. `provision.sh` only sees the volumes in this project; if Hetzner raised your limit, set `VOLUME_QUOTA_GB` to it. |
 | Server types sell out. | `provision.sh` refuses the type and lists what is for sale | See [Server choice](#server-choice). |
 
 ## Server choice
@@ -186,13 +188,15 @@ curl -sI https://<name>/ | grep -i content-security-policy   # connect-src 'self
 curl -s https://<name>/v1/info | jq .version                 # your node, through Caddy
 ```
 
-In the browser, the status at the top says **Connected to your node**; **Details** lists how far behind each shard is. Under **Enter your FID to see your feed**, type an FID (try `3`) and press **Show my feed**, or press **Try a sample feed**.
+In the browser, the status at the top says **Connected to your node**; **Details** lists how far behind each shard is. Under **Enter your FID to see your feed**, type an FID and press **Show my feed**, or press **Try a sample feed**. An account that follows thousands of others, such as FID `3`, can take one to two minutes to load.
 
 ## Delete everything
 
 ```bash title="your computer"
-CONFIRM=snapchain-read-node ./teardown.sh
+CONFIRM="$NAME" ./teardown.sh
 ```
+
+`$NAME` is the name from step 1 (`export NAME=snapchain-read-node` in the Full run). If the server with that name has a different ID from the one `provision.sh` recorded in this folder, `teardown.sh` stops and deletes nothing. Check `NAME` first; `OTHER_SERVER_OK=1` overrides the check.
 
 `teardown.sh` deletes the server, its volume and the firewall, then lists what is left. The node's database is on the volume, so it goes too. Running it twice is safe. Afterwards, check these yourself, either in the console or with the CLI:
 
@@ -211,4 +215,4 @@ When all lists are empty (except your SSH key) you pay nothing more. Then delete
 `teardown.sh` has been tested only with `DRY_RUN=1` and against a fake `hcloud`. Review it before running it: <RepoLink path="teardown.sh" />
 :::
 
-If you started the watchdog in step 1 ([Only trying it?](../quickstart/#try-it)), it runs `teardown.sh` for you after 24 hours, before the bill reaches `MAX_USD`, or when the node has made no progress for 2 hours.
+If you started the watchdog in step 1 ([A trial server that deletes itself](../quickstart/#try-it)), it runs `teardown.sh` for you after 24 hours, before the bill reaches `MAX_USD`, or when the node has made no progress for 2 hours.

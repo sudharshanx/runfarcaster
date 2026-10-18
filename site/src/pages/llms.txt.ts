@@ -23,13 +23,14 @@ Key facts:
 The 3 steps of the Full run (from the repo folder on your computer):
 \`\`\`bash
 MY_IP=$(curl -4 -s https://ifconfig.me)
+export NAME=snapchain-read-node
 IP=$(SSH_KEY=my-key SERVER_TYPE="" VOLUME_GB=1000 WATCHDOG=0 SSH_SOURCE_CIDRS="$MY_IP/32" ./provision.sh)
 ssh root@$IP "SNAPCHAIN_AGREE_NO_REWARDS=yes MIN_FREE_GB=900 bash -s" < node.sh
 ./deploy-client.sh "$IP"
 # when done:
-CONFIRM=snapchain-read-node ./teardown.sh
+CONFIRM="$NAME" ./teardown.sh
 \`\`\`
-In a new terminal: IP=$(hcloud server ip snapchain-read-node)
+Use an empty Hetzner project. In a new terminal: export NAME=snapchain-read-node, then IP=$(hcloud server ip "$NAME")
 WATCHDOG=0 keeps the server until you delete it. For a trial run, leave it out and add MAX_USD=5 EXPECTED_HOURS=16: watchdog.sh then deletes everything after 24 h.
 SERVER_TYPE="" picks the first type for sale from cx43, cax31, cpx42, ccx23. If none is for sale, provision.sh lists the types available in LOCATION; set SERVER_TYPE and/or LOCATION.
 

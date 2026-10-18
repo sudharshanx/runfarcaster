@@ -29,4 +29,8 @@ description: The Farcaster and Snapchain words used on this site, one line each.
 | Snapshot | A compressed copy of the database that a new node downloads first. |
 | Gossip | How nodes pass blocks and messages to each other, over libp2p and QUIC on UDP port 3382. |
 | Farcaster time | Seconds since 2021-01-01 00:00 UTC. Message timestamps use it. |
+| Gasless app key | An app key added with a `KEY_ADD` message instead of an OP Mainnet transaction, so it costs no gas. Mainnet has accepted these since engine version V16 (7 May 2026). |
+| Caddy | The web server `deploy-client.sh` starts on your server. It gets an HTTPS certificate from Let's Encrypt, serves the app, and passes `/v1/*` to the node. |
+| sslip.io | A public DNS service run by someone else. `<ip-with-dashes>.sslip.io` points at that IP, so the app gets an HTTPS address without a domain of your own. |
+| cax31, cpx42 | Hetzner server type names. cax31 is ARM64 with 8 vCPUs and 16 GB of RAM (the tested type); cpx42 is x86 with 16 GB of RAM (untested). |
 | Same origin | The page and the API come from one scheme, host and port, so the browser makes no cross-site request. |

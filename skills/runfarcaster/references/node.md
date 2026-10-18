@@ -1,9 +1,10 @@
 # Step 2: start the node
 
 ```bash
-IP=$(hcloud server ip snapchain-read-node)
 ssh root@$IP "SNAPCHAIN_AGREE_NO_REWARDS=yes MIN_FREE_GB=900 bash -s" < node.sh
 ```
+
+Use `$IP` from step 1. Only in a new terminal: `IP=$(hcloud server ip "$NAME")`.
 
 `SNAPCHAIN_AGREE_NO_REWARDS=yes` says the user accepts that a read node earns no rewards. Show the user that before step 2, so they agree knowingly.
 

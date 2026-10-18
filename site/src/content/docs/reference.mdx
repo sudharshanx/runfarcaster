@@ -36,8 +36,12 @@ import RepoLink from "../../components/RepoLink.astro";
 | `SSH_SOURCE_CIDRS` | provision | `0.0.0.0/0,::/0` | Set to `"$MY_IP/32"` (from `curl -4 -s https://ifconfig.me`) |
 | `NODE_API_CIDRS` | provision | empty | Addresses allowed to reach 3381 and 3383. Empty keeps both closed |
 | `PORT_PROFILE` | provision | `docs` | `readme` also opens the README's TCP+UDP superset |
-| `NAME` | provision, teardown, watchdog | `snapchain-read-node` | Volume `$NAME-data`, firewall `$NAME-fw` |
+| `NAME` | provision, teardown, watchdog | `snapchain-read-node` | Volume `$NAME-data`, firewall `$NAME-fw`. The Full run exports it, so every step and `teardown.sh` use the same name |
+| `REUSE` | provision | `0` | If the server `$NAME`, the volume `$NAME-data` or an applied firewall `$NAME-fw` already exists, `provision.sh` stops before it creates or changes anything. `1` continues with them (your own earlier run) |
+| `VOLUME_QUOTA_GB` | provision | `1024` | Account-wide volume limit (new Hetzner accounts: 1024 GB across all projects). Before creating anything, `provision.sh` adds the volumes in this project to `VOLUME_GB` and stops if the sum is over it. Volumes in other projects are not visible, so Hetzner can still refuse. Set it if Hetzner raised your limit |
+| `WATCHDOG_MAX_WALL_SECS` | provision | `86400` | Time limit `provision.sh` passes to the watchdog (as `MAX_WALL_SECS`; `MAX_WALL_SECS` on `provision.sh` works too). `172800` = 48 hours |
 | `CONFIRM` | teardown | (prompt) | Must equal `NAME` |
+| `OTHER_SERVER_OK` | teardown | `0` | `teardown.sh` stops and deletes nothing if the server named `$NAME` has a different ID from the one `provision.sh` recorded in `.provision-state/server-$NAME.id`. `1` deletes it anyway |
 | `SNAPCHAIN_AGREE_NO_REWARDS` | node.sh | (prompt) | `yes` records the no-rewards agreement |
 | `OPERATOR_FID` | node.sh | unset | Enables the weekly auto-upgrade cron; unset = `SKIP_CRONTAB=true` |
 | `MIN_FREE_GB` | node.sh | `1500` | `900` for a 1000 GB volume |
@@ -49,7 +53,7 @@ import RepoLink from "../../components/RepoLink.astro";
 | `NODE_UPGRADE` | node.sh | `0` | `1` re-runs the official bootstrap (upgrade) |
 | `SSH_OPTS` | deploy-client | empty | Extra ssh/scp options, e.g. `-i key` |
 | `LIMIT_PCT` | disk-guard | `90` | |
-| `HANG_SECS` / `MAX_WALL_SECS` | watchdog | `7200` / `86400` | No-progress limit; total time limit |
+| `HANG_SECS` / `MAX_WALL_SECS` | watchdog | `7200` / `86400` | No-progress limit; total time limit. When `provision.sh` starts the watchdog, set the time limit with `WATCHDOG_MAX_WALL_SECS` |
 | `SSH_KEY_FILE` | watchdog | empty | Private key for the progress check. Empty turns the check off |
 | `PROGRESS_MIN_BYTES` | watchdog | `1048576` | Database growth that counts as progress; any block height increase also counts |
 | `UNREACHABLE_IS_HANG` | watchdog | `0` | `1` counts lost SSH as no progress |

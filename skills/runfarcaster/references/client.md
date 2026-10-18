@@ -8,7 +8,7 @@ Needs Node.js 22.12+ (22.x), 24.x or 26+ on the user's computer.
 
 A DNS name of the user's that points at `$IP` can go as the 2nd argument. Without it the script uses `<ip-with-dashes>.sslip.io`.
 
-Expected last line: `[deploy-client] OK: https://<name> (client) and https://<name>/v1/info (node, proxied)`. Under a minute with a warm npm cache.
+Expected last line: `[deploy-client] OK: https://<name> (client) and https://<name>/v1/info (node, proxied)`. Under a minute with a warm npm cache. It can run while the node is still loading its snapshot: then it ends with `[deploy-client] OK: app is up at https://<name>. The node isn't answering yet`, and the app shows **Node still starting** until the node answers.
 
 The user then opens the address. The status at the top should say **Connected to your node**.
 

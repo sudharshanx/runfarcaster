@@ -29,6 +29,22 @@ VOLUME_GB=1000
 
 **Where:** Seen on a mainnet run, when step 1 asked for 2000 GB. Nothing was created, so it cost nothing.
 
+### The project already has a server with that name
+
+**You see:** `this project already has: server snapchain-read-node`, with `Nothing was created or changed.`
+
+**Why:** A server named `$NAME`, the volume `$NAME-data`, or a firewall `$NAME-fw` that is applied to a server already exists in this Hetzner project. It may be someone else's node, so `provision.sh` stops before it changes anything.
+
+**Fix:** Use an empty Hetzner project. For a second node in the same project, pick another name and keep it for every later step and for teardown:
+
+```bash
+export NAME=snapchain-read-node-2
+```
+
+If it is your own earlier run, `REUSE=1 ./provision.sh` continues with it.
+
+**Where:** Found in review by a first-time tester in a shared project; the check was added to `provision.sh` afterwards. Covered by unit tests, not yet hit on a live run.
+
 ### The server type is sold out
 
 **You see:** `server type cax31: not available in fsn1 right now.` when you set a type, or `none of [cx43 cax31 cpx42 ccx23] is usable in fsn1.` with `SERVER_TYPE=""`. Both list the types you can rent there, cheapest first.
@@ -67,10 +83,11 @@ SSH_KEY=my-key SERVER_TYPE="" VOLUME_GB=1000 WATCHDOG=0 \
 
 **Why:** `$IP` lives only in the terminal where step 1 ran. A new terminal does not have it.
 
-**Fix:**
+**Fix:** Set the name from step 1 again, then get the IP:
 
 ```bash
-IP=$(hcloud server ip snapchain-read-node)
+export NAME=snapchain-read-node
+IP=$(hcloud server ip "$NAME")
 ```
 
 **Where:** Found in review, while a tester checked the steps. Reproduced in testing for the exact message.
@@ -160,7 +177,8 @@ ssh root@$IP 'bash -s wait' < node.sh
 **Fix:** Reconnect and wait again:
 
 ```bash
-IP=$(hcloud server ip snapchain-read-node)
+export NAME=snapchain-read-node   # the name from step 1
+IP=$(hcloud server ip "$NAME")
 ssh root@$IP 'bash -s wait' < node.sh
 ```
 
@@ -188,7 +206,7 @@ ssh root@$IP 'curl -s 127.0.0.1:3381/v1/info' | jq '.shardInfos[] | {shardId, bl
 
 **Why:** The app's build tools need Node.js 22.12 or later.
 
-**Fix:** Install a current Node.js from [nodejs.org](https://nodejs.org/), then check:
+**Fix:** Install Node.js 22.12+ or 24: `nvm install 24 && nvm use 24` ([nvm install docs](https://github.com/nvm-sh/nvm#installing-and-updating)), or download it from [nodejs.org](https://nodejs.org/en/download). Node.js 20.19 can run `npm run dev`, but not the tests that `deploy-client.sh` runs. Then check:
 
 ```bash
 node --version
