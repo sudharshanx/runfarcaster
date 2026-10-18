@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# shellcheck disable=SC2016,SC2009  # bash -c bodies use positional args on purpose; ps|grep avoids pgrep self-match
+# shellcheck disable=SC2016,SC2009,SC2034  # bash -c bodies use positional args on purpose; ps|grep avoids pgrep self-match; subshell env assignments are read by sourced functions
 # SPDX-License-Identifier: MIT
 # Local tests for node.sh. No VM, no Docker, no real Snapchain network: uses fixtures,
 # a local mock HTTP server, and a fake `docker` + fake bootstrap script.
@@ -13,7 +13,7 @@ bad()  { FAIL=$((FAIL+1)); echo "FAIL - $1"; }
 check() { local name="$1"; shift; if "$@"; then ok "$name"; else bad "$name"; fi; }
 
 TMP="$(mktemp -d)"; MOCK_PID=""
-cleanup() { if [[ -n "$MOCK_PID" ]]; then kill "$MOCK_PID" 2>/dev/null || true; fi; rm -rf "$TMP"; }
+cleanup() { if [[ -n "$MOCK_PID" ]]; then kill "$MOCK_PID" 2>/dev/null || true; fi; rm -rf "$TMP" 2>/dev/null || sudo -n rm -rf "$TMP"; }  # helpers are written via sudo when not root
 trap cleanup EXIT
 
 check "shellcheck node.sh" shellcheck -x "$ROOT/node.sh"
@@ -91,9 +91,66 @@ out="$(PATH="$TMP/bin:$PATH" SNAPCHAIN_DIR="$D4" BOOTSTRAP_URL="file://$TMP/fail
 set -e
 check "run_bootstrap: failing bootstrap -> non-zero + clear error" bash -c '[[ $1 -ne 0 ]] && grep -q "exited before" <<<"$2"' _ "$rc" "$out"
 
+
+# --- disk helpers: embedded copies, auto-install on small disks, idempotent re-run
+check "embedded helpers match disk-guard.sh / snapshot-space-saver.sh" python3 "$ROOT/tools/embed-helpers.py" --check
+check "helper_disk_guard output is byte-identical" cmp -s <(helper_disk_guard) "$ROOT/disk-guard.sh"
+check "helper_space_saver output is byte-identical" cmp -s <(helper_space_saver) "$ROOT/snapshot-space-saver.sh"
+H="$TMP/helpers"; mkdir -p "$H/bin"
+cat > "$H/bin/systemctl" <<FAKE
+#!/bin/bash
+echo "\$*" >> "$H/calls"
+case "\$1" in
+  is-enabled) [[ -f "$H/\$2.enabled" ]] ;;
+  enable) touch "$H/\${@: -1}.enabled" ;;
+  is-active) echo active ;;
+esac
+exit \${PIPESTATUS:-0}
+FAKE
+chmod +x "$H/bin/systemctl"
+hrun() {  # hrun DIR [ENV...]: run `node.sh helpers` (via bash -s, like the docs) against fake systemd paths
+  local d="$1"; shift
+  mkdir -p "$d/systemd" "$d/sbin" "$d/snapchain"
+  env SNAPCHAIN_DIR="$d/snapchain" HELPER_DIR="$d/lib" SYSTEMD_DIR="$d/systemd" SBIN_DIR="$d/sbin" \
+    SYSTEMCTL="$H/bin/systemctl" "$@" bash -s helpers < "$ROOT/node.sh" 2>&1
+}
+E1="$H/small"
+out="$(hrun "$E1" DISK_SIZE_GB=984)"
+check "984 GB disk: disk-guard timer and space-saver service installed" \
+  test -f "$E1/systemd/snapchain-disk-guard.timer" -a -f "$E1/systemd/snapchain-space-saver.service"
+check "installed helper binaries equal the repo scripts" \
+  bash -c 'cmp -s "$1/sbin/snapchain-disk-guard" "$2/disk-guard.sh" && cmp -s "$1/sbin/snapchain-space-saver" "$2/snapshot-space-saver.sh"' _ "$E1" "$ROOT"
+check "space-saver unit waits for the restore (WAIT_FOR_SNAPSHOT_SECS=7200)" grep -q "WAIT_FOR_SNAPSHOT_SECS=7200" "$E1/systemd/snapchain-space-saver.service"
+check "units point at SNAPCHAIN_DIR" grep -q "SNAPCHAIN_DIR=$E1/snapchain" "$E1/systemd/snapchain-disk-guard.service"
+enables="$(grep -c '^enable' "$H/calls")"
+out="$(hrun "$E1" DISK_SIZE_GB=984)"
+check "re-run: both reported already installed" bash -c '[[ $(grep -c "already installed" <<<"$1") -eq 2 ]]' _ "$out"
+check "re-run: no new systemctl enable" test "$(grep -c '^enable' "$H/calls")" -eq "$enables"
+check "re-run never restarts or stops anything" bash -c '! grep -qE "^(restart|stop|kill)" "$1"' _ "$H/calls"
+E2="$H/big"; out="$(hrun "$E2" DISK_SIZE_GB=1900)"
+check "1900 GB disk (auto): helpers not installed" bash -c 'grep -q "not needed" <<<"$1" && [[ -z "$(ls "$2/systemd")" ]]' _ "$out" "$E2"
+E3="$H/forced"; hrun "$E3" DISK_SIZE_GB=1900 DISK_HELPERS=1 >/dev/null
+check "DISK_HELPERS=1 installs on a big disk" test -f "$E3/systemd/snapchain-disk-guard.timer"
+E4="$H/off"; out="$(hrun "$E4" DISK_SIZE_GB=984 DISK_HELPERS=0)"
+check "DISK_HELPERS=0 installs nothing" bash -c 'grep -q "DISK_HELPERS=0" <<<"$1" && [[ -z "$(ls "$2/systemd")" ]]' _ "$out" "$E4"
+E5="$H/synced"; mkdir -p "$E5/snapchain/.rocks"; echo db > "$E5/snapchain/.rocks/CURRENT"
+out="$(hrun "$E5" DISK_SIZE_GB=984)"
+check "restore already finished: disk-guard yes, space-saver skipped" \
+  bash -c 'grep -q "restore already finished" <<<"$1" && [[ -f "$2/systemd/snapchain-disk-guard.timer" && ! -e "$2/systemd/snapchain-space-saver.service" ]]' _ "$out" "$E5"
+check "restore finished: database untouched" grep -qx db "$E5/snapchain/.rocks/CURRENT"
+E6="$H/leftover"; mkdir -p "$E6/snapchain/.rocks" "$E6/snapchain/.rocks.snapshot"; echo db > "$E6/snapchain/.rocks/CURRENT"
+out="$(hrun "$E6" DISK_SIZE_GB=984)"
+check "empty leftover .rocks.snapshot counts as restore finished" grep -q "restore already finished" <<<"$out"
+E7="$H/restoring"; mkdir -p "$E7/snapchain/.rocks" "$E7/snapchain/.rocks.snapshot/shard-1"; echo db > "$E7/snapchain/.rocks/CURRENT"
+hrun "$E7" DISK_SIZE_GB=984 >/dev/null
+check "restore in progress (.rocks.snapshot has data): space-saver installed" test -f "$E7/systemd/snapchain-space-saver.service"
+set +e; out="$(hrun "$H/bad" DISK_SIZE_GB=984 DISK_HELPERS=maybe)"; rc=$?; set -e
+check "invalid DISK_HELPERS value is rejected" bash -c '[[ $1 -ne 0 ]] && grep -q "must be auto, 1 or 0" <<<"$2"' _ "$rc" "$out"
+
 # --- DRY_RUN of the full flow (downloads the real bootstrap script text only; executes nothing)
-out="$(DRY_RUN=1 SKIP_PREFLIGHT=1 SNAPCHAIN_AGREE_NO_REWARDS=yes SNAPCHAIN_DIR="$TMP/dry" bash "$ROOT/node.sh" all </dev/null 2>&1)" || true
+out="$(DRY_RUN=1 SKIP_PREFLIGHT=1 SNAPCHAIN_AGREE_NO_REWARDS=yes DISK_SIZE_GB=984 SNAPCHAIN_DIR="$TMP/dry" bash "$ROOT/node.sh" all </dev/null 2>&1)" || true
 check "DRY_RUN prints the bootstrap invocation" grep -q "\[dry-run\] script -qefc" <<<"$out"
+check "DRY_RUN arms both disk helpers before the bootstrap" bash -c 'grep -n "disk-guard.sh install\|space-saver.sh install\|script -qefc" <<<"$1" | awk -F: "{print \$1}" | sort -n -c && [[ $(grep -c "\.sh install" <<<"$1") -eq 2 ]]' _ "$out"
 check "DRY_RUN created nothing" test ! -e "$TMP/dry/.env"
 
 echo; echo "passed: $PASS  failed: $FAIL"

@@ -21,10 +21,13 @@
 #     the tar strictly sequentially, so that data is never read again.
 #   * once a different shard starts downloading, the previous shard's tar is deleted.
 # It never touches .rocks (the database). It exits once .rocks.snapshot is gone (restore finished).
+# With WAIT_FOR_SNAPSHOT_SECS > 0, `run` first waits up to that long for .rocks.snapshot to appear
+# (node.sh arms it before the node starts its restore), then exits if it never does.
 #
 #   ./snapshot-space-saver.sh install | run | once | uninstall
 # Env: SNAPCHAIN_DIR=/root/snapchain, CONTAINER=snapchain-snapchain-1, INTERVAL=20, MARGIN_MB=512,
-#      DRY_RUN=1 (log what would be freed, change nothing), LOG=/var/log/snapchain-space-saver.log
+#      WAIT_FOR_SNAPSHOT_SECS=0, DRY_RUN=1 (log what would be freed, change nothing),
+#      LOG=/var/log/snapchain-space-saver.log, SYSTEMD_DIR, SBIN_DIR, SYSTEMCTL (for tests)
 
 set -euo pipefail
 SNAPCHAIN_DIR="${SNAPCHAIN_DIR:-/root/snapchain}"
@@ -32,6 +35,11 @@ CONTAINER="${CONTAINER:-snapchain-snapchain-1}"
 INTERVAL="${INTERVAL:-20}"
 MARGIN_MB="${MARGIN_MB:-512}"
 DRY_RUN="${DRY_RUN:-0}"
+WAIT_FOR_SNAPSHOT_SECS="${WAIT_FOR_SNAPSHOT_SECS:-0}"
+WAIT_POLL_SECS="${WAIT_POLL_SECS:-10}"
+SYSTEMD_DIR="${SYSTEMD_DIR:-/etc/systemd/system}"
+SBIN_DIR="${SBIN_DIR:-/usr/local/sbin}"
+SYSTEMCTL="${SYSTEMCTL:-systemctl}"
 LOG="${LOG:-/var/log/snapchain-space-saver.log}"
 SNAPDIR="$SNAPCHAIN_DIR/.rocks.snapshot"
 CONTAINER_SNAPDIR="${CONTAINER_SNAPDIR:-/app/.rocks.snapshot}"
@@ -143,27 +151,32 @@ once() {
 case "${1:-run}" in
   once) once ;;
   run)
-    log "started (interval ${INTERVAL}s, margin ${MARGIN_MB} MiB, dry_run=$DRY_RUN)"
+    log "started (interval ${INTERVAL}s, margin ${MARGIN_MB} MiB, wait ${WAIT_FOR_SNAPSHOT_SECS}s, dry_run=$DRY_RUN)"
+    waited=0
+    while [[ ! -d "$SNAPDIR" ]] && (( waited < WAIT_FOR_SNAPSHOT_SECS )); do
+      sleep "$WAIT_POLL_SECS"; waited=$((waited + WAIT_POLL_SECS))
+    done
+    [[ -d "$SNAPDIR" ]] && (( waited > 0 )) && log "$SNAPDIR appeared after ${waited}s"
     while :; do
       rc=0; once || rc=$?
       (( rc == 3 )) && { log "exiting"; exit 0; }
       sleep "$INTERVAL"
     done ;;
   install)
-    install -m 0755 "$(readlink -f "${BASH_SOURCE[0]}")" /usr/local/sbin/snapchain-space-saver
-    cat >/etc/systemd/system/$UNIT.service <<UNITEOF
+    install -m 0755 "$(readlink -f "${BASH_SOURCE[0]}")" "$SBIN_DIR/snapchain-space-saver"
+    cat >"$SYSTEMD_DIR/$UNIT.service" <<UNITEOF
 [Unit]
 Description=Free disk space during Snapchain snapshot restore
 After=docker.service
 [Service]
-Environment=SNAPCHAIN_DIR=$SNAPCHAIN_DIR CONTAINER=$CONTAINER INTERVAL=$INTERVAL MARGIN_MB=$MARGIN_MB DRY_RUN=$DRY_RUN
-ExecStart=/usr/local/sbin/snapchain-space-saver run
+Environment=SNAPCHAIN_DIR=$SNAPCHAIN_DIR CONTAINER=$CONTAINER INTERVAL=$INTERVAL MARGIN_MB=$MARGIN_MB WAIT_FOR_SNAPSHOT_SECS=$WAIT_FOR_SNAPSHOT_SECS DRY_RUN=$DRY_RUN
+ExecStart=$SBIN_DIR/snapchain-space-saver run
 Restart=on-failure
 RestartSec=30
 [Install]
 WantedBy=multi-user.target
 UNITEOF
-    systemctl daemon-reload && systemctl enable --now $UNIT.service && systemctl is-active $UNIT.service ;;
-  uninstall) systemctl disable --now $UNIT.service || true; rm -f /etc/systemd/system/$UNIT.service /usr/local/sbin/snapchain-space-saver; systemctl daemon-reload ;;
+    $SYSTEMCTL daemon-reload && $SYSTEMCTL enable --now $UNIT.service && $SYSTEMCTL is-active $UNIT.service ;;
+  uninstall) $SYSTEMCTL disable --now $UNIT.service || true; rm -f "$SYSTEMD_DIR/$UNIT.service" "$SBIN_DIR/snapchain-space-saver"; $SYSTEMCTL daemon-reload ;;
   *) echo "usage: $0 install|run|once|uninstall" >&2; exit 1 ;;
 esac

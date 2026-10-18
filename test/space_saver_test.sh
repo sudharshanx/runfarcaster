@@ -42,4 +42,20 @@ run; ok "next shard downloading: shard 1 tar deleted" '[ ! -e "$SNAP/shard_1_sna
 ok "database untouched" '[ -f "$S/.rocks/keep" ]'
 DRY_RUN=1 run; ok "dry run logs only" 'grep -q "DRY\|started\|deleted\|punched" "$T/saver.log"'
 rm -rf "$SNAP"; rc=0; run || rc=$?; ok "exits 3 when restore finished" '[ "$rc" = 3 ]'
+
+# run mode with WAIT_FOR_SNAPSHOT_SECS (how node.sh arms it before the restore starts)
+: >"$T/saver.log"
+start=$(date +%s); WAIT_FOR_SNAPSHOT_SECS=2 WAIT_POLL_SECS=1 "$ROOT/snapshot-space-saver.sh" run; rc=$?
+ok "wait: gives up after WAIT_FOR_SNAPSHOT_SECS and exits 0" '[ "$rc" = 0 ] && [ $(( $(date +%s) - start )) -ge 2 ] && grep -q exiting "$T/saver.log"'
+: >"$T/saver.log"
+( WAIT_FOR_SNAPSHOT_SECS=30 WAIT_POLL_SECS=1 INTERVAL=1 "$ROOT/snapshot-space-saver.sh" run ) & SP=$!
+sleep 2; mkdir -p "$SNAP"; sleep 3; rm -rf "$SNAP"; wait $SP; rc=$?
+ok "wait: picks up .rocks.snapshot when it appears, exits when it is gone" '[ "$rc" = 0 ] && grep -q "appeared after" "$T/saver.log" && grep -q exiting "$T/saver.log"'
+ok "wait: database untouched" '[ -f "$S/.rocks/keep" ]'
+
+# install writes the unit with the wait setting (fake systemctl, temp dirs)
+mkdir -p "$T/sd" "$T/sbin"; printf '#!/bin/sh\necho "$*" >>"%s"\n' "$T/calls" >"$T/systemctl"; chmod +x "$T/systemctl"
+SYSTEMD_DIR="$T/sd" SBIN_DIR="$T/sbin" SYSTEMCTL="$T/systemctl" WAIT_FOR_SNAPSHOT_SECS=7200 "$ROOT/snapshot-space-saver.sh" install >/dev/null
+ok "install: unit has WAIT_FOR_SNAPSHOT_SECS and ExecStart in SBIN_DIR" 'grep -q "WAIT_FOR_SNAPSHOT_SECS=7200" "$T/sd/snapchain-space-saver.service" && grep -q "ExecStart=$T/sbin/snapchain-space-saver run" "$T/sd/snapchain-space-saver.service"'
+ok "install: enable --now, no restart" 'grep -q "enable --now snapchain-space-saver.service" "$T/calls" && ! grep -q restart "$T/calls"'
 echo; echo "passed: $pass  failed: $fail"; [ "$fail" = 0 ]

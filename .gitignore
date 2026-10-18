@@ -7,3 +7,6 @@ research/
 !.env.example
 .DS_Store
 .provision-state/
+
+# Raw live-run log (server IP, IDs). Public sanitized copy: run-log.md
+run-log.raw.md

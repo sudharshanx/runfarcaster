@@ -10,7 +10,8 @@
 #   ./disk-guard.sh check     # one check (what the timer runs)
 #   ./disk-guard.sh status    # print usage and marker
 #   ./disk-guard.sh uninstall
-# Env: SNAPCHAIN_DIR=/root/snapchain, LIMIT_PCT=90, MARKER=/root/snapchain-DISK-FULL
+# Env: SNAPCHAIN_DIR=/root/snapchain, LIMIT_PCT=90, MARKER=/root/snapchain-DISK-FULL,
+#      SYSTEMD_DIR, SBIN_DIR, SYSTEMCTL (for tests)
 
 set -euo pipefail
 SNAPCHAIN_DIR="${SNAPCHAIN_DIR:-/root/snapchain}"
@@ -18,6 +19,9 @@ LIMIT_PCT="${LIMIT_PCT:-90}"
 MARKER="${MARKER:-/root/snapchain-DISK-FULL}"
 LOG="${LOG:-/var/log/snapchain-disk-guard.log}"
 UNIT=snapchain-disk-guard
+SYSTEMD_DIR="${SYSTEMD_DIR:-/etc/systemd/system}"
+SBIN_DIR="${SBIN_DIR:-/usr/local/sbin}"
+SYSTEMCTL="${SYSTEMCTL:-systemctl}"
 
 ts() { TZ=Asia/Kolkata date '+%Y-%m-%d %H:%M:%S IST'; }
 used_pct() { df --output=pcent "$SNAPCHAIN_DIR" | tail -1 | tr -dc '0-9'; }
@@ -38,16 +42,16 @@ case "${1:-check}" in
   check) check ;;
   status) df -h "$SNAPCHAIN_DIR"; [[ -f "$MARKER" ]] && cat "$MARKER" || echo "no disk-full marker" ;;
   install)
-    install -m 0755 "$(readlink -f "${BASH_SOURCE[0]}")" /usr/local/sbin/snapchain-disk-guard
-    cat >/etc/systemd/system/$UNIT.service <<UNITEOF
+    install -m 0755 "$(readlink -f "${BASH_SOURCE[0]}")" "$SBIN_DIR/snapchain-disk-guard"
+    cat >"$SYSTEMD_DIR/$UNIT.service" <<UNITEOF
 [Unit]
 Description=Stop Snapchain before its data disk fills up
 [Service]
 Type=oneshot
 Environment=SNAPCHAIN_DIR=$SNAPCHAIN_DIR LIMIT_PCT=$LIMIT_PCT MARKER=$MARKER
-ExecStart=/usr/local/sbin/snapchain-disk-guard check
+ExecStart=$SBIN_DIR/snapchain-disk-guard check
 UNITEOF
-    cat >/etc/systemd/system/$UNIT.timer <<UNITEOF
+    cat >"$SYSTEMD_DIR/$UNIT.timer" <<UNITEOF
 [Unit]
 Description=Run snapchain-disk-guard every minute
 [Timer]
@@ -57,8 +61,8 @@ AccuracySec=5s
 [Install]
 WantedBy=timers.target
 UNITEOF
-    systemctl daemon-reload && systemctl enable --now $UNIT.timer
-    systemctl is-active $UNIT.timer ;;
-  uninstall) systemctl disable --now $UNIT.timer || true; rm -f /etc/systemd/system/$UNIT.{service,timer} /usr/local/sbin/snapchain-disk-guard; systemctl daemon-reload ;;
+    $SYSTEMCTL daemon-reload && $SYSTEMCTL enable --now $UNIT.timer
+    $SYSTEMCTL is-active $UNIT.timer ;;
+  uninstall) $SYSTEMCTL disable --now $UNIT.timer || true; rm -f "$SYSTEMD_DIR/$UNIT".{service,timer} "$SBIN_DIR/snapchain-disk-guard"; $SYSTEMCTL daemon-reload ;;
   *) echo "usage: $0 install|check|status|uninstall" >&2; exit 1 ;;
 esac
