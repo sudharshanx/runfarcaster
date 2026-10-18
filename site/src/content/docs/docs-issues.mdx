@@ -1,6 +1,6 @@
 ---
 title: Docs issues we found
-description: Outdated or wrong statements in the official Farcaster and Snapchain docs, found while building this tutorial. Summary of DOCS_ISSUES.md.
+description: Outdated or wrong statements in the official Farcaster and Snapchain docs, found while building this guide, and how this guide differs from the official one. Read it when the official docs and this guide disagree.
 ---
 
 import RepoLink from "../../components/RepoLink.astro";
@@ -56,3 +56,18 @@ import RepoLink from "../../components/RepoLink.astro";
 | 30 | Neynar Snapchain mirror | Still teaches the onchain signer flow |
 
 Sources: <RepoLink path="SOURCES.md" />.
+
+## How this guide differs from the official one
+
+| Topic | Official guide ([running-a-node](https://snapchain.farcaster.xyz/guides/running-a-node), [Getting Started](https://snapchain.farcaster.xyz/getting-started)) | This guide |
+|---|---|---|
+| Server | Set up by hand in the AWS console, with screenshots | `provision.sh` on Hetzner |
+| Cost | "Roughly $100/month", an estimate | About $0.164 an hour, about $2.31 until synced (one run, price-list rates) |
+| Time to sync | "A few hours" | About 14 hours on cax31 |
+| Disk | 2 TB (docs), 1.5 TB (README) | 1000 GB worked with two helper scripts; `node.sh` now installs them (unit-tested only) |
+| Firewall | Opens 3382/**tcp** and SSH to everyone ([Docs issues #1, #2](../docs-issues/)) | 3382/udp; SSH only from `SSH_SOURCE_CIDRS`; 3381 and 3383 closed |
+| Bootstrap | `curl … \| bash`, needs a terminal, keeps running in front of you | The same official script, run by `node.sh`, which then waits for sync |
+| API keys | Points to a paid API service for speed | None; the app reads from your node |
+| App keys | hello-world still adds keys onchain with about $10 of OP ETH ([Docs issues #10](../docs-issues/)) | Gasless `KEY_ADD` (`src/core/validations/key.rs`, live since V16 per `src/version/version.rs`) |
+| Posting | Older pages send messages to a hosted hub | Your read node sends them on (`submit_message_internal` in `src/network/server.rs`, `ReadNodeMempool` in `src/mempool/mempool.rs`) |
+| Cleanup | Not covered | `teardown.sh` (not yet run on real servers) |

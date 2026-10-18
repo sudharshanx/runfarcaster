@@ -1,6 +1,6 @@
 ---
 title: Quickstart
-description: The 3 steps. Each one is a single command, with what you will see and how long it takes.
+description: The 3 commands that rent a server, start a node and open the app. Start here; each step shows what you will see and how long it takes.
 ---
 
 import CopyPrompt from "../../components/CopyPrompt.astro";
@@ -9,7 +9,7 @@ import RepoLink from "../../components/RepoLink.astro";
 You rent a Linux server at Hetzner, run a Snapchain read node on it, and open a small web app that reads from that node.
 
 :::note[Before you start]
-- A Hetzner account and an API token. [Do it on Hetzner](../hetzner/) shows how.
+- A Hetzner account and an API token. [Server and node](../server-and-node/) shows how.
 - An SSH key uploaded to Hetzner. `hcloud ssh-key list` shows its name.
 - A computer with bash, `hcloud`, `jq`, `ssh`, `curl` and Node.js 22.12 or later (22.x, 24.x or 26+).
 
@@ -41,7 +41,7 @@ echo "$IP"
 
 **You will see** `[provision] done. Next …`, then the server's IP address. **Time:** under a minute.
 
-Hetzner bills the server by the hour until you delete it: about $0.164 an hour for cax31 with the 1000 GB volume, or about $102 a month.
+Hetzner bills the server by the hour until you delete it: about $0.164 an hour for cax31 with the 1000 GB volume, or about $102 a month. What step 1 does: [Server and node](../server-and-node/#what-step-1-does).
 
 :::tip[Lost `$IP`?]
 `$IP` only lives in the terminal where you set it. In a new terminal, run `IP=$(hcloud server ip snapchain-read-node)`.
@@ -91,31 +91,6 @@ Leave out `VOLUME_GB=1000`. This needs a Hetzner volume limit above 2000 GB, and
 
 </details>
 
-<details>
-<summary>What provision.sh does and prints</summary>
-
-Read the script first: <RepoLink path="provision.sh" />
-
-- Checks that each entry in `SSH_SOURCE_CIDRS` looks like an address with a prefix, such as `203.0.113.7/32`. An empty `$MY_IP` stops it here.
-- Checks that `LOCATION` exists and that the server type is for sale there with at least 16 GB of RAM. If not, it lists what is available and creates nothing.
-- Reads the hourly price from Hetzner's live price list and prints it. It stops before creating anything if that price × `EXPECTED_HOURS` (default 6) is above `MAX_USD` (default 2, in your account's currency).
-- Creates a firewall, the data volume and the server. The firewall opens SSH (22, only to `SSH_SOURCE_CIDRS`), gossip (3382/udp) and the web ports 80 and 443. The node's own API ports 3381 and 3383 stay closed; the app reaches the node through Caddy.
-- Starts `watchdog.sh` first, unless you set `WATCHDOG=0`.
-- Prints the server's IP. Running it again reuses what exists and does not start a second watchdog.
-
-```text
-[provision] server type cax31: 8 vCPU (shared), 16 GB RAM, 160 GB disk, arm
-[provision] local disk 160 GB < 2000 GB: adding a 1000 GB volume
-  total       ~0.164 /h
-[provision] cost guard OK: projected <= MAX_USD=2
-[provision] WATCHDOG=0: no watchdog started (no automatic spending cap).
-[provision] done. Next (in a new terminal, get the IP back with: IP=$(hcloud server ip snapchain-read-node)):
-```
-
-Check it worked: `hcloud server list` shows `snapchain-read-node` running, and `hcloud volume list` shows `snapchain-read-node-data`.
-
-</details>
-
 <CopyPrompt id="provision" />
 
 ## 2. Start the node
@@ -127,7 +102,7 @@ ssh root@$IP \
   < node.sh
 ```
 
-**You will see** `[node.sh] Node is in sync.`, then a health check with `sync: SYNCED`. **Time:** on a server with 8 cores and 16 GB of RAM (Hetzner cax31), expect loading the snapshot to take about 8 to 9 hours and catching up about 5 more. A faster disk or network shortens both.
+**You will see** `[node.sh] Node is in sync.`, then a health check with `sync: SYNCED`. **Time:** on a server with 8 cores and 16 GB of RAM (Hetzner cax31), expect loading the snapshot to take about 8 to 9 hours and catching up about 5 more. A faster disk or network shortens both. What step 2 does: [Server and node](../server-and-node/#what-step-2-does).
 
 Right after step 1, SSH can refuse the connection for a minute while the server boots. Wait and run it again. On the first connection SSH asks you to confirm the server's fingerprint; type `yes`.
 
@@ -151,38 +126,6 @@ Synced means every shard shows a `blockDelay` in single digits ([Getting Started
 
 </details>
 
-<details>
-<summary>What node.sh does and prints</summary>
-
-Read the script first: <RepoLink path="node.sh" />. It downloads and runs the official [`snapchain-bootstrap.sh`](https://github.com/farcasterxyz/snapchain/blob/main/scripts/snapchain-bootstrap.sh) and prints that file's sha256.
-
-- Checks Ubuntu 22.04 or 24.04, RAM and free disk. `MIN_FREE_GB=900` lets it accept the 1000 GB volume, which shows 984 GB.
-- Installs Docker from Docker's own apt repository.
-- Writes the two answers the bootstrap would ask for into `~/snapchain/.env`: that you get no rewards, and `SKIP_CRONTAB=true` unless you set `OPERATOR_FID`.
-- On a disk under 1500 GB, installs two helpers. `disk-guard.sh` stops the node at 90% full. `snapshot-space-saver.sh` deletes snapshot files the node has already read. They are needed because the official restore keeps all chunks, one tar per shard and the database until it finishes, and that does not fit on 1 TB.
-- Runs the official bootstrap. It needs a terminal, so `node.sh` gives it one with `script`, and stops following its log once it prints "Upgrade complete".
-- Checks `/v1/info` once a minute. It stops when every shard is under 10 s behind on 3 checks in a row, or after 24 hours. Then it prints a health check.
-
-The automatic install of the two disk helpers has unit tests (`test/node_sh_test.sh`) but has not run during a real sync yet.
-
-What it prints while syncing (heights and times are examples):
-
-```text
-[node.sh] Data disk 984 GB: arming disk-guard and snapshot-space-saver.
-[node.sh] disk-guard: snapchain-disk-guard.timer is active.
-[node.sh] space-saver: snapchain-space-saver.service is active.
-[node.sh] Waiting for sync: all shards blockDelay < 10s for 3 polls (timeout 86400s).
-[node.sh] 04:31:10Z HTTP API not answering yet (snapshot download in progress?).
-[node.sh] 05:04:36Z SYNCING shard 0: height=48210601 blockDelay=79236 | shard 1: height=48906556 blockDelay=57766 | shard 2: height=48723458 blockDelay=76739
-...
-[node.sh] Node is in sync.
-================ Snapchain health check ================
-HTTP API http://127.0.0.1:3381/v1/info: OK
-sync: SYNCED (blockDelay < 10s on all shards)
-```
-
-</details>
-
 <CopyPrompt id="node" />
 
 ## 3. Open the app
@@ -193,39 +136,12 @@ sync: SYNCED (blockDelay < 10s on all shards)
 
 **You will see** `[deploy-client] OK: https://<name> (client) …`. Open that address: the status line starts with `Connected.` **Time:** under a minute with a warm npm cache. The first build takes longer.
 
-To post, add an app key first: see [Your first cast](../first-cast/).
+To post, add an app key first: see [Post with an app key](../first-cast/). What step 3 does: [Server and node](../server-and-node/#what-step-3-does).
 
 <details>
 <summary>Use your own domain</summary>
 
-Point the domain at `$IP` and pass it as a second argument: `./deploy-client.sh "$IP" node.example.com`. Without one, the script uses `<ip-with-dashes>.sslip.io`, a free DNS service run by someone else. That is fine for reading. For adding a key with your recovery phrase, use the local copy described in [Your first cast](../first-cast/).
-
-</details>
-
-<details>
-<summary>What deploy-client.sh does and how to check it</summary>
-
-Read the script first: <RepoLink path="deploy-client.sh" />, <RepoLink path="deploy/Caddyfile" />
-
-- Builds the app on your computer (`npm ci --ignore-scripts`, tests, `vite build`).
-- Copies the built app, the Caddyfile and a compose file to `/opt/snapchain-client` on the server and starts Caddy.
-- Caddy gets a Let's Encrypt certificate and serves the app plus `/v1/*` (passed to the node on `127.0.0.1:3381`) from one HTTPS address.
-
-```text
-[deploy-client] building client (npm ci --ignore-scripts, typecheck, tests, build)
-[deploy-client] uploading to root@<ip>:/opt/snapchain-client
-[deploy-client] waiting for HTTPS on https://<ip-with-dashes>.sslip.io ...
-[deploy-client] OK: https://<ip-with-dashes>.sslip.io (client) and https://<ip-with-dashes>.sslip.io/v1/info (node, proxied)
-```
-
-Check it worked (use the address it printed):
-
-```bash
-curl -sI https://<name>/ | grep -i content-security-policy   # connect-src 'self'
-curl -s https://<name>/v1/info | jq .version                 # your node, through Caddy
-```
-
-In the browser, the status line lists how far behind each shard is. Type an FID (try `3`) under Feed and press Refresh.
+Point the domain at `$IP` and pass it as a second argument: `./deploy-client.sh "$IP" node.example.com`. Without one, the script uses `<ip-with-dashes>.sslip.io`, a free DNS service run by someone else. That is fine for reading. For adding a key with your recovery phrase, use the local copy described in [Post with an app key](../first-cast/).
 
 </details>
 

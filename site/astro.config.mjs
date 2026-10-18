@@ -20,6 +20,8 @@ export default defineConfig({
     "/receipts/": `${base.replace(/\/$/, "")}/proof/`,
     "/troubleshooting/": `${base.replace(/\/$/, "")}/fix/`,
     "/tutorial/": `${base.replace(/\/$/, "")}/how-farcaster-works/`,
+    "/hetzner/": `${base.replace(/\/$/, "")}/server-and-node/`,
+    "/before-you-start/": `${base.replace(/\/$/, "")}/server-and-node/`,
   },
   markdown: { remarkPlugins: [remarkRepoUrl], rehypePlugins: [rehypeTableScroll, rehypeStepIds] },
   integrations: [
@@ -51,18 +53,17 @@ export default defineConfig({
           label: "Go deeper",
           items: [
             { label: "How Farcaster works", slug: "how-farcaster-works" },
-            { label: "Before you start", slug: "before-you-start" },
-            { label: "Do it on Hetzner", slug: "hetzner" },
-            { label: "Your first cast", slug: "first-cast" },
-            { label: "Do it with your AI assistant", slug: "ai-assistant" },
-            { label: "Fix a problem", slug: "fix" },
+            { label: "Server and node", slug: "server-and-node" },
+            { label: "Post with an app key", slug: "first-cast" },
+            { label: "Set up with AI", slug: "ai-assistant" },
           ],
         },
         {
           label: "Reference",
           items: [
-            { label: "Reference", slug: "reference" },
+            { label: "Scripts and settings", slug: "reference" },
             { label: "Glossary", slug: "glossary" },
+            { label: "Fix a problem", slug: "fix" },
             { label: "Proof: what we ran", slug: "proof" },
             { label: "Docs issues we found", slug: "docs-issues" },
             { label: "How AI was used", slug: "how-ai-was-used" },

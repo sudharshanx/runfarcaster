@@ -71,6 +71,7 @@ const icons = {
     </div>
   )}
 </div>
+{entry.data.description && <p class="page-summary">{entry.data.description}</p>}
 
 <script>
   // A link to an id inside a closed <details> (for example /quickstart/#try-it) opens it.
@@ -147,6 +148,7 @@ const icons = {
 <style>
   .title-row { display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: 0.75rem 1.25rem; }
   .title-row h1 { flex: 1 1 18rem; min-width: 0; margin-top: 1rem; font-size: var(--sl-text-h1); line-height: var(--sl-line-height-headings); font-weight: 500; letter-spacing: -1px; color: #15191f; }
+  .page-summary { margin: 0.75rem 0 0; max-width: 46rem; font-size: 1.0625rem; line-height: 1.55; color: #4a5260; }
   .copy-page { position: relative; margin-top: 1.1rem; margin-inline-start: auto; font-family: var(--sl-font); }
   .cp-split { display: inline-flex; border: 1px solid #dfe2e7; border-radius: 6px; background: #ffffff; }
   .cp-split button { display: inline-flex; align-items: center; gap: 0.45rem; min-height: 36px; margin: 0; border: 0; background: none; color: #15191f; font: inherit; font-size: 14px; font-weight: 500; cursor: pointer; }

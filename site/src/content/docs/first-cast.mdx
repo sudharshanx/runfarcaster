@@ -1,14 +1,16 @@
 ---
-title: Your first cast
-description: Add an app key with one gasless KEY_ADD, then cast, follow and like through your own node. Run the app on your own computer for this. Not yet tested on mainnet.
+title: Post with an app key
+description: How to add an app key with your recovery phrase and post through your own node. Read it after the Quickstart, once you want to post from a test account.
 ---
+
+import RepoLink from "../../components/RepoLink.astro";
 
 :::caution[Not yet tested on mainnet]
 Only unit tests and a local mock node have run this part. Adding a key and posting a cast on mainnet with it have not been tested. If you try it, use a test account and report what happened ([Vouches](../proof/#vouches)).
 :::
 
 You need:
-- A **test** Farcaster account and its recovery phrase. Read [Seed phrases and app keys](../before-you-start/#seed-phrases-and-app-keys) first.
+- A **test** Farcaster account and its recovery phrase. Read [What the app does with your recovery phrase](#what-the-app-does-with-your-recovery-phrase) first.
 - Node.js 22.12 or later (22.x, 24.x or 26+) and this repo on your computer.
 - Your node from the [Quickstart](../quickstart/).
 
@@ -25,6 +27,34 @@ Never paste a recovery phrase into an AI assistant or a chat.
 Your recovery phrase can do anything with your account. The address `deploy-client.sh` prints is usually `<ip-with-dashes>.sslip.io`. sslip.io is a DNS service someone else runs. Whoever controls that DNS, or the server, could serve a changed page that sends your phrase elsewhere. A page served from `localhost` comes from files on your own disk, built from code you can read.
 
 So for adding the key, run the app locally and reach the node through an SSH tunnel. Port 3381 stays closed to the internet. The app shows an **Address check** warning whenever it is not on `localhost`.
+
+## What the app does with your recovery phrase
+
+:::danger[The recovery phrase controls the whole account]
+Use a test account. Only type a recovery phrase into code you have read, or code from people you trust, on your own computer. Never paste it into an AI assistant or a chat. If an app you already trust can give you an app key, use that instead.
+:::
+
+The code is in <RepoLink path="client/src/signer.ts" />:
+
+1. Your browser makes a new ed25519 app key.
+2. The browser uses the phrase once to sign one gasless `KEY_ADD` with your custody address. There is no transaction and no gas.
+3. Nothing stores, logs or sends the phrase. Only the signed `KEY_ADD` goes to your node.
+4. The app key is saved in this browser's `localStorage`. **Forget app key** deletes it there; the key stays valid on the network until it expires.
+
+JavaScript cannot promise that the browser has wiped the phrase from memory. That is one more reason to use your own computer and a test account.
+
+{/* AUTHOR: a personal tip on recovery-phrase safety, for example how you set up your test account. */}
+
+## What the app key can and cannot do
+
+| The app key can | The app key cannot |
+|---|---|
+| Post casts (`CAST_ADD`) | Move money or sign transactions |
+| Like and recast (`REACTION_ADD`) | Delete casts, unfollow or edit your profile; the app does not ask for those scopes |
+| Follow (`LINK_ADD`) | Approve or cancel other keys (`KEY_ADD` and `KEY_REMOVE` are never scopes) |
+| Work until it expires: 7 days by default, 90 at most, renewed each time it is used | Keep working after your custody address cancels it |
+
+<RepoLink path="SECURITY.md" /> has the full list.
 
 ## 1. Run the app locally
 
@@ -86,7 +116,7 @@ Each one shows up in **Outgoing messages** with a state:
 | `[confirmed]` | The node returns it |
 | `[failed]` | Still missing after 4 sends, or the node rejected it |
 
-A failed message shows the reason and a **Retry** button. [How Farcaster works, step 2](../how-farcaster-works/#step-2-your-node-passes-messages-on) explains these states.
+A failed message shows the reason and a **Retry** button. [Your node passes messages on](../how-farcaster-works/#your-node-passes-messages-on) explains these states.
 
 The app can only add. It has no button to delete a cast, unfollow or unlike.
 

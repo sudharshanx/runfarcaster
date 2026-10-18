@@ -1,6 +1,6 @@
 ---
 title: "How Farcaster works"
-description: The Farcaster ideas behind the 3 steps, in 8 short parts. App keys without gas, how a read node passes messages on, accounts and storage, shards, the HTTP API, the HTTPS proxy and filters.
+description: The Farcaster ideas behind the 3 steps, each with a command to run against your own node. Read it first in this section, after the Quickstart or while your node syncs.
 tableOfContents:
   maxHeadingLevel: 2
 ---
@@ -10,13 +10,20 @@ import RepoLink from "../../components/RepoLink.astro";
 
 <p class="byline">Updated on 18 October 2026<br />Tested on Hetzner cax31 (ARM64), Ubuntu 24.04, Snapchain v0.14.3, mainnet. Sending a real message to mainnet has not been tested yet; see <a href="../proof/#test-status">test status</a>.</p>
 
-## Introduction
-
 {/* AUTHOR: two or three sentences on what confused you most when you started, and what this page will make clear. */}
 
 The [Quickstart](../quickstart/) gave you a node and an app. This page explains what they do, using commands you can run against your own node. Since 2026-05-07, adding an app key needs no blockchain transaction. A read node passes the messages you send it on to the validators.
 
-## Prerequisites
+## How the parts connect
+
+<pre class="diagram" role="img" tabindex="0" aria-label="Diagram. The browser talks HTTPS to Caddy on port 443. Caddy serves the app and passes /v1 requests to the read node on port 3381. The read node exchanges blocks and messages with validators over UDP port 3382. The validators read accounts, custody addresses, storage and onchain keys from OP Mainnet and put those events in blocks.">{`browser ──HTTPS──▶ Caddy (:443) ──/v1/*──▶ read node (:3381) ◀──gossip, UDP 3382──▶ validators
+         one address   serves the app        passes messages on                    make blocks
+                                                                                        │
+                                       read from OP Mainnet: FIDs, custody, storage, onchain keys`}</pre>
+
+## Point the commands at your node
+
+You need:
 
 - A synced node from the Quickstart, or any Snapchain node whose HTTP API you can reach.
 - `curl` and `jq`.
@@ -34,14 +41,7 @@ Port 3381 is closed to the internet by default. To reach it straight from your c
 ssh -N -L 3381:127.0.0.1:3381 root@$IP
 ```
 
-How the parts connect:
-
-<pre class="diagram" role="img" tabindex="0" aria-label="Diagram. The browser talks HTTPS to Caddy on port 443. Caddy serves the app and passes /v1 requests to the read node on port 3381. The read node exchanges blocks and messages with validators over UDP port 3382. The validators read accounts, custody addresses, storage and onchain keys from OP Mainnet and put those events in blocks.">{`browser ──HTTPS──▶ Caddy (:443) ──/v1/*──▶ read node (:3381) ◀──gossip, UDP 3382──▶ validators
-         one address   serves the app        passes messages on                    make blocks
-                                                                                        │
-                                       read from OP Mainnet: FIDs, custody, storage, onchain keys`}</pre>
-
-## Step 1: App keys are gasless now
+## App keys are gasless now
 
 An app posts for you with an **app key**. The docs also call it a *signer*. It is an ed25519 key pair. Since engine version V16 went live on mainnet on 2026-05-07, you add one by sending a `KEY_ADD` **message** to a node. Before that you had to send a transaction on OP Mainnet and pay for it in ETH. Sources: [writing-messages guide](https://snapchain.farcaster.xyz/guides/writing-messages), and the V16 date and `GaslessSigners` feature in [`src/version/version.rs`](https://github.com/farcasterxyz/snapchain/blob/fc87f2686472598143062a00e1c2b2633b2d87ab/src/version/version.rs).
 
@@ -80,12 +80,12 @@ const msg = await makeKeyAdd(body.value, { fid, network: FarcasterNetwork.MAINNE
 Call `makeKeyAddBody`. The older `getSignedKeyRequestMetadata` signs for the onchain contract, and the node rejects that inside a `KEY_ADD`.
 
 :::danger[Your recovery phrase]
-The two EIP-712 signatures need your custody key, which comes from your recovery phrase. Use a test account. Only type the phrase into code you have read, or code from people you trust. Do it on your own computer, as in [Your first cast](../first-cast/). Never paste it into an AI assistant. How the app handles it: [Before you start](../before-you-start/#seed-phrases-and-app-keys).
+The two EIP-712 signatures need your custody key, which comes from your recovery phrase. Use a test account. Only type the phrase into code you have read, or code from people you trust. Do it on your own computer, as in [Post with an app key](../first-cast/). Never paste it into an AI assistant. How the app handles it: [What the app does with your recovery phrase](../first-cast/#what-the-app-does-with-your-recovery-phrase).
 :::
 
 <CopyPrompt id="concept" label="Copy prompt: ask an assistant about gasless app keys" question="How does a gasless KEY_ADD work, which three signatures does it carry, and how do nonce and TTL work?" />
 
-## Step 2: Your node passes messages on
+## Your node passes messages on
 
 Send a signed message to `POST /v1/submitMessage` on your read node. The node validates it, then publishes it to the validators on the `mempool` gossip topic. The node does not hold on to it. Sources: [node-types: message submission](https://snapchain.farcaster.xyz/node-types#message-submission-and-the-mempool), and in the code, `submit_message_internal` in `src/network/server.rs` and `ReadNodeMempool` in `src/mempool/mempool.rs`.
 
@@ -111,7 +111,7 @@ How long a valid message takes to appear has not been measured.
 
 <CopyPrompt id="concept" label="Copy prompt: ask about write relay" question="What does a 200 from submitMessage on a read node mean, and why should a client query the message back and retry?" />
 
-## Step 3: Some parts live onchain
+## Some parts live onchain
 
 | Part | Where | What |
 |---|---|---|
@@ -121,7 +121,7 @@ How long a valid message takes to appear has not been measured.
 
 Validators read the Farcaster contracts on OP Mainnet and put those events in blocks. Your node gets them inside the blocks, together with all messages. It needs no OP Mainnet connection of its own. Your account is not tied to an app. Any app that can reach a node can show your posts, and any app key you approved can post for you.
 
-## Step 4: Account number, owner address, storage
+## Account number, owner address, storage
 
 - **FID** is your account number. It is registered onchain. Profiles, casts and follows all refer to it.
 - **Custody address** is the Ethereum address that owns the FID. It approves and revokes app keys, and can move the FID to another address. The app derives it from the recovery phrase at the path `m/44'/60'/0'/0/0`.
@@ -136,7 +136,7 @@ curl -s "$NODE/v1/userDataByFid?fid=3" | jq '.messages[].data.userDataBody'
 
 <CopyPrompt id="concept" label="Copy prompt: ask about FIDs and custody" question="What is the difference between an FID, a custody address and an app key, and what can each one do?" />
 
-## Step 5: Shards, validators and your node
+## Shards, validators and your node
 
 | Question | Validator | Your read node |
 |---|---|---|
@@ -154,7 +154,7 @@ curl -s "$NODE/v1/info" | jq '{version, numShards, shards: [.shardInfos[] | {sha
 
 `blockDelay` is how many seconds a shard's newest block is behind the clock. When every shard shows single digits, the node is synced ([Getting Started](https://snapchain.farcaster.xyz/getting-started)). A new node first downloads a snapshot. On 2026-10-18 that was 5689 compressed chunks, roughly 500 GB on disk. Then it fetches the newer blocks one by one: on cax31, about 4.3 to 4.6 blocks a second per shard.
 
-## Step 6: Read with the HTTP API
+## Read with the HTTP API
 
 The node answers HTTP on port 3381. It has no "home feed" endpoint, so the app builds one (<RepoLink path="client/src/feed.ts" />):
 
@@ -185,7 +185,7 @@ The app builds the feed in 3 parts:
 
 <CopyPrompt id="concept" label="Copy prompt: ask about the HTTP API" question="Which Snapchain HTTP API endpoints build a simple home feed, and how does paging with pageToken work?" />
 
-## Step 7: Why the app and the node share one address
+## Why the app and the node share one address
 
 A page loaded over HTTPS cannot call `http://<ip>:3381`; browsers block that as mixed content. GET requests to another address work, because the node sends `Access-Control-Allow-Origin: *`. `submitMessage` does not. Its `Content-Type: application/octet-stream` header makes the browser send an `OPTIONS` request first. The node answers that with 404, so the browser blocks the post.
 
@@ -213,7 +213,7 @@ So Caddy serves the app and passes `/v1/*` to the node, on the same address (<Re
 
 Through Caddy, `/v1/mesh` (the node's mesh debug view) returns 404. `/v1/currentPeers` stays public: it lists the peers the node is connected to, which are mainnet validators, with the addresses it sees for them. `connect-src 'self'` lets the page send requests only to its own address. If a library in the app were compromised, it could not send your data elsewhere. Caddy fetches its own Let's Encrypt certificate over ports 80 and 443.
 
-## Step 8: Filters
+## Filters
 
 The app's filters work on casts made in any app, because they run on what your node returns (<RepoLink path="client/src/filters.ts" />).
 
@@ -224,29 +224,4 @@ The app's filters work on casts made in any app, because they run on what your n
 
 When a cast matches both, the mute wins. Keywords ignore case and match anywhere in the text. Filters are saved in your browser, and the feed shows how many casts it hid.
 
-## Conclusion
-
-To post with a test account, follow [Your first cast](../first-cast/).
-
 {/* AUTHOR: your closing. What you would try next, and one thing you learned. */}
-
-When you are done, delete the server so the bill stops:
-
-```bash
-CONFIRM=snapchain-read-node ./teardown.sh
-```
-
-## How this differs from the official node guide
-
-| Topic | Official guide ([running-a-node](https://snapchain.farcaster.xyz/guides/running-a-node), [Getting Started](https://snapchain.farcaster.xyz/getting-started)) | This guide |
-|---|---|---|
-| Server | Set up by hand in the AWS console, with screenshots | `provision.sh` on Hetzner |
-| Cost | "Roughly $100/month", an estimate | About $0.164 an hour, about $2.31 until synced (one run, price-list rates) |
-| Time to sync | "A few hours" | About 14 hours on cax31 |
-| Disk | 2 TB (docs), 1.5 TB (README) | 1000 GB worked with two helper scripts; `node.sh` now installs them (unit-tested only) |
-| Firewall | Opens 3382/**tcp** and SSH to everyone ([Docs issues #1, #2](../docs-issues/)) | 3382/udp; SSH only from `SSH_SOURCE_CIDRS`; 3381 and 3383 closed |
-| Bootstrap | `curl … \| bash`, needs a terminal, keeps running in front of you | The same official script, run by `node.sh`, which then waits for sync |
-| API keys | Points to a paid API service for speed | None; the app reads from your node |
-| App keys | hello-world still adds keys onchain with about $10 of OP ETH ([Docs issues #10](../docs-issues/)) | Gasless `KEY_ADD` (`src/core/validations/key.rs`, live since V16 per `src/version/version.rs`) |
-| Posting | Older pages send messages to a hosted hub | Your read node sends them on (`submit_message_internal` in `src/network/server.rs`, `ReadNodeMempool` in `src/mempool/mempool.rs`) |
-| Cleanup | Not covered | `teardown.sh` (not yet run on real servers) |

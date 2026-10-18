@@ -1,0 +1,208 @@
+---
+title: Server and node
+description: The Hetzner setup, the cost and what each of the 3 steps does on the server. Read it before the Quickstart if you have no Hetzner account yet, or after it to see what ran.
+---
+
+import RepoLink from "../../components/RepoLink.astro";
+
+{/* AUTHOR: one or two sentences on what you wish you had known before you started. */}
+
+Hetzner Cloud is the only provider this guide has been tested on. The scripts call Hetzner's own `hcloud` command-line tool, so other clouds would need different scripts. Where Hetzner's console changes over time, this page links to Hetzner's own instructions instead of describing buttons.
+
+## What you need
+
+- A Hetzner Cloud account with an empty project.
+- An API token for that project, Read & Write.
+- Your SSH key uploaded to that project.
+- On your computer: `hcloud`, `jq`, `ssh`, `curl`, and Node.js 22.12 or later (22.x, 24.x or 26+) with npm.
+- A Hetzner volume limit of at least 1000 GB.
+- About 14 hours during which the server can run without you.
+- Only to post: a test Farcaster account that has an FID and paid storage. Reading needs no account. Registering an FID and paying for storage are onchain actions; see the [Farcaster docs](https://docs.farcaster.xyz/). This guide does not cover creating one.
+
+## Hetzner account and project
+
+Sign up at Hetzner and verify your email. Hetzner asks for contact and billing details. Their guide: [Hetzner Account Getting Started](https://docs.hetzner.com/general/billing-and-account-management/account-getting-started/).
+
+In the [Hetzner Cloud console](https://console.hetzner.cloud/), create a new project just for this, for example `snapchain`. A separate project keeps the token's reach small and makes cleanup easy to check: when you are done, the project should be empty. Hetzner explains projects in its [Cloud FAQ](https://docs.hetzner.com/cloud/general/faq/).
+
+## API token
+
+Inside the project, create an API token with Read & Write permission. Hetzner's steps: [Generating an API token](https://docs.hetzner.com/cloud/api/getting-started/generating-api-token/). Hetzner shows the token only once.
+
+Put it in your shell without typing it into the command line, so it stays out of your shell history:
+
+```bash title="your computer"
+read -rsp 'Hetzner token: ' HCLOUD_TOKEN && export HCLOUD_TOKEN && echo
+```
+
+:::danger[Keep the token secret]
+Anyone with this token can create servers on your bill. Do not commit it, paste it into a chat or an AI assistant, or put it in a file inside the repo. The scripts read it from the environment and never print it. If it leaks, delete it in the console and create a new one.
+:::
+
+You need to run that `read` line again in every new terminal.
+
+## Tools
+
+| Tool | Why | Install |
+|---|---|---|
+| `hcloud` | Talks to Hetzner | [hetznercloud/cli](https://github.com/hetznercloud/cli) (macOS: `brew install hcloud`) |
+| `jq` | Reads JSON in the scripts | `brew install jq` or `sudo apt install jq` |
+| `ssh`, `curl` | Reach the server | Already on macOS and most Linux systems |
+| Node.js 22.12 or later (22.x, 24.x or 26+), npm | Builds the app | [nodejs.org](https://nodejs.org/) |
+
+```bash title="check"
+hcloud version && jq --version && ssh -V && curl --version && node --version && npm --version
+hcloud server list        # works once HCLOUD_TOKEN is set; an empty list is fine
+```
+
+## SSH key
+
+If you do not have a key yet, make one, then upload the public half to the project:
+
+```bash title="your computer"
+ssh-keygen -t ed25519 -f ~/.ssh/id_ed25519      # skip if the file exists
+hcloud ssh-key create --name my-key \
+  --public-key-from-file ~/.ssh/id_ed25519.pub
+hcloud ssh-key list
+```
+
+`my-key` is the name you pass as `SSH_KEY=my-key` in step 1 of the Quickstart. Keys belong to one project, so upload it to the project you made above. The `hcloud ssh-key create` command is from the [hcloud CLI tutorial](https://github.com/hetznercloud/cli/blob/main/docs/tutorials/create-a-server.md).
+
+## Hetzner limits
+
+| Limit | What you see | What to do |
+|---|---|---|
+| New accounts may rent at most 1024 GB of volumes in total, across all projects. The official docs ask for 1.5 to 2 TB. Your limits: [console.hetzner.cloud/limits](https://console.hetzner.cloud/limits). | `volumes size limit exceeded (resource_limit_exceeded)` | Use `VOLUME_GB=1000`, the tested size. `node.sh` then adds two disk helpers so the snapshot fits. |
+| Server types sell out. | `provision.sh` refuses the type and lists what is for sale | See [Server choice](#server-choice). |
+
+## Server choice
+
+| Setting | Tested with | Why |
+|---|---|---|
+| Server type | `cax31`: ARM64, 8 vCPU, 16 GB RAM, 160 GB disk | The node needs 16 GB of RAM. The Snapchain, statsd and Grafana images all have ARM64 builds. |
+| Volume | 1000 GB | Fits the new-account limit. The database reached 557.86 GB. |
+| Location | `fsn1` (Falkenstein) | The script's default. Server and volume must be in the same location. |
+| Image | Ubuntu 24.04 | The script's default. |
+
+Server types sell out. On 18 Oct 2026 at 18:48 IST, Hetzner listed cax31 and cx43 as sold out in fsn1, nbg1 and hel1. The cheapest type with 16 GB of RAM for sale in fsn1 was cpx42 (x86, 8 vCPU, 16 GB RAM) at $0.1314 an hour, at most $81.99 a month. With the IPv4 address and the 1000 GB volume that comes to about $159 a month. The guide has not been tested on cpx42, so sync times there may differ.
+
+If the type is sold out, `provision.sh` says so and lists the types for sale in `LOCATION`, cheapest first. Then set `SERVER_TYPE`, or `LOCATION` (fsn1, nbg1, hel1, ash, hil or sin).
+
+## What it costs
+
+From Hetzner's price list on 2026-10-18, in USD:
+
+| Item | Price |
+|---|---|
+| cax31 | $0.040 an hour, at most $24.99 a month |
+| Public IPv4 | $0.001 an hour, at most $0.60 a month |
+| 1000 GB volume | $76.70 a month ($0.0767 per GB). Hetzner bills it by the hour; that works out to about $0.123 an hour (monthly price ÷ 625 hours, the ratio of the server's own monthly and hourly prices) |
+| Total | About $0.164 an hour. About $102 a month if you leave it on (each item stops at its monthly price). |
+
+On cax31, expect about 14 hours from renting the server to a synced node, about $2.31 at these prices. These figures come from the price list, not an invoice. To see the price before creating anything:
+
+```bash title="See the price, create nothing"
+ESTIMATE_ONLY=1 SERVER_TYPE=cax31 VOLUME_GB=1000 EXPECTED_HOURS=16 ./provision.sh
+```
+
+`provision.sh` creates nothing if the hourly price × `EXPECTED_HOURS` is above `MAX_USD`. The default `MAX_USD` is 2, in your Hetzner account's currency.
+
+## What step 1 does
+
+Read the script first: <RepoLink path="provision.sh" />
+
+- Checks that each entry in `SSH_SOURCE_CIDRS` looks like an address with a prefix, such as `203.0.113.7/32`. An empty `$MY_IP` stops it here.
+- Checks that `LOCATION` exists and that the server type is for sale there with at least 16 GB of RAM. If not, it lists what is available and creates nothing.
+- Reads the hourly price from Hetzner's live price list and prints it. It stops before creating anything if that price × `EXPECTED_HOURS` (default 6) is above `MAX_USD` (default 2, in your account's currency).
+- Creates a firewall, the data volume and the server. The firewall opens SSH (22, only to `SSH_SOURCE_CIDRS`), gossip (3382/udp) and the web ports 80 and 443. The node's own API ports 3381 and 3383 stay closed; the app reaches the node through Caddy.
+- Starts `watchdog.sh` first, unless you set `WATCHDOG=0`.
+- Prints the server's IP. Running it again reuses what exists and does not start a second watchdog.
+
+```text
+[provision] server type cax31: 8 vCPU (shared), 16 GB RAM, 160 GB disk, arm
+[provision] local disk 160 GB < 2000 GB: adding a 1000 GB volume
+  total       ~0.164 /h
+[provision] cost guard OK: projected <= MAX_USD=2
+[provision] WATCHDOG=0: no watchdog started (no automatic spending cap).
+[provision] done. Next (in a new terminal, get the IP back with: IP=$(hcloud server ip snapchain-read-node)):
+```
+
+Check it worked: `hcloud server list` shows `snapchain-read-node` running, and `hcloud volume list` shows `snapchain-read-node-data`.
+
+## What step 2 does
+
+Read the script first: <RepoLink path="node.sh" />. It downloads and runs the official [`snapchain-bootstrap.sh`](https://github.com/farcasterxyz/snapchain/blob/main/scripts/snapchain-bootstrap.sh) and prints that file's sha256.
+
+- Checks Ubuntu 22.04 or 24.04, RAM and free disk. `MIN_FREE_GB=900` lets it accept the 1000 GB volume, which shows 984 GB.
+- Installs Docker from Docker's own apt repository.
+- Writes the two answers the bootstrap would ask for into `~/snapchain/.env`: that you get no rewards, and `SKIP_CRONTAB=true` unless you set `OPERATOR_FID`. A read node never makes blocks, so it earns no rewards; read the terms at [Getting Started](https://snapchain.farcaster.xyz/getting-started) before you set `SNAPCHAIN_AGREE_NO_REWARDS=yes`.
+- On a disk under 1500 GB, installs two helpers. `disk-guard.sh` stops the node at 90% full. `snapshot-space-saver.sh` deletes snapshot files the node has already read. They are needed because the official restore keeps all chunks, one tar per shard and the database until it finishes, and that does not fit on 1 TB.
+- Runs the official bootstrap. It needs a terminal, so `node.sh` gives it one with `script`, and stops following its log once it prints "Upgrade complete".
+- Checks `/v1/info` once a minute. It stops when every shard is under 10 s behind on 3 checks in a row, or after 24 hours. Then it prints a health check.
+
+The automatic install of the two disk helpers has unit tests (`test/node_sh_test.sh`) but has not run during a real sync yet.
+
+What it prints while syncing (heights and times are examples):
+
+```text
+[node.sh] Data disk 984 GB: arming disk-guard and snapshot-space-saver.
+[node.sh] disk-guard: snapchain-disk-guard.timer is active.
+[node.sh] space-saver: snapchain-space-saver.service is active.
+[node.sh] Waiting for sync: all shards blockDelay < 10s for 3 polls (timeout 86400s).
+[node.sh] 04:31:10Z HTTP API not answering yet (snapshot download in progress?).
+[node.sh] 05:04:36Z SYNCING shard 0: height=48210601 blockDelay=79236 | shard 1: height=48906556 blockDelay=57766 | shard 2: height=48723458 blockDelay=76739
+...
+[node.sh] Node is in sync.
+================ Snapchain health check ================
+HTTP API http://127.0.0.1:3381/v1/info: OK
+sync: SYNCED (blockDelay < 10s on all shards)
+```
+
+## What step 3 does
+
+Read the script first: <RepoLink path="deploy-client.sh" />, <RepoLink path="deploy/Caddyfile" />
+
+- Builds the app on your computer (`npm ci --ignore-scripts`, tests, `vite build`).
+- Copies the built app, the Caddyfile and a compose file to `/opt/snapchain-client` on the server and starts Caddy.
+- Caddy gets a Let's Encrypt certificate and serves the app plus `/v1/*` (passed to the node on `127.0.0.1:3381`) from one HTTPS address. [Why the app and the node share one address](../how-farcaster-works/#why-the-app-and-the-node-share-one-address) explains why.
+
+```text
+[deploy-client] building client (npm ci --ignore-scripts, typecheck, tests, build)
+[deploy-client] uploading to root@<ip>:/opt/snapchain-client
+[deploy-client] waiting for HTTPS on https://<ip-with-dashes>.sslip.io ...
+[deploy-client] OK: https://<ip-with-dashes>.sslip.io (client) and https://<ip-with-dashes>.sslip.io/v1/info (node, proxied)
+```
+
+Check it worked (use the address it printed):
+
+```bash
+curl -sI https://<name>/ | grep -i content-security-policy   # connect-src 'self'
+curl -s https://<name>/v1/info | jq .version                 # your node, through Caddy
+```
+
+In the browser, the status line lists how far behind each shard is. Type an FID (try `3`) under Feed and press Refresh.
+
+## Delete everything
+
+```bash title="your computer"
+CONFIRM=snapchain-read-node ./teardown.sh
+```
+
+`teardown.sh` deletes the server, its volume and the firewall, then lists what is left. The node's database is on the volume, so it goes too. Running it twice is safe. Afterwards, check these yourself, either in the console or with the CLI:
+
+```bash
+hcloud server list
+hcloud volume list         # volumes bill even when no server uses them
+hcloud firewall list
+hcloud primary-ip list     # an unassigned primary IP still bills
+hcloud ssh-key list        # teardown keeps your key; delete it if you like:
+# hcloud ssh-key delete my-key
+```
+
+When all lists are empty (except your SSH key) you pay nothing more. Then delete the API token in the console if you no longer need it.
+
+:::caution
+`teardown.sh` has been tested only with `DRY_RUN=1` and against a fake `hcloud`. Review it before running it: <RepoLink path="teardown.sh" />
+:::
+
+If you started the watchdog in step 1 ([Only trying it?](../quickstart/#try-it)), it runs `teardown.sh` for you after 24 hours, before the bill reaches `MAX_USD`, or when the node has made no progress for 2 hours.
