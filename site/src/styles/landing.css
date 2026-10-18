@@ -283,3 +283,8 @@ body.lp { margin: 0; background: #fff; color: var(--text); font-family: var(--sa
 .cost-tabs button:focus-visible{outline:2px solid #4b6bfb;outline-offset:2px}
 .cost-tabs + [role="tabpanel"] .cost-table,[role="tabpanel"] .cost-table{margin-top:0.25rem}
 @media (max-width:640px){.cost-tabs button{padding:0.55rem 0.5rem;font-size:0.85rem}}
+
+.cost-tabs button{position:relative}
+.cost-tip{position:absolute;left:0;bottom:calc(100% + 8px);width:max-content;max-width:260px;padding:0.5rem 0.65rem;border-radius:6px;background:#111;color:#fff;font-size:0.8rem;font-weight:400;line-height:1.4;text-align:left;white-space:normal;opacity:0;visibility:hidden;pointer-events:none;transition:opacity .12s;z-index:5}
+.cost-tabs button:hover .cost-tip,.cost-tabs button:focus-visible .cost-tip{opacity:1;visibility:visible}
+@media (hover:none){.cost-tabs button:focus .cost-tip{opacity:1;visibility:visible}}
