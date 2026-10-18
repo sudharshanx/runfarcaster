@@ -1,0 +1,163 @@
+---
+// SPDX-License-Identifier: MIT
+// Starlight PageTitle override: the page title plus a "Copy page" split button for AI assistants.
+// The main button copies this page as Markdown. The menu also links to the .md file
+// (src/pages/[slug].md.ts) and opens ChatGPT or Claude with a prompt that points at it.
+// Icons: Lucide (ISC; check, chevron-down and arrow-up-right also MIT via Feather). See THIRD_PARTY_NOTICES.md.
+// Starlight links "Overview" in the table of contents to this id (PAGE_TITLE_ID in its constants).
+const PAGE_TITLE_ID = "_top";
+import { ORDER, pageMarkdown } from "../llms";
+
+const route = Astro.locals.starlightRoute;
+const { entry } = route;
+const id = entry.id;
+const hasMd = ORDER.includes(id);
+const md = hasMd ? pageMarkdown(entry) : "";
+const site = Astro.site ?? new URL("https://sudharshanx.github.io");
+const mdHref = `${import.meta.env.BASE_URL.replace(/\/?$/, "/")}${id}.md`;
+const mdUrl = new URL(mdHref, site).href;
+const prompt = `Read ${mdUrl} and help me with it. I may ask questions.`;
+// Prefill formats: ChatGPT ?q= (with hints=search so it can open the link), Claude /new?q=.
+const chatgpt = `https://chatgpt.com/?hints=search&q=${encodeURIComponent(prompt)}`;
+const claude = `https://claude.ai/new?q=${encodeURIComponent(prompt)}`;
+const svg = (body: string) =>
+  `<svg aria-hidden="true" focusable="false" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${body}</svg>`;
+const icons = {
+  copy: svg('<rect width="14" height="14" x="8" y="8" rx="2" ry="2" /><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2" />'),
+  check: svg('<path d="M20 6 9 17l-5-5" />'),
+  chevron: svg('<path d="m6 9 6 6 6-6" />'),
+  file: svg('<path d="M6 22a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h8a2.4 2.4 0 0 1 1.704.706l3.588 3.588A2.4 2.4 0 0 1 20 8v12a2 2 0 0 1-2 2z" /><path d="M14 2v5a1 1 0 0 0 1 1h5" /><path d="M10 9H8" /><path d="M16 13H8" /><path d="M16 17H8" />'),
+  circle: svg('<path d="M2.992 16.342a2 2 0 0 1 .094 1.167l-1.065 3.29a1 1 0 0 0 1.236 1.168l3.413-.998a2 2 0 0 1 1.099.092 10 10 0 1 0-4.777-4.719" />'),
+  square: svg('<path d="M22 17a2 2 0 0 1-2 2H6.828a2 2 0 0 0-1.414.586l-2.202 2.202A.71.71 0 0 1 2 21.286V5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2z" />'),
+  out: svg('<path d="M7 7h10v10" /><path d="M7 17 17 7" />'),
+};
+---
+<div class="title-row">
+  <h1 id={PAGE_TITLE_ID}>{entry.data.title}</h1>
+  {hasMd && (
+    <div class="copy-page not-content" data-copy-page>
+      <template data-page-md>{md}</template>
+      <div class="cp-split">
+        <button type="button" class="cp-main" data-cp-copy>
+          <span class="cp-ico" data-cp-ico set:html={icons.copy} />
+          <span data-cp-label>Copy page</span>
+        </button>
+        <button type="button" class="cp-toggle" aria-haspopup="menu" aria-expanded="false" aria-controls="copy-page-menu" aria-label="More ways to use this page" data-cp-toggle>
+          <Fragment set:html={icons.chevron} />
+        </button>
+      </div>
+      <div class="cp-menu" id="copy-page-menu" role="menu" aria-label="Use this page with AI" hidden data-cp-menu>
+        <button type="button" role="menuitem" tabindex="-1" class="cp-item" data-cp-copy>
+          <span class="cp-ico" set:html={icons.copy} />
+          <span class="cp-text"><span class="cp-t">Copy page</span><span class="cp-h">Copy this page as Markdown for AI</span></span>
+        </button>
+        <a role="menuitem" tabindex="-1" class="cp-item" href={mdHref} target="_blank" rel="noopener">
+          <span class="cp-ico" set:html={icons.file} />
+          <span class="cp-text"><span class="cp-t">View as Markdown</span><span class="cp-h">Open the raw Markdown</span></span>
+          <span class="cp-out" set:html={icons.out} />
+        </a>
+        <a role="menuitem" tabindex="-1" class="cp-item" href={chatgpt} target="_blank" rel="noopener noreferrer">
+          <span class="cp-ico" set:html={icons.circle} />
+          <span class="cp-text"><span class="cp-t">Open in ChatGPT</span><span class="cp-h">Ask questions about this page</span></span>
+          <span class="cp-out" set:html={icons.out} />
+        </a>
+        <a role="menuitem" tabindex="-1" class="cp-item" href={claude} target="_blank" rel="noopener noreferrer">
+          <span class="cp-ico" set:html={icons.square} />
+          <span class="cp-text"><span class="cp-t">Open in Claude</span><span class="cp-h">Ask questions about this page</span></span>
+          <span class="cp-out" set:html={icons.out} />
+        </a>
+      </div>
+      <span class="sr-only" role="status" aria-live="polite" data-cp-status></span>
+    </div>
+  )}
+</div>
+
+<script>
+  const CHECK = '<svg aria-hidden="true" focusable="false" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5" /></svg>';
+  for (const root of document.querySelectorAll<HTMLElement>("[data-copy-page]")) {
+    const toggle = root.querySelector<HTMLButtonElement>("[data-cp-toggle]")!;
+    const menu = root.querySelector<HTMLElement>("[data-cp-menu]")!;
+    const items = [...menu.querySelectorAll<HTMLElement>('[role="menuitem"]')];
+    const status = root.querySelector<HTMLElement>("[data-cp-status]")!;
+    const label = root.querySelector<HTMLElement>("[data-cp-label]")!;
+    const ico = root.querySelector<HTMLElement>("[data-cp-ico]")!;
+    const md = root.querySelector<HTMLTemplateElement>("[data-page-md]")!.content.textContent ?? "";
+    const copyIco = ico.innerHTML;
+    let timer = 0;
+
+    const open = (focus: "first" | "last" | null) => {
+      menu.hidden = false;
+      toggle.setAttribute("aria-expanded", "true");
+      if (focus) items[focus === "first" ? 0 : items.length - 1].focus();
+    };
+    const close = (returnFocus: boolean) => {
+      if (menu.hidden) return;
+      menu.hidden = true;
+      toggle.setAttribute("aria-expanded", "false");
+      if (returnFocus) toggle.focus();
+    };
+    const copy = async () => {
+      let ok = true;
+      try { await navigator.clipboard.writeText(md); } catch { ok = false; }
+      clearTimeout(timer);
+      label.textContent = ok ? "Copied" : "Copy failed";
+      if (ok) ico.innerHTML = CHECK;
+      status.textContent = ok ? "Copied" : "Copy failed. Use View as Markdown and copy it from there.";
+      timer = window.setTimeout(() => { label.textContent = "Copy page"; ico.innerHTML = copyIco; status.textContent = ""; }, 2000);
+    };
+
+    for (const b of root.querySelectorAll<HTMLElement>("[data-cp-copy]")) {
+      b.addEventListener("click", () => {
+        const fromMenu = menu.contains(b);
+        copy();
+        if (fromMenu) close(true);
+      });
+    }
+    toggle.addEventListener("click", () => (menu.hidden ? open("first") : close(false)));
+    toggle.addEventListener("keydown", (e) => {
+      if (e.key === "ArrowDown") { e.preventDefault(); open("first"); }
+      if (e.key === "ArrowUp") { e.preventDefault(); open("last"); }
+    });
+    menu.addEventListener("keydown", (e) => {
+      const i = items.indexOf(document.activeElement as HTMLElement);
+      const go = (n: number) => { e.preventDefault(); items[(n + items.length) % items.length].focus(); };
+      if (e.key === "ArrowDown") go(i + 1);
+      else if (e.key === "ArrowUp") go(i - 1);
+      else if (e.key === "Home") go(0);
+      else if (e.key === "End") go(items.length - 1);
+      else if (e.key === "Escape") { e.preventDefault(); close(true); }
+      else if (e.key === "Tab") close(false);
+      else if (e.key === " " && document.activeElement instanceof HTMLAnchorElement) { e.preventDefault(); document.activeElement.click(); }
+    });
+    for (const a of menu.querySelectorAll("a")) a.addEventListener("click", () => close(false));
+    document.addEventListener("click", (e) => { if (!root.contains(e.target as Node)) close(false); });
+    root.addEventListener("focusout", (e) => { if (!root.contains(e.relatedTarget as Node | null) && e.relatedTarget) close(false); });
+  }
+</script>
+
+<style>
+  .title-row { display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: 0.75rem 1.25rem; }
+  .title-row h1 { flex: 1 1 18rem; min-width: 0; margin-top: 1rem; font-size: var(--sl-text-h1); line-height: var(--sl-line-height-headings); font-weight: 500; letter-spacing: -1px; color: #15191f; }
+  .copy-page { position: relative; margin-top: 1.1rem; margin-inline-start: auto; font-family: var(--sl-font); }
+  .cp-split { display: inline-flex; border: 1px solid #dfe2e7; border-radius: 6px; background: #ffffff; }
+  .cp-split button { display: inline-flex; align-items: center; gap: 0.45rem; min-height: 36px; margin: 0; border: 0; background: none; color: #15191f; font: inherit; font-size: 14px; font-weight: 500; cursor: pointer; }
+  .cp-main { padding: 0 0.8rem; border-radius: 5px 0 0 5px; }
+  .cp-toggle { padding: 0 0.55rem; border-left: 1px solid #dfe2e7 !important; border-radius: 0 5px 5px 0; }
+  .cp-split button:hover, .cp-item:hover, .cp-item:focus-visible { background: #f5f7ff; color: #244af0; }
+  .cp-split button:focus-visible, .cp-item:focus-visible { outline: 2px solid #244af0; outline-offset: -2px; }
+  .cp-ico { display: inline-flex; }
+  .cp-menu { position: absolute; z-index: 20; top: calc(100% + 6px); right: 0; width: min(19rem, calc(100vw - 2rem)); padding: 6px; border: 1px solid #dfe2e7; border-radius: 8px; background: #ffffff; box-shadow: 0 8px 24px rgb(21 25 31 / 0.10); }
+  .cp-menu[hidden] { display: none; }
+  .cp-item { display: flex; align-items: flex-start; gap: 0.7rem; width: 100%; min-height: 44px; margin: 0; padding: 0.55rem 0.65rem; border: 0; border-radius: 6px; background: none; color: #15191f; font: inherit; text-align: left; text-decoration: none; cursor: pointer; }
+  .cp-item .cp-ico { margin-top: 2px; color: #4a5260; }
+  .cp-item:hover .cp-ico, .cp-item:focus-visible .cp-ico { color: #244af0; }
+  .cp-text { display: flex; flex-direction: column; gap: 1px; flex: 1; min-width: 0; }
+  .cp-t { font-size: 14px; font-weight: 550; line-height: 1.35; }
+  .cp-h { font-size: 13px; line-height: 1.35; color: #5b6472; }
+  .cp-out { display: inline-flex; margin-top: 2px; color: #8a929e; }
+  @media (max-width: 50rem) {
+    .cp-split button { min-height: 44px; }
+    .cp-main { padding: 0 0.9rem; }
+    .cp-toggle { min-width: 44px; justify-content: center; }
+  }
+</style>

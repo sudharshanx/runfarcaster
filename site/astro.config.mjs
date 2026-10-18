@@ -35,6 +35,7 @@ export default defineConfig({
         ThemeSelect: "./src/components/NoThemeSelect.astro",
         SiteTitle: "./src/components/SiteTitle.astro",
         SocialIcons: "./src/components/HeaderLinks.astro",
+        PageTitle: "./src/components/PageTitle.astro",
       },
       // Wrap long command lines on phones instead of scrolling sideways (copy still copies the original).
       expressiveCode: {

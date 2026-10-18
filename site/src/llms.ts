@@ -2,7 +2,6 @@
 // Turns the MDX pages into plain Markdown for /llms.txt and /llms-full.txt.
 import { getCollection } from "astro:content";
 import { prompts, REPO, type PromptKey } from "./prompts";
-import { DOCS_MCP } from "./config.mjs";
 
 export const ORDER = [
   "before-you-start", "quickstart", "tutorial", "hetzner", "proof", "first-cast", "fix",
@@ -39,11 +38,14 @@ const TESTED = `| What | Status |
 | 2 TB volume, x86 cx43 | Not tried |
 | Inbound 3382/udp closed | 2-minute test only |`;
 
+// Docs pages link to each other with "../<slug>/". Plain Markdown files live at other paths
+// (/<slug>.md, /llms-full.txt), so links there use absolute URLs.
+const SITE_BASE = new URL(import.meta.env.BASE_URL, import.meta.env.SITE ?? "https://sudharshanx.github.io").href.replace(/\/?$/, "/");
+
 export function toMarkdown(body: string): string {
   return body
     .replace(/\{\/\*[\s\S]*?\*\/\}/g, "")
     .replace(/\{\{REPO_URL\}\}/g, REPO)
-    .replace(/\{\{DOCS_MCP_URL\}\}/g, DOCS_MCP)
     .replace(/^import .*$/gm, "")
     .replace(/<AtAGlance \/>/g, GLANCE)
     .replace(/<TestedTable \/>/g, TESTED)
@@ -64,8 +66,13 @@ export function toMarkdown(body: string): string {
     .replace(/<\/?(strong|code)>/g, (m) => (m.includes("strong") ? "**" : "`"))
     .replace(/<pre class="diagram"[^>]*>\{`([\s\S]*?)`\}<\/pre>/g, "```text\n$1\n```")
     .replace(/\n{3,}/g, "\n\n")
+    .replace(/\]\(\.\.\//g, `](${SITE_BASE}`)
     .trim();
 }
+
+type Entry = { data: { title: string; description?: string }; body?: string };
+export const pageMarkdown = (e: Entry) =>
+  `# ${e.data.title}\n\n${e.data.description ? `> ${e.data.description}\n\n` : ""}${toMarkdown(e.body ?? "")}`;
 
 export async function pages() {
   const all = await getCollection("docs");

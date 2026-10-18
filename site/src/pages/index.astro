@@ -9,7 +9,6 @@ import { Image } from "astro:assets";
 import Wordmark from "../components/Wordmark.astro";
 import desktopShot from "../assets/client-desktop.png";
 import { REPO, prompts } from "../prompts";
-import { DOCS_MCP } from "../config.mjs";
 
 const base = import.meta.env.BASE_URL.replace(/\/?$/, "/");
 const u = (p: string) => `${base}${p}`;
@@ -63,6 +62,8 @@ const scripts = [
 const master = prompts.master;
 const goalRaw = /Goal: (.*)/.exec(master)?.[1] ?? "";
 const goal = goalRaw.charAt(0).toUpperCase() + goalRaw.slice(1);
+// Lucide "sparkle" (ISC), see THIRD_PARTY_NOTICES.md.
+const sparkle = '<svg aria-hidden="true" focusable="false" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11.017 2.814a1 1 0 0 1 1.966 0l1.051 5.558a2 2 0 0 0 1.594 1.594l5.558 1.051a1 1 0 0 1 0 1.966l-5.558 1.051a2 2 0 0 0-1.594 1.594l-1.051 5.558a1 1 0 0 1-1.966 0l-1.051-5.558a2 2 0 0 0-1.594-1.594l-5.558-1.051a1 1 0 0 1 0-1.966l5.558-1.051a2 2 0 0 0 1.594-1.594z" /></svg>';
 const arrow = `<svg aria-hidden="true" width="12" height="12" viewBox="0 0 12 12"><path d="M2.5 9.5 9.5 2.5M4 2.5h5.5V8" fill="none" stroke="currentColor" stroke-width="1.5"/></svg>`;
 const right = `<svg aria-hidden="true" width="12" height="12" viewBox="0 0 12 12"><path d="M1.5 6h9M6.5 2l4 4-4 4" fill="none" stroke="currentColor" stroke-width="1.5"/></svg>`;
 ---
@@ -116,8 +117,8 @@ const right = `<svg aria-hidden="true" width="12" height="12" viewBox="0 0 12 12
         <h1 id="hero-title">Run your own Farcaster node in 3 simple steps<span class="dot">.</span></h1>
         <p class="hero-sub">Read and post on Farcaster from a server you control.</p>
         <div class="hero-ctas">
-          <a class="btn" href={u("quickstart/")}>Start the quickstart<Fragment set:html={arrow} /></a>
-          <a class="textlink" href={u("ai-assistant/")}>Use your AI assistant<Fragment set:html={right} /></a>
+          <a class="hbtn hbtn-primary" href={u("ai-assistant/")}><Fragment set:html={sparkle} />Set up with AI</a>
+          <a class="hbtn hbtn-secondary" href={u("quickstart/")}>Get started</a>
         </div>
         <p class="hero-note">
           <svg aria-hidden="true" width="14" height="14" viewBox="0 0 14 14"><circle cx="7" cy="7" r="6" fill="none" stroke="currentColor" stroke-width="1.2"/><path d="M4.3 7.2 6.2 9l3.5-4" fill="none" stroke="currentColor" stroke-width="1.3"/></svg>
@@ -206,12 +207,6 @@ const right = `<svg aria-hidden="true" width="12" height="12" viewBox="0 0 12 12
           <h2 id="ai-title" class="h-md">Or let your AI assistant do it.</h2>
           <p>Copy one prompt into Claude Code, Codex or Cursor. It does one step at a time and asks before each one.</p>
           <a class="textlink" href={u("ai-assistant/")}>All prompts<Fragment set:html={right} /></a>
-          <div class="mcp">
-            <h3 class="h-sm">Docs MCP</h3>
-            <p>Your assistant can also search this guide through GitMCP, a free service run by a third party.</p>
-            <pre class="mcp-cmd" tabindex="0" aria-label="Claude Code command"><code>claude mcp add --transport http runfarcaster-docs {DOCS_MCP}</code></pre>
-            <a class="textlink" href={u("ai-assistant/#docs-mcp")}>Setup for Claude Code, Cursor and Codex<Fragment set:html={right} /></a>
-          </div>
         </div>
         <div class="card">
           <p class="eyebrow">Prompt for a coding assistant</p>
