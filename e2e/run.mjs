@@ -26,14 +26,24 @@ const metaCsp = await page.evaluate(() => document.querySelector('meta[http-equi
 check("page also carries a CSP <meta> with connect-src 'self' (no frame-ancestors)", metaCsp.includes("connect-src 'self'") && !metaCsp.includes("frame-ancestors"));
 await step(() => page.waitForFunction(() => document.getElementById("node-status")?.textContent?.startsWith("Connected"), null, { timeout: 15000 }));
 check("node status via same-origin /v1/info proxy", true);
+await page.evaluate(() => document.fonts.ready);
+check("self-hosted fonts load under the CSP", await page.evaluate(() => document.fonts.check('16px "DM Sans Variable"') && [...document.fonts].some((f) => f.family.includes("DM Sans") && f.status === "loaded")));
 
-// --- signer flow
+// --- signer flow: the empty state offers "Add app key", which opens the panel
+check("post box shows the add-app-key empty state", (await page.textContent("#compose-box"))?.includes("To post, add an app key first."));
+await page.click("#open-add-key");
+check("add-app-key panel open as a modal dialog", await page.evaluate(() => document.getElementById("add-key-dialog")?.matches(":modal")));
+await page.fill("#seed", PHRASE);
+await page.click("#cancel-add-key");
+await step(() => page.waitForFunction(() => document.getElementById("seed") === null && !document.getElementById("add-key-dialog").open, null, { timeout: 5000 }));
+check("Cancel closes the panel and drops the phrase field", !(await page.evaluate(() => document.body.innerHTML + [...document.querySelectorAll("textarea, input")].map((e) => e.value).join(" "))).includes("junk"));
+await page.click("#open-add-key");
 await page.fill("#seed", PHRASE);
 await page.click("#add-key");
-await step(() => page.waitForFunction(() => document.body.textContent?.includes("App key for FID 4242"), null, { timeout: 20000 }));
+await step(() => page.waitForFunction(() => document.getElementById("appkey-card")?.textContent?.includes("FID 4242"), null, { timeout: 20000 }));
 check("KEY_ADD signed and submitted; app key stored for FID 4242", true);
 check("seed textarea cleared / removed", (await page.$("#seed")) === null);
-await step(() => page.waitForFunction(() => document.body.textContent?.includes("(active)"), null, { timeout: 20000 }));
+await step(() => page.waitForFunction(() => document.getElementById("appkey-state")?.dataset.state === "ok", null, { timeout: 20000 }));
 check("app key reconciled as active via /v1/signer", true);
 
 const ls = await page.evaluate(() => JSON.stringify({ ...localStorage }));
@@ -45,10 +55,11 @@ await page.fill("#compose", "hello from the e2e test");
 await page.click("#post");
 await step(() => page.waitForFunction(() => document.getElementById("feed")?.textContent?.includes("hello from the e2e test"), null, { timeout: 10000 }));
 check("cast shown immediately (optimistic)", true);
-await step(() => page.waitForFunction(() => document.getElementById("pending")?.textContent?.includes("[confirmed]"), null, { timeout: 20000 }));
+await step(() => page.waitForFunction(() => document.querySelector('#pending .sent-item[data-status="confirmed"]'), null, { timeout: 20000 }));
 check("cast reconciled as confirmed by querying it back", true);
 
 // --- filters persist across reload
+if (!(await page.evaluate(() => document.getElementById("filters-panel").open))) await page.click("#filters-panel > summary");
 await page.locator("#filters input").nth(1).fill("spam");
 await page.locator("#filters button", { hasText: "Add" }).nth(1).click();
 await page.reload();

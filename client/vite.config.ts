@@ -17,9 +17,9 @@ export const DEV_PORT = 5317;
 // header (minus frame-ancestors, which a meta tag cannot set). The dev server needs inline styles
 // (Vite injects CSS from JS) and its HMR WebSocket.
 const PROD_CSP =
-  "default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; base-uri 'none'; form-action 'none'";
+  "default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' data:; font-src 'self'; connect-src 'self'; base-uri 'none'; form-action 'none'";
 const DEV_CSP =
-  `default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; ` +
+  `default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; ` +
   `connect-src 'self' ws://localhost:${DEV_PORT} ws://127.0.0.1:${DEV_PORT}; base-uri 'none'; form-action 'none'`;
 
 function cspMeta(): Plugin {
@@ -37,6 +37,7 @@ export default defineConfig({
   plugins: [cspMeta()],
   server: { port: DEV_PORT, strictPort: true, proxy: { "/v1": { target: nodeUrl, changeOrigin: true } } },
   preview: { port: DEV_PORT, strictPort: true },
-  build: { target: "es2022", sourcemap: false },
+  // Fonts are files, never data: URLs, so the CSP needs only font-src 'self'.
+  build: { target: "es2022", sourcemap: false, assetsInlineLimit: 0 },
   test: { environment: "node", include: ["test/**/*.test.ts"] },
 });

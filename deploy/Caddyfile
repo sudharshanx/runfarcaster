@@ -32,7 +32,7 @@
 
 	header {
 		# connect-src 'self': the page can only talk to this origin (the proxied node).
-		Content-Security-Policy "default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'"
+		Content-Security-Policy "default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' data:; font-src 'self'; connect-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'"
 		Referrer-Policy "no-referrer"
 		X-Content-Type-Options "nosniff"
 		Strict-Transport-Security "max-age=31536000"

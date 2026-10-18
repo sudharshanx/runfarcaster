@@ -30,6 +30,8 @@ const redact = (p) => p.evaluate(() => {
   for (let n = w.nextNode(); n; n = w.nextNode()) if (n.nodeValue.includes(host)) n.nodeValue = n.nodeValue.split(host).join(label);
   for (const i of document.querySelectorAll("input, textarea")) if (i.value.includes(host)) i.value = i.value.split(host).join(label);
 });
+// Side panels and Feed options are <details>; open one before filling the inputs inside it.
+const openPanel = async (p, id) => { if (!(await p.evaluate((i) => document.getElementById(i).open, id))) await p.click(`#${id} > summary`); };
 const step = async (name, fn) => { try { return await fn(); } catch (e) { check(name, false, String(e).split("\n")[0]); return undefined; } };
 
 const resp = await page.goto(SITE);
@@ -43,6 +45,7 @@ await step("node status Connected", async () => {
 });
 
 // feed with real casts
+await openPanel(page, "feed-options");
 await page.fill("#watch-fids", WATCH);
 await page.click("#refresh");
 await step("real casts in feed", async () => {
@@ -56,15 +59,17 @@ await page.evaluate(() => window.scrollTo(0, 0));
 await redact(page); await page.screenshot({ path: `${OUT}/desktop-top.png`, fullPage: false });
 
 // filters on real data
-const firstFid = await page.locator("#feed .cast .muted").first().textContent().then((t) => Number(/FID (\d+)/.exec(t ?? "")?.[1]));
+const firstFid = await page.locator("#feed .cast").first().getAttribute("data-fid").then((t) => Number(t));
 const before = await page.locator("#feed .cast").count();
+await openPanel(page, "filters-panel");
 await page.locator("#filters input").nth(0).fill(String(firstFid));
 await page.locator("#filters button", { hasText: "Add" }).nth(0).click();
-const afterMute = await page.locator("#feed .cast .muted", { hasText: `FID ${firstFid} ` }).count();
+const afterMute = await page.locator(`#feed .cast[data-fid="${firstFid}"]`).count();
 check(`mute FID ${firstFid} hides its casts`, Number.isFinite(firstFid) && afterMute === 0 && (await page.locator("#feed .cast").count()) < before, `${before} -> ${await page.locator("#feed .cast").count()}`);
 await page.reload();
 await page.waitForFunction(() => document.getElementById("node-status")?.textContent?.startsWith("Connected"), null, { timeout: 30000 });
 check("mute persists across reload", ((await page.textContent("#filters")) ?? "").includes(String(firstFid)));
+await openPanel(page, "filters-panel");
 await page.locator("#filters .chip button").first().click();
 
 // same-origin API reads from inside the page (exactly what the client does)
@@ -108,6 +113,7 @@ check("no console errors / CSP violations (except the expected invalid-submit 40
 const mctx = await browser.newContext({ viewport: { width: 375, height: 812 }, isMobile: true, hasTouch: true, deviceScaleFactor: 2 });
 const m = await mctx.newPage();
 await m.goto(SITE);
+await openPanel(m, "feed-options");
 await m.fill("#watch-fids", WATCH);
 await m.click("#refresh");
 await step("mobile feed", () => m.waitForFunction(() => document.querySelectorAll("#feed .cast").length > 0
@@ -121,6 +127,7 @@ await redact(m); await m.screenshot({ path: `${OUT}/mobile-feed.png`, fullPage: 
 const sctx = await browser.newContext({ viewport: { width: 360, height: 740 }, isMobile: true, hasTouch: true, deviceScaleFactor: 2 });
 const sp = await sctx.newPage();
 await sp.goto(SITE);
+await openPanel(sp, "feed-options");
 await sp.fill("#watch-fids", WATCH);
 await sp.click("#refresh");
 await step("360 feed", () => sp.waitForFunction(() => document.querySelectorAll("#feed .cast").length > 0

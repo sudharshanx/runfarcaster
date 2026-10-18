@@ -3,7 +3,7 @@
 """Local fake Snapchain HTTP API for the browser E2E test. Never contacts any network.
 Records every request (path, query, body) so the test can assert the seed phrase never
 leaves the browser. Mimics: /v1/info, castsByFid, linksByFid, onChainIdRegistryEventByAddress,
-signersByFid, signer, submitMessage (octet-stream only), castById (found after a submit)."""
+signersByFid, signer, userDataByFid, submitMessage (octet-stream only), castById (found after a submit)."""
 import http.server, json, sys, urllib.parse, threading
 
 PORT = int(sys.argv[1]); LOG = sys.argv[2]
@@ -29,7 +29,7 @@ class H(http.server.BaseHTTPRequestHandler):
         p = u.path
         if p == "/v1/info":
             return self.send(200, {"version": "mock", "numShards": 2, "shardInfos": [{"shardId": i, "maxHeight": 100, "blockDelay": 1} for i in (0, 1, 2)]})
-        if p in ("/v1/castsByFid", "/v1/linksByFid"):
+        if p in ("/v1/castsByFid", "/v1/linksByFid", "/v1/userDataByFid"):
             return self.send(200, {"messages": []})
         if p == "/v1/onChainIdRegistryEventByAddress":
             if q.get("address", "").lower() == CUSTODY: return self.send(200, {"fid": FID, "type": "EVENT_TYPE_ID_REGISTER"})

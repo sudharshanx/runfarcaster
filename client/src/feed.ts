@@ -13,6 +13,7 @@ export interface FeedCast {
   text: string;
   timestamp: number; // farcaster seconds
   parent?: { fid: number; hash: string };
+  embeds?: Array<{ url?: string; castFid?: number }>;
   pending?: PendingItem; // set for optimistic (not yet confirmed) casts
 }
 
@@ -21,7 +22,8 @@ export const fcTimeToDate = (t: number) => new Date(FARCASTER_EPOCH_MS + t * 100
 export function toFeedCast(m: MessageJson): FeedCast | null {
   const b = m.data?.castAddBody;
   if (!b || m.data.type !== "MESSAGE_TYPE_CAST_ADD") return null;
-  return { fid: m.data.fid, hash: m.hash, text: b.text ?? "", timestamp: m.data.timestamp, parent: b.parentCastId };
+  const embeds = (b.embeds ?? []).map((e) => (e.castId ? { castFid: e.castId.fid } : { url: e.url })).filter((e) => e.castFid !== undefined || !!e.url);
+  return { fid: m.data.fid, hash: m.hash, text: b.text ?? "", timestamp: m.data.timestamp, parent: b.parentCastId, ...(embeds.length ? { embeds } : {}) };
 }
 
 /** Merge confirmed casts with optimistic ones; pending entries are dropped once the node returns them. */
@@ -59,4 +61,32 @@ export async function loadFeed(api: Pick<NodeApi, "linksByFid" | "castsByFid">, 
     try { return (await api.castsByFid(fid, perFid)).messages; } catch { return [] as MessageJson[]; }
   });
   return pages.flat().map(toFeedCast).filter((c): c is FeedCast => c !== null).sort((a, b) => b.timestamp - a.timestamp);
+}
+
+export interface Profile { displayName?: string; username?: string }
+
+/** Latest display name and username from GET /v1/userDataByFid (newest message per type wins). */
+export function profileFromUserData(messages: MessageJson[]): Profile {
+  const latest = new Map<string, { ts: number; value: string }>();
+  for (const m of messages) {
+    const b = m.data?.userDataBody;
+    if (!b) continue;
+    const prev = latest.get(b.type);
+    if (!prev || m.data.timestamp >= prev.ts) latest.set(b.type, { ts: m.data.timestamp, value: b.value });
+  }
+  const p: Profile = {};
+  const display = latest.get("USER_DATA_TYPE_DISPLAY")?.value.trim();
+  const username = latest.get("USER_DATA_TYPE_USERNAME")?.value.trim();
+  if (display) p.displayName = display;
+  if (username) p.username = username;
+  return p;
+}
+
+/** Profiles for the given FIDs; a FID whose lookup fails just gets no name. */
+export async function loadProfiles(api: Pick<NodeApi, "userDataByFid">, fids: number[]): Promise<Map<number, Profile>> {
+  const out = new Map<number, Profile>();
+  await mapLimit(fids, 6, async (fid) => {
+    try { out.set(fid, profileFromUserData((await api.userDataByFid(fid)).messages)); } catch { out.set(fid, {}); }
+  });
+  return out;
 }
