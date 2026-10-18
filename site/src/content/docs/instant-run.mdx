@@ -1,0 +1,81 @@
+---
+title: Instant run
+description: Start the RunFarcaster app on your own computer, reading from a node that is already synced, in about 5 minutes. A preview only; the Full run sets up your own node.
+---
+
+The Instant run starts the real app from this repo (the `client/` folder) on your own computer. Instead of a node of your own, it reads from a synced Snapchain read node that the RunFarcaster project runs at `https://167-233-111-186.sslip.io`. You need no Hetzner account and no server, and you can see a live feed in about 5 minutes.
+
+:::caution[A preview, until Oct 24, 2026]
+- This preview uses the RunFarcaster project's node, not yours.
+- That node is temporary. It will be shut down on Oct 24, 2026, the bounty deadline. After that date the steps below stop working; use the [Full run](../quickstart/) instead.
+- An Instant run is not enough to vouch. To vouch, complete the [Full run](../quickstart/): your own read node and your own app.
+:::
+
+## 1. Install Node.js
+
+The app needs Node.js 22.12 or later (22.x, 24.x or 26+). Check what you have:
+
+```bash title="your computer"
+node -v
+```
+
+If it prints `v22.12.0` or higher, go to step 2. Otherwise install it.
+
+On macOS with [Homebrew](https://brew.sh/):
+
+```bash title="macOS"
+brew install node
+```
+
+On Linux (or on macOS without Homebrew), use [nvm](https://github.com/nvm-sh/nvm):
+
+```bash title="Linux"
+curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.8/install.sh | bash
+```
+
+Open a new terminal so `nvm` is on your path, then:
+
+```bash title="Linux"
+nvm install 22
+node -v
+```
+
+**You will see** a version that starts with `v22.`.
+
+## 2. Get the code
+
+```bash title="your computer"
+git clone https://github.com/sudharshanx/runfarcaster
+cd runfarcaster/client
+npm ci --ignore-scripts
+```
+
+`npm ci` installs the exact versions listed in `package-lock.json`. `--ignore-scripts` keeps packages from running their own install scripts; the app does not need them.
+
+## 3. Start the app
+
+```bash title="your computer"
+SNAPCHAIN_NODE_URL=https://167-233-111-186.sslip.io npm run dev
+```
+
+**You will see** `ready` and `Local: http://localhost:5317/`. Leave it running; Ctrl-C stops it.
+
+Open http://localhost:5317. The badge at the top should say **Connected to your node**. In this mode the label refers to the project's node. Type a FID or username (for example `dwr`) under **Enter your FID to see your feed** and press **Show my feed**. The app reads the casts of every account you follow, so an account that follows thousands of others (such as `dwr`) can take one to two minutes to load.
+
+`SNAPCHAIN_NODE_URL` tells the dev server where to send `/v1/*` requests. The browser only talks to `localhost:5317`, and the dev server passes those requests on to the node. Port 5317 is fixed: if another program holds it, `npm run dev` stops with an error ([Port 5317 is already in use](../fix/#port-5317-is-already-in-use)).
+
+## What works in this mode
+
+Reading works without an account: the feed, profiles, replies and the node status.
+
+Posting from `localhost` works too, with your own Farcaster account. You add an app key once: your browser makes the key, and your account's recovery phrase signs one gasless `KEY_ADD` message in that browser tab. The phrase is not sent anywhere; the node receives only signed messages. The steps are in [Post with an app key](../first-cast/#2-add-an-app-key). Read [What the app does with your recovery phrase](../first-cast/#what-the-app-does-with-your-recovery-phrase) first.
+
+:::danger[Your recovery phrase]
+Only paste a seed phrase into software from developers you trust. Delegated signers are preferred wherever possible: if an app you already trust can give you an app key, use that. Try this with a test account, and never paste a phrase into an AI assistant or a chat.
+:::
+
+When you are done, press **Remove from this browser** if you added a key, then stop the dev server with Ctrl-C.
+
+## Next: the Full run
+
+The [Full run](../quickstart/) is the 3-command setup: rent a server, start your own Snapchain read node on it, and serve the app from it. The same app then reads from a node you control, with no shared server in between. Use it after Oct 24, 2026, and to vouch for RunFarcaster.
