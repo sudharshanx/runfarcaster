@@ -13,9 +13,16 @@ list. The app was served over HTTPS from the node. Adding an app key and posting
 likes, recasts and follows have been tested against a mock node only. Numbers: `MEASUREMENTS.md`. Log:
 `run-log.md` (server details replaced with placeholders).
 
+Two modes:
+- **Instant run**: a preview in about 5 minutes. Run the app from `client/` on your own computer against the
+  RunFarcaster project's synced node; no server needed. That node shuts down on Oct 24, 2026, the bounty deadline.
+  Steps, with the node address: the Instant run page on the guide website (`site/src/content/docs/instant-run.mdx`).
+- **Full run**: the 3 commands below. Your own Hetzner server, your own read node and your own app. To vouch, complete
+  the Full run; an Instant run does not count.
+
 Guide website: `site/`. Vouching: `VOUCHER.md`. Key handling: `SECURITY.md`.
 
-## Quickstart
+## Full run (Quickstart)
 
 You need `hcloud`, `jq`, `ssh`, `curl`, Node.js 22.12 or later (22.x, 24.x or 26+) with npm, a Hetzner Cloud
 token (Read & Write) and an SSH key uploaded to the Hetzner project. Posting needs a Farcaster account; use a test
@@ -53,7 +60,7 @@ ssh root@$IP "SNAPCHAIN_AGREE_NO_REWARDS=yes MIN_FREE_GB=900 bash -s" < node.sh
 
 In a new terminal, get the IP back with `IP=$(hcloud server ip snapchain-read-node)`.
 
-`WATCHDOG=0` keeps the server until you delete it. If you only want to try it, leave it out and add
+`WATCHDOG=0` keeps the server until you delete it. For a trial run, leave it out and add
 `MAX_USD=5 EXPECTED_HOURS=16`: `provision.sh` then starts `watchdog.sh`, which deletes everything
 after 24 hours. `SERVER_TYPE=""` makes `provision.sh` rent the first type for sale in `LOCATION` from cx43, cax31,
 cpx42 and ccx23 (16 GB RAM or more). If none is for sale, it lists what is and creates nothing. Set `SERVER_TYPE`

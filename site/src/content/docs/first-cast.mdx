@@ -1,18 +1,18 @@
 ---
 title: Post with an app key
-description: How to add an app key with your recovery phrase and post through your own node. Read it after the Quickstart, once you want to post from a test account.
+description: How to add an app key with your recovery phrase and post through your own node. Read it after the Full run or the Instant run, once you want to post from a test account.
 ---
 
 import RepoLink from "../../components/RepoLink.astro";
 
 :::note[What has been tested]
-Adding an app key and posting a cast have been tested on mainnet. Likes, recasts and follows have been tested against a mock node only. The mainnet test is on [Proof](../proof/#posted-to-mainnet). If you try it, report what happened ([Vouches](../proof/#vouches)).
+Adding an app key and posting a cast have been tested on mainnet. Likes, recasts and follows have been tested against a mock node only. The mainnet test is on [Proof](../proof/#posted-to-mainnet). If you test it yourself, report what happened ([Vouches](../proof/#vouches)).
 :::
 
 You need:
 - A **test** Farcaster account and its recovery phrase. Read [What the app does with your recovery phrase](#what-the-app-does-with-your-recovery-phrase) first.
 - Node.js 22.12 or later (22.x, 24.x or 26+) and this repo on your computer.
-- Your node from the [Quickstart](../quickstart/), and the HTTPS address that `deploy-client.sh` printed.
+- Your node from the [Full run](../quickstart/), and the HTTPS address that `deploy-client.sh` printed. On an [Instant run](../instant-run/), use the node address from that page.
 
 :::note[If you started the watchdog]
 If you started the watchdog in step 1 ([Only trying it?](../quickstart/#try-it)), it deletes the server, the volume and the firewall 24 hours after it started, even if the node is healthy. To keep the node: `touch .provision-state/watchdog.disarm`. Within a minute, `tail -n 1 .provision-state/watchdog.log` should show `disarmed by …`.
@@ -109,7 +109,7 @@ The app key is saved in the browser for `localhost:5317` only. The copy of the a
 | Follow | In **Settings**, **Follow someone**: type an FID in **FID to follow**, press **Follow** | `LINK_ADD` (type `follow`) |
 | Like, recast | The heart and repeat buttons under each cast | `REACTION_ADD` |
 
-A cast appears at the top of the feed with a state badge. Every message also shows up in the **Sent** panel (right column, or the **Settings** tab on a narrow window) with the same state:
+A new cast shows first in the feed, with a state badge. Every message also shows up in the **Sent** panel (right column, or the **Settings** tab on a narrow window) with the same state:
 
 | State | Meaning |
 |---|---|

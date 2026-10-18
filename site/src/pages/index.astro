@@ -107,7 +107,7 @@ const right = `<svg aria-hidden="true" width="12" height="12" viewBox="0 0 12 12
       <div class="wrap lp-header-row">
         <Wordmark href={base} />
         <nav class="lp-nav" aria-label="Main">
-          <a href={u("quickstart/")}>Quickstart</a>
+          <a href={u("quickstart/")}>Full run</a>
           <a href={u("how-farcaster-works/")}>How Farcaster works</a>
           <a href={u("server-and-node/")}>Server</a>
           <a href={u("proof/")}>Proof</a>
@@ -118,7 +118,7 @@ const right = `<svg aria-hidden="true" width="12" height="12" viewBox="0 0 12 12
         <details class="lp-menu">
           <summary>Menu</summary>
           <nav aria-label="Main, small screens">
-            <a href={u("quickstart/")}>Quickstart</a>
+            <a href={u("quickstart/")}>Full run</a>
             <a href={u("how-farcaster-works/")}>How Farcaster works</a>
             <a href={u("server-and-node/")}>Server</a>
             <a href={u("proof/")}>Proof</a>
@@ -138,6 +138,7 @@ const right = `<svg aria-hidden="true" width="12" height="12" viewBox="0 0 12 12
           <a class="hbtn hbtn-primary" href={u("ai-assistant/")}><Fragment set:html={sparkle} />Set up with AI</a>
           <a class="hbtn hbtn-secondary" href={u("quickstart/")}>Run the 3 commands</a>
         </div>
+        <p class="hero-instant"><a href={u("instant-run/")}>Instant run on your laptop in 5 minutes</a><span>A preview that reads from the project's node until Oct 24, 2026.</span></p>
         <div class="terminal hero-term" role="group" aria-label="The 3 steps">
           <div class="term-head">
             <span class="eyebrow">The 3 steps</span>
@@ -146,7 +147,7 @@ const right = `<svg aria-hidden="true" width="12" height="12" viewBox="0 0 12 12
           <pre id="hero-cmd" tabindex="0" aria-label="The 3 step commands"><code>{heroCmd}</code></pre>
           <span class="sr-only" role="status" aria-live="polite" data-copy-status></span>
         </div>
-        <p class="hero-term-note">You need a Hetzner token and an SSH key first. <a href={u("quickstart/")}>The Quickstart</a> has the full setup.</p>
+        <p class="hero-term-note">You need a Hetzner token and an SSH key first. <a href={u("quickstart/")}>The Full run</a> has the whole setup.</p>
         <p class="hero-note">
           <svg aria-hidden="true" width="14" height="14" viewBox="0 0 14 14"><circle cx="7" cy="7" r="6" fill="none" stroke="currentColor" stroke-width="1.2"/><path d="M4.3 7.2 6.2 9l3.5-4" fill="none" stroke="currentColor" stroke-width="1.3"/></svg>
           <span>We ran a node on Farcaster mainnet and <a href={u("proof/#posted-to-mainnet")}>posted from it on 18 Oct 2026</a>.</span>
@@ -190,7 +191,7 @@ const right = `<svg aria-hidden="true" width="12" height="12" viewBox="0 0 12 12
       <section class="wrap split noline" aria-labelledby="how-title">
         <div>
           <p class="eyebrow">How it works</p>
-          <h2 id="how-title" class="h-md">You run your own copy of Farcaster.</h2>
+          <h2 id="how-title" class="h-md">You keep your own copy of Farcaster.</h2>
           <p>Farcaster&rsquo;s messages live on a network called Snapchain. Your node keeps a full copy and stays in sync. Your app reads only from your node.</p>
           <a class="textlink" href={u("how-farcaster-works/")}>How Farcaster works<Fragment set:html={right} /></a>
         </div>
@@ -314,7 +315,7 @@ const right = `<svg aria-hidden="true" width="12" height="12" viewBox="0 0 12 12
       </div>
       <nav aria-label="Docs">
         <h2>Docs</h2>
-        <a href={u("quickstart/")}>Quickstart</a>
+        <a href={u("quickstart/")}>Full run</a>
         <a href={u("how-farcaster-works/")}>How Farcaster works</a>
         <a href={u("server-and-node/")}>Server and node</a>
         <a href={u("first-cast/")}>Post with an app key</a>

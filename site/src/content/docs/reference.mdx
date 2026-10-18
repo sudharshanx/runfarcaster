@@ -31,7 +31,7 @@ import RepoLink from "../../components/RepoLink.astro";
 | `LOCATION` | provision | `fsn1` | `fsn1`, `nbg1`, `hel1`, `ash`, `hil` or `sin`. Server and volume share it |
 | `MAX_USD` | provision, watchdog | `2` / `5` | Price limit for the check before creating anything; the watchdog deletes everything at it. In your Hetzner account's currency |
 | `EXPECTED_HOURS` | provision | `6` | Hours the price check multiplies by. Use `16` with the watchdog for a full sync on cax31 |
-| `WATCHDOG` | provision | `1` | `0` = no watchdog; the server runs until you delete it. The Quickstart uses `0` |
+| `WATCHDOG` | provision | `1` | `0` = no watchdog; the server runs until you delete it. The Full run uses `0` |
 | `ESTIMATE_ONLY` | provision | `0` | `1` = price check only, creates nothing |
 | `SSH_SOURCE_CIDRS` | provision | `0.0.0.0/0,::/0` | Set to `"$MY_IP/32"` (from `curl -4 -s https://ifconfig.me`) |
 | `NODE_API_CIDRS` | provision | empty | Addresses allowed to reach 3381 and 3383. Empty keeps both closed |

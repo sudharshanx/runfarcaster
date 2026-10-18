@@ -1,6 +1,6 @@
 ---
 title: Server and node
-description: The Hetzner setup, the cost and what each of the 3 steps does on the server. Read it before the Quickstart if you have no Hetzner account yet, or after it to see what ran.
+description: The Hetzner setup, the cost and what each of the 3 steps does on the server. Read it before the Full run if you have no Hetzner account yet, or after it to see what ran.
 ---
 
 import RepoLink from "../../components/RepoLink.astro";
@@ -66,7 +66,7 @@ hcloud ssh-key create --name my-key \
 hcloud ssh-key list
 ```
 
-`my-key` is the name you pass as `SSH_KEY=my-key` in step 1 of the Quickstart. Keys belong to one project, so upload it to the project you made above. The `hcloud ssh-key create` command is from the [hcloud CLI tutorial](https://github.com/hetznercloud/cli/blob/main/docs/tutorials/create-a-server.md).
+`my-key` is the name you pass as `SSH_KEY=my-key` in step 1 of the Full run. Keys belong to one project, so upload it to the project you made above. The `hcloud ssh-key create` command is from the [hcloud CLI tutorial](https://github.com/hetznercloud/cli/blob/main/docs/tutorials/create-a-server.md).
 
 ## Hetzner limits
 
@@ -86,7 +86,7 @@ hcloud ssh-key list
 
 Server types sell out. On 18 Oct 2026 at 18:48 IST, Hetzner listed cax31 and cx43 as sold out in fsn1, nbg1 and hel1. The cheapest type with 16 GB of RAM for sale in fsn1 was cpx42 (x86, 8 vCPU, 16 GB RAM) at $0.1314 an hour, at most $81.99 a month. With the IPv4 address and the 1000 GB volume that comes to about $159 a month. The guide has not been tested on cpx42, so sync times there may differ.
 
-The Quickstart sets `SERVER_TYPE=""`, so `provision.sh` rents the first type for sale in `LOCATION` from cx43, cax31, cpx42 and ccx23, with at least 16 GB of RAM. With cx43 and cax31 sold out, that is likely cpx42. If none is for sale, it lists the types you can rent and creates nothing. Then set `SERVER_TYPE`, or `LOCATION` (fsn1, nbg1, hel1, ash, hil or sin).
+The Full run sets `SERVER_TYPE=""`, so `provision.sh` rents the first type for sale in `LOCATION` from cx43, cax31, cpx42 and ccx23, with at least 16 GB of RAM. With cx43 and cax31 sold out, that is likely cpx42. If none is for sale, it lists the types you can rent and creates nothing. Then set `SERVER_TYPE`, or `LOCATION` (fsn1, nbg1, hel1, ash, hil or sin).
 
 ## What it costs
 

@@ -10,13 +10,17 @@ export const GET: APIRoute = async ({ site }) => {
 
 > RunFarcaster sets up a Farcaster node and app of your own, with no gatekeepers in between. Rent a Hetzner server. Start a Snapchain read node on it with the official bootstrap. Open a small web app served from the same server over HTTPS. You need no API keys. On a Hetzner cax31 with a 1000 GB volume, expect about 14 hours from renting the server to synced, about $2.31 at $0.164 an hour, and a database of about 560 GB. cax31 was sold out on 2026-10-18; with SERVER_TYPE="" the script rents the first 16 GB type for sale, likely cpx42 (about $0.255 an hour with the volume, untested). A gasless KEY_ADD and a cast have been tested on mainnet (2026-10-18); likes, recasts and follows only against a mock node.
 
+Two modes:
+- Instant run (${base}instant-run/): a preview. The app from client/ runs on your own computer with \`npm run dev\` and reads from the RunFarcaster project's node. About 5 minutes, no server. That node shuts down on Oct 24, 2026 (the bounty deadline); after that, use the Full run. An Instant run does not count for vouching.
+- Full run (${base}quickstart/): the 3 commands below. Your own server, your own read node and your own app. Complete it to vouch.
+
 Key facts:
 - An app key is added with a KEY_ADD message that the custody address signs (EIP-712). It needs no transaction on OP Mainnet. Mainnet has accepted it since engine version V16 on 2026-05-07 (https://snapchain.farcaster.xyz/guides/writing-messages; snapchain src/version/version.rs).
 - A read node takes submitMessage and publishes the message to validators. It keeps no mempool, so HTTP 200 means sent on, not in a block. Ask for the message back, and resend it if it does not show up (https://snapchain.farcaster.xyz/node-types).
 - Ports: 3381/tcp HTTP API and 3383/tcp gRPC (closed to the internet by default), 3382/udp gossip (open). Keep Grafana's 3000 closed.
 - Sign the KEY_ADD in the app running on localhost on your own computer. Never paste a recovery phrase into an AI assistant. Never print HCLOUD_TOKEN.
 
-The 3 steps (from the repo folder on your computer):
+The 3 steps of the Full run (from the repo folder on your computer):
 \`\`\`bash
 MY_IP=$(curl -4 -s https://ifconfig.me)
 IP=$(SSH_KEY=my-key SERVER_TYPE="" VOLUME_GB=1000 WATCHDOG=0 SSH_SOURCE_CIDRS="$MY_IP/32" ./provision.sh)
