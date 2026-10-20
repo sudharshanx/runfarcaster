@@ -1,6 +1,6 @@
 ---
 title: "Proof: what we ran"
-description: We synced a mainnet node in 14 hours, posted a cast through it, and shut it down after about 70 hours.
+description: We synced a mainnet node in 14 h 06 m, posted a cast through it, and deleted the server 70 h 04 m after renting it.
 ---
 
 import TestedTable from "../../components/TestedTable.astro";
@@ -19,9 +19,9 @@ We ran the 3 steps once, on mainnet, on 2026-10-18. Times are IST (UTC+5:30). Th
 | Server rented with `provision.sh` | 2026-10-18 01:26 |
 | Node fully synced, every shard less than 10 s behind | 2026-10-18 15:32 |
 | Cast posted through the node | 2026-10-18 20:53 |
-| Server powered off | 2026-10-20 23:29 |
+| Server and volume deleted with `teardown.sh` | 2026-10-20 23:30 |
 
-The server ran for about 70 hours. From 15:32 on 2026-10-18 until shutdown, all 3 shards stayed at the tip. At shutdown the node held about 914.27 million messages in a database of about 558 GB. The whole run cost about $11.49 on Hetzner ([Cost](#cost)). The node is no longer running; the screenshots on this page are from 2026-10-18.
+The server ran for 70 h 04 m. From 15:32 on 2026-10-18 until shutdown, all 3 shards stayed at the tip. The last count, at 22:56 on 2026-10-20, was 914,276,853 messages in a 558 GB database. The run cost $11.49 ([Cost](#cost)). After `teardown.sh` the Hetzner project was empty. The screenshots on this page are from 2026-10-18.
 
 ## Posted to mainnet
 
@@ -64,13 +64,13 @@ Problems we hit on the way, all on 2026-10-18, IST. Each has a fix on [Fix a pro
 
 | Time | What happened |
 |---|---|
-| 01:20 | cx43 was sold out, so we rented cax31 |
+| 01:20 | cx43 was not available to rent, so we rented cax31 |
 | 01:23 | The 2000 GB volume went over the new-account limit; we used 1000 GB |
 | 01:35 | SSH was refused: the machine running the steps kept getting new public IPs, so the firewall no longer matched |
 | 01:44 | The disk was filling during the restore; we installed the two disk helpers by hand |
 | 01:38 to 10:11 | The HTTP API did not answer while the snapshot loaded |
 | 13:39 | `node.sh` stopped waiting at its old 12-hour limit; the node kept syncing |
-| 18:48 | cax31 was sold out in fsn1, nbg1 and hel1 |
+| 18:48 | cax31 was not available to rent in fsn1, nbg1 or hel1 when we checked |
 | Whole sync | The computer running the steps paused at least 13 times; the node kept going |
 
 ## The node once synced
@@ -92,10 +92,10 @@ Problems we hit on the way, all on 2026-10-18, IST. Each has a fix on [Fix a pro
 | Item | Amount |
 |---|---|
 | Price | About $0.164 an hour: cax31 $0.040, IPv4 $0.001, 1000 GB volume about $0.123 (our estimate: $76.70 a month ÷ 625 hours) |
-| Until synced, 14 h 06 m | About $2.31 |
-| Whole run, about 70 h (2026-10-18 01:26 to 2026-10-20 23:29) | About $11.49 |
+| Until synced, 14 h 06 m | $2.31 |
+| Whole run, 70 h 04 m (2026-10-18 01:26 to 2026-10-20 23:30) | $11.49 |
 | Left running | About $102 a month: $24.99 + $0.60 + $76.70, the monthly prices Hetzner stops at |
-| Invoice | Not seen yet |
+| Invoice | Not arrived yet. The amounts above are estimates from Hetzner's hourly price. |
 
 The official AWS guide estimates "roughly $100/month"; that is an estimate, not a run.
 
@@ -137,7 +137,7 @@ Taken by `e2e/real-node.mjs` in headless Chrome against the live node on 2026-10
 | `test/space_saver_test.sh` | 14 of 14 | Chunk and tar clean-up, hole punching, waiting for the snapshot folder |
 | `test/watchdog_test.sh` | 16 of 16 | Progress check during a sync, a stuck node, SSH loss, money cap, macOS without `timeout`, a missing token written to the log |
 | `test/teardown_test.sh` | 7 of 7 | Running twice, missing token, wrong confirmation |
-| `test/provision_test.sh` | 19 of 19 | `SSH_SOURCE_CIDRS` check, the watchdog start (with a stand-in watchdog), no second watchdog, a loud stop when it cannot start, sold-out types and the `SERVER_TYPE=""` auto-pick (with a fake `hcloud`) |
+| `test/provision_test.sh` | 19 of 19 | `SSH_SOURCE_CIDRS` check, the watchdog start (with a stand-in watchdog), no second watchdog, a loud stop when it cannot start, unavailable server types and the `SERVER_TYPE=""` auto-pick (with a fake `hcloud`) |
 | `shellcheck` | No warnings | Every shell script |
 
 We ran the shell suites, shellcheck, the client unit tests and `e2e/run.sh` again on 2026-10-18 at about 20:45 IST, on commit `b53f450`. The client is still changing, so these counts will move. `e2e/real-node.mjs` ran during the live run and again at 18:07 IST, against the app as it was then.
