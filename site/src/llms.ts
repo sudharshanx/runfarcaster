@@ -35,7 +35,7 @@ const TESTED = `| What | Status |
 | Cast on mainnet | Ran live once; confirmed 18 s after the key was added |
 | Like, recast, follow on mainnet | Not tried (unit tests and a local mock node only) |
 | Time from sending a message to seeing it | Not measured precisely (one cast: key added to cast confirmed in 18 s) |
-| teardown.sh against real servers | Not tried (DRY_RUN and a fake hcloud in tests) |
+| teardown.sh against real servers | Ran live once: deleted the server, volume and firewall on 2026-10-20 |
 | 2 TB volume, x86 cx43 | Not tried |
 | Inbound 3382/udp closed | 2-minute test only |`;
 
