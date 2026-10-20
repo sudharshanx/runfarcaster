@@ -6,9 +6,8 @@ description: We synced a mainnet node in 14 h 06 m, posted a cast through it, an
 import TestedTable from "../../components/TestedTable.astro";
 import RepoLink from "../../components/RepoLink.astro";
 import { Image } from "astro:assets";
-import mobile360 from "../../assets/client-mobile-360.png";
-import mobile375 from "../../assets/client-mobile-375.png";
-import desktop from "../../assets/client-desktop.png";
+import mobile375 from "../../assets/client-mobile-375-live.png";
+import desktop from "../../assets/client-desktop-live.png";
 
 We ran the 3 steps once, on mainnet, on 2026-10-18. Times are IST (UTC+5:30). The server was a Hetzner cax31 (ARM64, 8 vCPU, 16 GB RAM) in fsn1 with a 1000 GB volume and Ubuntu 24.04. The node ran Snapchain v0.14.3. The full notes are in <RepoLink path="MEASUREMENTS.md" /> and <RepoLink path="run-log.md" />. We replaced the server's IP, its Hetzner IDs and our test account with placeholders before publishing them.
 
@@ -49,16 +48,18 @@ A logger on our side read the disk and the node's `/v1/info` over SSH every 10 m
 16:20:25 IST progress: du=556G df=60% info=[{"s":0,"h":48308772,"d":4},{"s":1,"h":48983812,"d":1},{"s":2,"h":48819359,"d":0}]
 ```
 
-`h` is a shard's block height and `d` its `blockDelay`, in seconds behind. At 12:41 the node was still about 12 hours behind on shard 0. At 15:32 every shard was within 4 seconds: that is the sync time in the table below. At 16:20 it was still at the tip.
+`h` is a shard's block height and `d` its `blockDelay`, in seconds behind. At 12:41 shard 0 was still 45,482 seconds (12 h 38 m) behind. At 15:32 every shard was within 4 seconds: that is the sync time in the table below. At 16:20 it was still at the tip.
+
+The sync phase times below come from a logger that read every 10 minutes, so each is accurate to 10 minutes.
 
 | Phase | Time |
 |---|---|
 | `provision.sh` | 35 s (started 01:26:33) |
-| Snapshot download | About 5 h 24 m for 5689 chunks, roughly 500 GB by our disk readings, about 25 MB/s |
-| Snapshot load in total (download, gunzip, untar, shard by shard) | About 8 h 34 m |
-| Catching up after the load | About 5 h 15 m, at 4.3 to 4.6 blocks a second per shard |
+| Snapshot download | 5 h 24 m for 5689 chunks, 485 to 505 GB by our disk readings, 25 to 26 MB/s |
+| Snapshot load in total (download, gunzip, untar, shard by shard) | 8 h 34 m |
+| Catching up after the load | 5 h 15 m, at 4.3 to 4.6 blocks a second per shard |
 | From renting the server to fully synced (every shard less than 10 s behind) | 14 h 06 m |
-| `deploy-client.sh`, including the Let's Encrypt certificate | About 35 s |
+| `deploy-client.sh`, including the Let's Encrypt certificate | 35 s, measured once |
 
 Problems we hit on the way, all on 2026-10-18, IST. Each has a fix on [Fix a problem](../fix/):
 
@@ -80,12 +81,12 @@ Problems we hit on the way, all on 2026-10-18, IST. Each has a fix on [Fix a pro
 | Database | 557.86 GB. Per shard on disk: 37, 261 and 259 GiB | `/v1/info` `dbStats.approxSize`, `du -sh` |
 | Messages | 914,243,963 messages and 3,355,148 FID registrations | `/v1/info` |
 | Disk | 557 GB used, 378 GB free (60%) of 984 GB | `df -h` |
-| Fullest the disk got | 699 GB (75%), during the shard 2 unpack, with `snapshot-space-saver.sh` running | the 10-minute logger, so the real peak may be a little higher |
-| Memory on the server | 2.4 to 2.6 GiB used, plus about 13 GiB of file cache | `free -m` |
+| Fullest the disk got | 699 GB (75%), during the shard 2 unpack, with `snapshot-space-saver.sh` running | the 10-minute logger, so the real peak may be higher |
+| Memory on the server | 2.4 to 2.6 GiB used and 12.7 GiB available; most of the rest was file cache | `free -m` |
 | Memory per container | snapchain 1.53 GiB, statsd 264 MiB, Grafana 68 MiB, Caddy 12 MiB | `docker stats` |
-| CPU | snapchain about 1.3% once synced; load average 0.7 to 1.5 on 8 vCPU | `docker stats`, `/proc/loadavg` |
+| CPU | snapchain 1.3% in one reading once synced; load average 0.7 to 1.5 on 8 vCPU | `docker stats`, `/proc/loadavg` |
 | Peers | 5, all mainnet validators | `/v1/mesh`, read on the server |
-| Read time through Caddy | About 0.2 s per `/v1/*` request | `curl` |
+| Read time through Caddy | 0.2 s per `/v1/*` request, rounded to 0.1 s | `curl` |
 
 ## Cost
 
@@ -107,20 +108,16 @@ Not measured: how long a valid message takes to show up, Grafana's peak memory, 
 
 <div class="shots">
   <figure class="shot-phone">
-    <Image src={mobile360} alt="Feed on a 360 px phone: casts from FID 3 with Like, Recast and Mute buttons" widths={[360, 720]} sizes="(max-width: 36rem) 18rem, 22rem" />
-    <figcaption>Real casts read from our node, 360 px phone</figcaption>
-  </figure>
-  <figure class="shot-phone">
-    <Image src={mobile375} alt="375 px phone: Follow, outgoing messages, filters, and the feed form for FIDs 2 and 3 with 20 shown, 0 hidden by filters" widths={[375, 750]} sizes="(max-width: 36rem) 18rem, 22rem" />
-    <figcaption>Filters and feed settings, 375 px. "20 shown, 0 hidden by filters."</figcaption>
+    <Image src={mobile375} alt="375 px phone: the Following feed, '21 casts, 38 replies to people you don't follow hidden', status 'Connected to your node', and the Feed, Post and Settings bar at the bottom" widths={[375, 750]} sizes="(max-width: 36rem) 18rem, 22rem" />
+    <figcaption>The feed on a 375 px phone</figcaption>
   </figure>
   <figure class="shot-wide">
-    <a href={desktop.src}><Image src={desktop} alt="Desktop: node status (Connected, version 0.14.3, each shard 0 to 2 s behind), then the app key box with the Address check warning" widths={[640, 1280]} sizes="(max-width: 50rem) 100vw, 46rem" /></a>
-    <figcaption>Desktop, 1280 px. Open the image for full size.</figcaption>
+    <a href={desktop.src}><Image src={desktop} alt="Desktop: the Following feed with '21 casts, 38 replies to people you don't follow hidden', status 'Connected to your node', and a side panel 'To post, add an app key first'" widths={[640, 1280]} sizes="(max-width: 50rem) 100vw, 46rem" /></a>
+    <figcaption>Desktop, 1024 px. Open the image for full size.</figcaption>
   </figure>
 </div>
 
-Taken by `e2e/real-node.mjs` in headless Chrome against the live node on 2026-10-18 at 18:07 IST, after we redeployed the current app. It reads only public FIDs 2 and 3. Before each screenshot it replaces the server's address with `<ip-with-dashes>.sslip.io`.
+Taken in Chrome against the live node on 2026-10-18 at 22:38 IST, after the app's last layout change (client commit `9b4764c`, 22:15 IST).
 
 ## Test status
 
@@ -131,16 +128,16 @@ Taken by `e2e/real-node.mjs` in headless Chrome against the live node on 2026-10
 | Suite | Result | What it covers |
 |---|---|---|
 | `e2e/real-node.mjs` on the live node | 17 of 17 | Listed below the table |
-| `e2e/run.sh` (the real Caddyfile, a mock node, headless Chrome) | 60 of 60 | The same app and proxy on one machine, including the CSP `<meta>` |
-| Client unit tests (`vitest`) | 62 of 62, 8 files | Messages, key adding, feed, filters, timeline, retry logic, formatting |
+| `e2e/run.sh` (the real Caddyfile, a mock node, headless Chrome) | 72 of 72 | The same app and proxy on one machine: CSP headers and `<meta>`, the add-app-key steps, a signed key and cast, feed rules, filters by app, pictures on and off, phone and desktop layout, error states |
+| Client unit tests (`vitest`) | 69 of 69, 9 files | Messages, key adding, feed, filters, timeline, retry logic, formatting, the app behind each cast |
 | `test/node_sh_test.sh` | 42 of 42 | Sync rules, bootstrap under a fake terminal, `.env` answers, the new disk-helper install and re-run |
 | `test/space_saver_test.sh` | 14 of 14 | Chunk and tar clean-up, hole punching, waiting for the snapshot folder |
 | `test/watchdog_test.sh` | 16 of 16 | Progress check during a sync, a stuck node, SSH loss, money cap, macOS without `timeout`, a missing token written to the log |
-| `test/teardown_test.sh` | 7 of 7 | Running twice, missing token, wrong confirmation |
-| `test/provision_test.sh` | 19 of 19 | `SSH_SOURCE_CIDRS` check, the watchdog start (with a stand-in watchdog), no second watchdog, a loud stop when it cannot start, unavailable server types and the `SERVER_TYPE=""` auto-pick (with a fake `hcloud`) |
+| `test/teardown_test.sh` | 9 of 9 | Running twice, missing token, wrong confirmation, a server ID that differs from the one `provision.sh` recorded |
+| `test/provision_test.sh` | 29 of 29 | `SSH_SOURCE_CIDRS` check, the watchdog start (with a stand-in watchdog), no second watchdog, a loud stop when it cannot start, unavailable server types and the `SERVER_TYPE=""` auto-pick, a server or firewall left from an earlier run, the volume quota (with a fake `hcloud`) |
 | `shellcheck` | No warnings | Every shell script |
 
-We ran the shell suites, shellcheck, the client unit tests and `e2e/run.sh` again on 2026-10-18 at about 20:45 IST, on commit `b53f450`. The client is still changing, so these counts will move. `e2e/real-node.mjs` ran during the live run and again at 18:07 IST, against the app as it was then.
+We ran the shell suites, shellcheck, the client unit tests and `e2e/run.sh` on 2026-10-21 at 00:03 IST, on commit `3e06969`. `e2e/real-node.mjs` ran on 2026-10-18 against the live node, last at 18:07 IST, and can't be rerun now that the server is deleted.
 
 What `e2e/real-node.mjs` checked:
 
