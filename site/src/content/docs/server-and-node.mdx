@@ -1,6 +1,6 @@
 ---
 title: Server and node
-description: Set up Hetzner for the scripts; the tested node costs about $0.164 an hour.
+description: Set up Hetzner for the scripts; the tested node costs at most $102.29 a month.
 ---
 
 import RepoLink from "../../components/RepoLink.astro";
@@ -75,7 +75,7 @@ hcloud ssh-key list
 | Limit | What you see | What to do |
 |---|---|---|
 | New accounts may rent at most 1024 GB of volumes in total, across all projects. The official docs ask for 1.5 to 2 TB. Your limits: [console.hetzner.cloud/limits](https://console.hetzner.cloud/limits). | `volumes size limit exceeded (resource_limit_exceeded)`, or from `provision.sh` before it creates anything: `would pass the 1024 GB account quota` | Use `VOLUME_GB=1000`, the tested size. `node.sh` then adds two disk helpers so the snapshot fits. If you already run a node with a 1000 GB volume, a second one needs a higher limit. `provision.sh` only sees the volumes in this project; if Hetzner raised your limit, set `VOLUME_QUOTA_GB` to it. |
-| Server types sell out. | `provision.sh` refuses the type and lists what is for sale | See [Server choice](#server-choice). |
+| A server type isn't available to rent. | `provision.sh` refuses the type and lists what is for sale | See [Server choice](#server-choice). |
 
 ## Server choice
 
@@ -86,9 +86,7 @@ hcloud ssh-key list
 | Location | `fsn1` (Falkenstein) | The script's default. Server and volume must be in the same location. |
 | Image | Ubuntu 24.04 | The script's default. |
 
-On 18 Oct 2026 at 18:48 IST, Hetzner listed cax31 and cx43 as sold out in fsn1, nbg1 and hel1. The cheapest type with 16 GB of RAM for sale in fsn1 was cpx42 (x86, 8 vCPU, 16 GB RAM) at $0.1314 an hour, at most $81.99 a month. With the IPv4 address and the 1000 GB volume that comes to about $159 a month.
-
-With cx43 and cax31 sold out, the Full run's `SERVER_TYPE=""` likely picks cpx42. [Step 1](../quickstart/#step-1) has the order it tries and what to set when nothing is for sale.
+Hetzner can't always rent every type in every location. If the type you set isn't available to rent in `LOCATION`, `provision.sh` stops and lists the types that are, cheapest first. With `SERVER_TYPE=""` it rents the first one it can. [Step 1](../quickstart/#step-1) has the order it tries and what to set when nothing is for sale.
 
 ## What it costs
 
@@ -98,12 +96,12 @@ For the tested cax31, from Hetzner's price list on 2026-10-18, in USD:
 |---|---|
 | cax31 | $0.040 an hour, at most $24.99 a month |
 | Public IPv4 | $0.001 an hour, at most $0.60 a month |
-| 1000 GB volume | $76.70 a month ($0.0767 per GB). Hetzner bills it by the hour; that works out to about $0.123 an hour (monthly price ÷ 625 hours, the ratio of the server's own monthly and hourly prices) |
-| Total | About $0.164 an hour. About $102 a month if you leave it on (each item stops at its monthly price). |
+| 1000 GB volume | $76.70 a month ($0.0767 per GB). Hetzner bills it by the hour but lists only a monthly price. Our estimate is $0.123 an hour (monthly price ÷ 625 hours, the ratio of the server's own monthly and hourly prices) |
+| Total | $0.164 an hour with the volume estimate. $102.29 a month if you leave it on (each item stops at its monthly price). |
 
-On cax31, expect about 14 hours from renting the server to a synced node: about $2.31 by the price list, not an invoice.
+On cax31, expect about 14 hours from renting the server to a synced node: $2.31 at that hourly total, not an invoice.
 
-With cpx42 ($0.1314 an hour) instead of cax31, the total is about $0.255 an hour, about $159 a month. **cpx42 has not been tested**, so its sync time is unknown.
+cpx42 (x86, 8 vCPU, 16 GB RAM) lists at $0.1314 an hour, at most $81.99 a month. With it instead of cax31, the total is $0.255 an hour and $159.29 a month. **cpx42 has not been tested**, so its sync time is unknown.
 
 To see the type it would pick and the price, before creating anything:
 

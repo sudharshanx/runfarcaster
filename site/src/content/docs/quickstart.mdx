@@ -43,7 +43,7 @@ IP=$(./provision.sh) && echo "$IP"
 
 **You will see** `[provision] server type …` with the type it picked, then `[provision] done. Next …` and the server's IP address. **Time:** under a minute.
 
-Hetzner bills the server by the hour until you delete it. The tested type, cax31, was sold out on 18 Oct 2026, so expect cpx42 (x86, 16 GB RAM): about $0.255 an hour with the 1000 GB volume, or about $159 a month. **cpx42 has not been tested.** What step 1 does: [Server and node](../server-and-node/#what-step-1-does).
+Hetzner bills the server by the hour until you delete it. The tested type is cax31: with IPv4 and the 1000 GB volume, $0.164 an hour (our estimate, since the volume is listed by the month) and at most $102.29 a month. If a type isn't available to rent in `LOCATION`, step 1 stops and lists the types that are, cheapest first. cpx42 (x86, 16 GB RAM) comes to $0.255 an hour, at most $159.29 a month. **cpx42 has not been tested.** What step 1 does: [Server and node](../server-and-node/#what-step-1-does).
 
 :::tip[Lost `$IP`?]
 `$IP` only lives in the terminal where you set it. In a new terminal, run the `export NAME=…` line from **Set up first** again, then `IP=$(hcloud server ip "$NAME")`.
@@ -52,7 +52,7 @@ Hetzner bills the server by the hour until you delete it. The tested type, cax31
 <details>
 <summary>How the server type is picked</summary>
 
-With `SERVER_TYPE=""`, `provision.sh` tries cx43, cax31, cpx42 and ccx23 in that order and rents the first one for sale in `LOCATION` with at least 16 GB of RAM. It logs `skipping …` for each sold-out type. If none is for sale, it stops with `none of [...] is usable`, lists the types you can rent there, and creates nothing. Run step 1 again with one of them in `SERVER_TYPE`, or with another place in `LOCATION` (fsn1, nbg1, hel1, ash, hil or sin).
+With `SERVER_TYPE=""`, `provision.sh` tries cx43, cax31, cpx42 and ccx23 in that order and rents the first one for sale in `LOCATION` with at least 16 GB of RAM. It logs `skipping …` for each type it can't rent there. If none is for sale, it stops with `none of [...] is usable`, lists the types you can rent there, and creates nothing. Run step 1 again with one of them in `SERVER_TYPE`, or with another place in `LOCATION` (fsn1, nbg1, hel1, ash, hil or sin).
 
 To see the pick and the price first, without creating anything: `ESTIMATE_ONLY=1 SERVER_TYPE="" VOLUME_GB=1000 ./provision.sh`.
 
@@ -85,7 +85,7 @@ To keep the node after all, stop the watchdog without deleting anything: `touch 
 <details>
 <summary>A 2 TB volume instead</summary>
 
-Run step 1 as `IP=$(VOLUME_GB=2000 ./provision.sh)`. It needs a Hetzner volume limit above 2000 GB and has not been tested. The price list puts it at about $0.29 an hour.
+Run step 1 as `IP=$(VOLUME_GB=2000 ./provision.sh)`. It needs a Hetzner volume limit above 2000 GB and has not been tested. With cax31 it lists at $178.99 a month, $153.40 of that for the volume, or an estimated $0.286 an hour.
 
 </details>
 

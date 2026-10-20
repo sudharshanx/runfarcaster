@@ -7,9 +7,9 @@ This repo holds the scripts for those 3 steps, the web app, the tests and the gu
 a full copy of Farcaster.
 
 Status: the 3 steps have been tested end to end once on mainnet (2026-10-18), on a Hetzner cax31 with a 1000 GB
-volume. On that hardware, expect about 14 hours from renting the server to a synced node, about $2.31 by the price
-list. The app was served over HTTPS from the node. Adding an app key and posting a cast have been tested on mainnet;
-likes, recasts and follows have been tested against a mock node only. Numbers: `MEASUREMENTS.md`. Log:
+volume. On that hardware, expect about 14 hours from renting the server to a synced node, and an estimated $2.31 at
+list prices. The app was served over HTTPS from the node. Adding an app key and posting a cast have been tested on
+mainnet; likes, recasts and follows have been tested against a mock node only. Numbers: `MEASUREMENTS.md`. Log:
 `run-log.md` (server details replaced with placeholders).
 
 Guide website: `site/`. Vouching: `VOUCHER.md`. Key handling: `SECURITY.md`.
@@ -80,9 +80,9 @@ Notes:
 - `SNAPCHAIN_AGREE_NO_REWARDS=yes` answers the official bootstrap's question: a read node earns no rewards.
   Read it first: https://snapchain.farcaster.xyz/getting-started
 - `ESTIMATE_ONLY=1 SERVER_TYPE="" VOLUME_GB=1000 ./provision.sh` shows the price and creates nothing.
-- On 2026-10-18 at 18:48 IST, Hetzner listed cx43 and cax31 as sold out in fsn1, nbg1 and hel1, so the pick is likely
-  cpx42 (x86, 16 GB RAM): about $0.255 an hour with the volume, about $159 a month. **cpx42 has not been tested.**
-  The guide has been tested on cax31 (ARM64) only; times on other types vary.
+- The tested type is cax31 (ARM64); times on other types vary. If a type isn't available to rent in `LOCATION`,
+  the error lists the types that are, cheapest first. **cpx42 (x86, 16 GB RAM) has not been tested.** With IPv4 and
+  the 1000 GB volume it costs $159.29 a month at list prices, or an estimated $0.255 an hour.
 - Ports 3381 (HTTP API) and 3383 (gRPC) are closed to the internet. The app reaches the node through Caddy.
   Set `NODE_API_CIDRS` in `provision.sh` to open them to chosen addresses.
 - Without `WATCHDOG=0`, `provision.sh` starts `watchdog.sh` in the background before it creates anything (output in
@@ -217,7 +217,7 @@ bash test/node_sh_test.sh        # node.sh with fake docker and a mock /v1/info
 bash test/space_saver_test.sh
 bash test/watchdog_test.sh       # progress check, SSH loss, money cap, macOS without timeout
 bash test/teardown_test.sh       # fake hcloud; running twice, missing token, wrong confirmation
-bash test/provision_test.sh      # CIDR check, watchdog start (stub), sold-out types and LOCATION hints (fake hcloud)
+bash test/provision_test.sh      # CIDR check, watchdog start (stub), unavailable types and LOCATION hints (fake hcloud)
 python3 tools/embed-helpers.py --check
 cd client && npm ci --ignore-scripts && npm run typecheck && npm test && npm run build
 cd e2e && npm ci && CADDY=caddy CHROME=/path/to/chrome ./run.sh   # Caddy, mock node, headless Chrome

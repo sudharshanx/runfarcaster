@@ -42,7 +42,7 @@ Read the reference file for a step before you run it. For an error, read [refere
 ## What to expect
 
 - On a cax31 with a 1000 GB volume, expect about 14 hours from renting the server to synced. Times on other server types vary.
-- `SERVER_TYPE=""` picks the first 16 GB type for sale. cax31 was sold out on 18 Oct 2026, so expect cpx42: about $0.255 an hour with the volume, from Hetzner's price list. cpx42 has not been tested; tell the user. (cax31 was about $0.164 an hour.) The server keeps running, and Hetzner bills it, until `teardown.sh` deletes it.
+- `SERVER_TYPE=""` picks the first 16 GB type for sale in `LOCATION`. The tested type is cax31. If a type isn't available to rent there, the error lists what is, cheapest first. cpx42 has not been tested; tell the user if it is picked. With IPv4 and the 1000 GB volume, cax31 costs $102.29 a month and cpx42 $159.29 at list prices; by the hour, an estimated $0.164 and $0.255. The server keeps running, and Hetzner bills it, until `teardown.sh` deletes it.
 - The node needs no API keys. A read node earns no rewards.
 
 ## Sources

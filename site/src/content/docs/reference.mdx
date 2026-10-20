@@ -25,7 +25,7 @@ import RepoLink from "../../components/RepoLink.astro";
 |---|---|---|---|
 | `HCLOUD_TOKEN` | provision, teardown, watchdog | (required) | Hetzner API token, read/write |
 | `SSH_KEY` | provision | (required) | Name or ID of an SSH key in your Hetzner project |
-| `SERVER_TYPE` | provision | `cx43` | Tested with `cax31`. Empty = auto-pick from `SERVER_TYPE_CANDIDATES`. If it is sold out in `LOCATION`, the error lists what is for sale |
+| `SERVER_TYPE` | provision | `cx43` | Tested with `cax31`. Empty = auto-pick from `SERVER_TYPE_CANDIDATES`. If it isn't available to rent in `LOCATION`, the error lists what is, cheapest first |
 | `SERVER_TYPE_CANDIDATES` | provision | `cx43 cax31 cpx42 ccx23` | Cheapest first |
 | `VOLUME_GB` | provision | `2000` (`REQUIRED_DISK_GB`) | `1000` fits a new account's quota |
 | `LOCATION` | provision | `fsn1` | `fsn1`, `nbg1`, `hel1`, `ash`, `hil` or `sin`. Server and volume share it |

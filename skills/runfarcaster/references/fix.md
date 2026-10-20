@@ -7,7 +7,7 @@ Problems seen while building and running the guide. Match the exact text the use
 | You see | Why | Fix |
 |---|---|---|
 | `volumes size limit exceeded (resource_limit_exceeded)` | New Hetzner accounts can rent at most 1024 GB of volumes in total. | Use `VOLUME_GB=1000`. Limits: https://console.hetzner.cloud/limits |
-| `server type cax31: not available in fsn1 right now.` | Hetzner sold out of that type there. The error lists what you can rent. | Run step 1 again with a `SERVER_TYPE` from the list, or another `LOCATION` (fsn1, nbg1, hel1, ash, hil, sin). The guide has been tested on cax31 only. |
+| `server type cax31: not available in fsn1 right now.` | Hetzner can't rent you that type there right now. The error lists what you can rent. | Run step 1 again with a `SERVER_TYPE` from the list, or another `LOCATION` (fsn1, nbg1, hel1, ash, hil, sin). The guide has been tested on cax31 only. |
 | `unknown LOCATION=…` | A typo in `LOCATION`. | Use a name from the list it prints. |
 | SSH hangs, then times out. It worked before. | The firewall lets SSH in only from `SSH_SOURCE_CIDRS`, and the user's address changed. | Run step 1 again with every setting and the new address: `SSH_KEY=my-key SERVER_TYPE="" VOLUME_GB=1000 WATCHDOG=0 SSH_SOURCE_CIDRS="$(curl -4 -s https://ifconfig.me)/32" ./provision.sh`. It updates the firewall and keeps the server. |
 | `ssh: Could not resolve hostname : Name or service not known` | `$IP` is empty in a new terminal. | `IP=$(hcloud server ip "$NAME")` |

@@ -169,7 +169,7 @@ check_server_type() {
   if [[ "$DRY_RUN" == "1" ]]; then
     SERVER_TYPE="${SERVER_TYPE:-${SERVER_TYPE_CANDIDATES%% *}}"
     log "dry-run: using $SERVER_TYPE, assuming local disk < ${REQUIRED_DISK_GB} GB -> volume needed"
-    log "dry-run: availability is not checked. A live run skips sold-out types and may pick another one; ESTIMATE_ONLY=1 shows the live pick."
+    log "dry-run: availability is not checked. A live run skips types that are not available to rent and may pick another one; ESTIMATE_ONLY=1 shows the live pick."
     NEED_VOLUME=1; return 0
   fi
   local t problem

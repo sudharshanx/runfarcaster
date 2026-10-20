@@ -43,11 +43,11 @@ If it is your own earlier run, `REUSE=1 ./provision.sh` continues with it.
 
 **Where:** Found in review by a first-time tester in a shared project; the check was added to `provision.sh` afterwards. Covered by unit tests, not yet hit on a live run.
 
-### The server type is sold out
+### The server type isn't available to rent
 
 **You see:** `server type cax31: not available in fsn1 right now.` when you set a type, or `none of [cx43 cax31 cpx42 ccx23] is usable in fsn1.` with `SERVER_TYPE=""`. Both list the types you can rent there, cheapest first.
 
-**Why:** Hetzner sells out of server types. On 18 Oct 2026, cx43 was sold out in the morning, and by evening cax31 was sold out in every location that offers it.
+**Why:** Hetzner can't rent you that type in that location right now. Which types it can rent changes over time.
 
 **Fix:** Run step 1 again with a type from the list, or with another location. The guide has been tested on cax31 only; times on other types vary.
 

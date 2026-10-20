@@ -4,7 +4,7 @@ Thank you for testing. If you ran the 3 steps, please vouch for the tutorial pub
 
 ## Before you start
 
-- Use **your own** Hetzner account and machine. It costs money: about $0.164/h, about $2.31 to reach sync in our run (≈14 h).
+- Use **your own** Hetzner account and machine. It costs money: $0.164/h by our estimate from the price list, and $2.31 to reach sync in our run (14 h 06 m).
 - Use a **test** Farcaster account if you try posting. Never share your recovery phrase, Hetzner token, IP address or SSH keys with anyone, including in your cast.
 
 ## Checklist
