@@ -70,10 +70,6 @@ body.lp { margin: 0; background: #fff; color: var(--text); font-family: var(--sa
 .hbtn svg { flex: none; }
 .hbtn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 @media (prefers-reduced-motion: reduce) { .hbtn { transition: none; } }
-.hero-instant { display: flex; flex-wrap: wrap; justify-content: center; align-items: baseline; gap: 4px 10px; margin: 18px auto 0 !important; font-size: 15px; line-height: 1.5; }
-.hero-instant a { color: var(--accent); font-weight: 550; text-decoration: underline; text-underline-offset: 3px; display: inline-flex; align-items: center; min-height: 44px; }
-.hero-instant span { color: var(--sub); font-size: 14px; }
-@media (max-width: 640px) { .hero-instant { flex-direction: column; align-items: center; } .hero-instant a { min-height: 32px; } }
 .hero-note { display: inline-flex; align-items: center; gap: 8px; margin: 28px 0 0 !important; font-size: 14px; line-height: 1.5; }
 .hero-note svg { color: var(--accent); flex: none; }
 

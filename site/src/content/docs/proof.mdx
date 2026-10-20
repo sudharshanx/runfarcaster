@@ -1,6 +1,6 @@
 ---
 title: "Proof: what we ran"
-description: We synced a mainnet node in about 14 hours and posted a cast through it.
+description: We synced a mainnet node in 14 hours, posted a cast through it, and shut it down after about 70 hours.
 ---
 
 import TestedTable from "../../components/TestedTable.astro";
@@ -11,6 +11,17 @@ import mobile375 from "../../assets/client-mobile-375.png";
 import desktop from "../../assets/client-desktop.png";
 
 We ran the 3 steps once, on mainnet, on 2026-10-18. Times are IST (UTC+5:30). The server was a Hetzner cax31 (ARM64, 8 vCPU, 16 GB RAM) in fsn1 with a 1000 GB volume and Ubuntu 24.04. The node ran Snapchain v0.14.3. The full notes are in <RepoLink path="MEASUREMENTS.md" /> and <RepoLink path="run-log.md" />. We replaced the server's IP, its Hetzner IDs and our test account with placeholders before publishing them.
+
+## The run, start to finish
+
+| Event | Date and time&nbsp;(IST) |
+|---|---|
+| Server rented with `provision.sh` | 2026-10-18 01:26 |
+| Node fully synced, every shard less than 10 s behind | 2026-10-18 15:32 |
+| Cast posted through the node | 2026-10-18 20:53 |
+| Server powered off | 2026-10-20 23:29 |
+
+The server ran for about 70 hours. From 15:32 on 2026-10-18 until shutdown, all 3 shards stayed at the tip. At shutdown the node held about 914.27 million messages in a database of about 558 GB. The whole run cost about $11.49 on Hetzner ([Cost](#cost)). The node is no longer running; the screenshots on this page are from 2026-10-18.
 
 ## Posted to mainnet
 
@@ -81,7 +92,8 @@ Problems we hit on the way, all on 2026-10-18, IST. Each has a fix on [Fix a pro
 | Item | Amount |
 |---|---|
 | Price | About $0.164 an hour: cax31 $0.040, IPv4 $0.001, 1000 GB volume about $0.123 (our estimate: $76.70 a month ÷ 625 hours) |
-| Until synced | About $2.31 |
+| Until synced, 14 h 06 m | About $2.31 |
+| Whole run, about 70 h (2026-10-18 01:26 to 2026-10-20 23:29) | About $11.49 |
 | Left running | About $102 a month: $24.99 + $0.60 + $76.70, the monthly prices Hetzner stops at |
 | Invoice | Not seen yet |
 
@@ -173,7 +185,7 @@ No vouches yet.
 The checklist is in <RepoLink path="VOUCHER.md" />. In short:
 
 1. Note the commit you used: `git rev-parse --short HEAD`.
-2. Complete the [Full run](../quickstart/); an [Instant run](../instant-run/) does not count. Write down how long renting the server and the sync took, what Hetzner charged, the server type and the volume size.
+2. Complete the [Full run](../quickstart/). Write down how long renting the server and the sync took, what Hetzner charged, the server type and the volume size.
 3. Open the app from your node and check that a feed loads.
 4. Optional, with a test account only: add an app key and send one cast ([Post with an app key](../first-cast/)). Note the cast hash and whether another app shows it.
 5. Run `teardown.sh` and check in the Hetzner console that the project is empty.

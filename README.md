@@ -12,11 +12,6 @@ list. The app was served over HTTPS from the node. Adding an app key and posting
 likes, recasts and follows have been tested against a mock node only. Numbers: `MEASUREMENTS.md`. Log:
 `run-log.md` (server details replaced with placeholders).
 
-Two modes:
-- **Instant run**: test in 5 minutes against a node that is already running, until Oct 24, 2026.
-  Steps: `site/src/content/docs/instant-run.mdx`.
-- **Full run**: the 3 commands below, on your own server. Vouchers do this one.
-
 Guide website: `site/`. Vouching: `VOUCHER.md`. Key handling: `SECURITY.md`.
 
 ## Full run (Quickstart)

@@ -14,7 +14,7 @@ Adding an app key and posting a cast ran on mainnet ([Proof](../proof/#posted-to
 You need:
 - A **test** Farcaster account and its recovery phrase. Read [What the app does with your recovery phrase](#what-the-app-does-with-your-recovery-phrase) first.
 - Node.js 22.12 or later (22.x, 24.x or 26+) and this repo on your computer.
-- Your node from the [Full run](../quickstart/), and the HTTPS address that `deploy-client.sh` printed. On an [Instant run](../instant-run/), use the node address from that page.
+- Your node from the [Full run](../quickstart/), and the HTTPS address that `deploy-client.sh` printed.
 
 :::note[If you started the watchdog]
 The watchdog from step 1 ([A trial server that deletes itself](../quickstart/#try-it)) deletes the server, the volume and the firewall 24 hours after it started, even if the node is healthy. To keep the node: `touch .provision-state/watchdog.disarm`. Within a minute, `tail -n 1 .provision-state/watchdog.log` should show `disarmed by …`.

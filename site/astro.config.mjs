@@ -59,7 +59,6 @@ export default defineConfig({
       },
       lastUpdated: false,
       sidebar: [
-        { label: "Instant run: 5 minutes", slug: "instant-run" },
         { label: "Full run: 3 commands", slug: "quickstart" },
         {
           label: "Go deeper",
