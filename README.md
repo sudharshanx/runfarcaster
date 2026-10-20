@@ -229,8 +229,9 @@ cd e2e && npm ci && CADDY=caddy CHROME=/path/to/chrome ./run.sh   # Caddy, mock 
   write is a broken `submitMessage`, which the node rejects with 400).
 - Unit tests only: `node.sh` installing the disk helpers itself, the watchdog progress check, `provision.sh`
   starting the watchdog itself.
+- Ran live once: `teardown.sh`, which deleted the server, volume and firewall on 2026-10-20.
 - Not tried: likes, recasts and follows on mainnet (a gasless KEY_ADD and one cast did run; see Status above),
-  `teardown.sh` on real servers, a 2 TB volume.
+  a 2 TB volume.
 - For a specific SSH key: `SSH_OPTS="-i key" ./deploy-client.sh "$IP"`.
 
 ## Assumptions
