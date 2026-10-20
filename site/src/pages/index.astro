@@ -8,7 +8,7 @@ import "../styles/landing.css";
 import { Image } from "astro:assets";
 import Wordmark from "../components/Wordmark.astro";
 import PartsDiagram from "../components/landing/PartsDiagram.astro";
-import feedShot from "../assets/client-feed.png";
+import feedShot from "../assets/client-desktop-live.png";
 import { REPO, prompts } from "../prompts";
 
 const base = import.meta.env.BASE_URL.replace(/\/?$/, "/");
@@ -190,8 +190,8 @@ const right = `<svg aria-hidden="true" width="12" height="12" viewBox="0 0 12 12
           {/* AUTHOR: one line on what it felt like when the feed first loaded from your own node. */}
         </div>
         <figure class="shot">
-          <Image src={feedShot} alt="The app on a desktop screen: Connected to your node, the Add app key prompt, then the Following feed for @dwr with casts from Greg and Darryl Yeo" widths={[640, 1040, 1560]} sizes="(max-width: 900px) 100vw, 520px" loading="lazy" />
-          <figcaption>The app reading the Following feed of @dwr (FID 3) from our synced node on 18 Oct 2026.</figcaption>
+          <Image src={feedShot} alt="The app on a desktop screen: Connected to your node, the Following feed with casts from Greg, Thomas and adrienne, and the Add app key prompt beside it" widths={[640, 1040, 1560]} sizes="(max-width: 900px) 100vw, 520px" loading="lazy" />
+          <figcaption>The app reading a Following feed from our synced node on 18 Oct 2026.</figcaption>
         </figure>
         {/* AUTHOR: 59 s vertical video (9:16): rent the server, a synced /v1/info, the feed on a phone. Put it here with a caption that says how you made it. */}
       </section>
