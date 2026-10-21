@@ -33,6 +33,7 @@ The official docs had these outdated or wrong statements when the pages were las
 | 33 | HTTP API | On endpoints that read every shard (`castsByParent`, `reactionsByCast`, `linksByTargetFid`), `pageSize` applies per shard: `pageSize=2` returned 4 messages |
 | 34 | [User data](https://snapchain.farcaster.xyz/reference/httpapi/userdata) | `user_data_type` is ignored over HTTP; every field comes back |
 | 35 | [Reactions](https://snapchain.farcaster.xyz/reference/httpapi/reactions) | `reaction_type` takes `Like`/`Recast`; the enum names the responses use (`REACTION_TYPE_LIKE`) get HTTP 400 |
+| 36 | (undocumented) | A snapshot replaced during the restore makes the node crash on a 404, then run without that shard |
 
 ## docs.farcaster.xyz
 

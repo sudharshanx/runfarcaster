@@ -9,6 +9,7 @@
 #   ./node.sh wait                                       # only wait for sync, then health
 #   ./node.sh health                                     # only print the health check
 #   ./node.sh helpers                                    # only install/arm the disk helpers (below)
+#   ./node.sh repair-shard N                             # restore only shard N from a fresh snapshot
 #   DRY_RUN=1 ./node.sh                                  # print what would run, change nothing
 #
 # Environment (all optional):
@@ -39,6 +40,12 @@
 #                               `bash -s < node.sh` needs no other file. Re-running is safe.
 #   SPACE_SAVER_WAIT_SECS       Default 7200. How long the space saver waits for the node to start
 #                               its snapshot restore (.rocks.snapshot) before giving up.
+#   SNAPSHOT_REPAIR             auto (default): while waiting for sync, if Snapchain logged
+#                               "Failed to download snapshot chunk" for a shard and will not retry,
+#                               restore only that shard (see repair_shard). 0 = only print the fix.
+#   REPAIR_ATTEMPTS             Default 3. Fresh-metadata attempts per repair.
+#   REPAIR_PARALLEL             Default 4. Parallel chunk downloads during a repair.
+#   SNAPSHOT_URL                Default: upstream's snapshot_download_url (see repair_shard).
 #
 # No API keys, tokens, seed phrases or private keys are needed or read by this script.
 
@@ -66,6 +73,12 @@ HELPER_DIR="${HELPER_DIR:-/usr/local/lib/snapchain-tutorial}"
 SYSTEMD_DIR="${SYSTEMD_DIR:-/etc/systemd/system}"
 SBIN_DIR="${SBIN_DIR:-/usr/local/sbin}"
 SYSTEMCTL="${SYSTEMCTL:-systemctl}"
+SNAPSHOT_REPAIR="${SNAPSHOT_REPAIR:-auto}"
+SNAPSHOT_URL="${SNAPSHOT_URL:-https://pub-d352dd8819104a778e20d08888c5a661.r2.dev}"
+SNAPSHOT_NETWORK="${SNAPSHOT_NETWORK:-FARCASTER_NETWORK_MAINNET}"
+REPAIR_ATTEMPTS="${REPAIR_ATTEMPTS:-3}"
+REPAIR_PARALLEL="${REPAIR_PARALLEL:-4}"
+DISK_GUARD_MARKER="${DISK_GUARD_MARKER:-/root/snapchain-DISK-FULL}"
 
 log()  { printf '[node.sh] %s\n' "$*"; }
 warn() { printf '[node.sh] WARNING: %s\n' "$*" >&2; }
@@ -628,6 +641,7 @@ wait_for_sync() {
   log "A new node first downloads a snapshot (several hundred GB); the HTTP API may be unreachable meanwhile."
   while true; do
     now="$(date +%s)"
+    check_snapshot_failure || true
     if info="$(fetch_info 2>/dev/null)"; then
       rc=0; line="$(printf '%s' "$info" | sync_status)" || rc=$?
       log "$(date -u +%H:%M:%SZ) $line"
@@ -675,6 +689,153 @@ health() {
   echo "========================================================"
 }
 
+# ---------------------------------------------------------------------------------------------
+# One-shard snapshot repair (snapchain src/storage/db/snapshot.rs and src/main.rs @fc87f26, same
+# on main @410f93a). Upstream fetches every shard's latest.json once, at the start, then restores
+# the shards one after another in the order [1, 2, 0]. If a shard's snapshot is replaced and the
+# old chunks are deleted before the node reaches it, every chunk download fails with 404. After 5
+# tries 10 s apart the node logs "Failed to download snapshot chunk .../shard-N/chunk_XXXX.bin",
+# panics and Docker restarts it (restart: always). On the restart .rocks is no longer empty, so
+# upstream skips the snapshot and runs without shard N's data. It never retries by itself.
+#
+# This repair never touches a shard that finished restoring. For the failed shard only it reads
+# fresh metadata, downloads the chunks itself (parallel, resumable, 404 = fresh metadata again,
+# at most REPAIR_ATTEMPTS times), unpacks them into a scratch dir exactly like upstream does
+# (gunzip each chunk in order, one tar, unpack), then stops the container, swaps in
+# .rocks/shard-N and starts the container again.
+node_logs() {
+  if [[ -n "${NODE_LOGS_CMD:-}" ]]; then $NODE_LOGS_CMD 2>&1; return 0; fi   # tests
+  compose logs --no-color --no-log-prefix snapchain 2>&1 || true
+}
+
+# Prints "SHARD COUNT" when upstream gave up on a shard's snapshot and will not retry: the last
+# snapshot event in the logs is a failure, and .rocks is not empty. COUNT = failure lines so far.
+failed_snapshot_shard() {
+  local lines last
+  lines="$(node_logs | sed 's/\x1b\[[0-9;]*m//g' \
+    | grep -oE 'Downloading snapshots \(legacy method\)|Force downloading snapshots|Failed to download snapshot chunk [^ :]*shard-[0-9]+/' || true)"
+  last="$(tail -n 1 <<<"$lines")"
+  [[ "$last" == "Failed to download snapshot chunk"* ]] || return 1
+  # Empty .rocks: on its restart upstream downloads every snapshot again by itself.
+  [[ -n "$(ls -A "$SNAPCHAIN_DIR/.rocks" 2>/dev/null)" ]] || return 1
+  printf '%s %s\n' "$(sed -E 's#.*shard-([0-9]+)/$#\1#' <<<"$last")" "$(grep -c '^Failed to download snapshot chunk' <<<"$lines")"
+}
+
+repair_marker() { echo "$SNAPCHAIN_DIR/.node-sh-shard-$1-repaired"; }
+
+manual_repair_help() {
+  warn "Shard $1 has no snapshot data. Your other shards are fine. To restore only shard $1, run: ./node.sh repair-shard $1"
+}
+
+# repair_shard N: restore one shard from fresh metadata. Returns 0 on success.
+repair_shard() {
+  local shard="$1" attempt meta key n need_mb free_mb missing c rc
+  [[ "$shard" =~ ^[0-9]+$ ]] || die "repair-shard needs a shard number, e.g. ./node.sh repair-shard 0"
+  local work="$SNAPCHAIN_DIR/.node-sh-repair/shard-$shard" db="$SNAPCHAIN_DIR/.rocks"
+  log "Repairing shard $shard only: fresh snapshot metadata, the other shards are not touched."
+  if $SUDO test -f "$DISK_GUARD_MARKER"; then
+    warn "disk-guard stopped the node ($DISK_GUARD_MARKER exists); not repairing. Free space first."
+    return 1
+  fi
+  if [[ "$DRY_RUN" == "1" ]]; then
+    printf '[dry-run] remove %s/.rocks.snapshot, download %s/%s/%s/latest.json and its chunks into %s, stop snapchain, replace %s/shard-%s, start snapchain\n' \
+      "$SNAPCHAIN_DIR" "$SNAPSHOT_URL" "$SNAPSHOT_NETWORK" "$shard" "$work" "$db" "$shard"
+    return 0
+  fi
+  # Leftovers of the failed restore: the finished shards are already in .rocks and the failed
+  # shard's partial chunks are useless. Upstream deletes this directory itself after a full restore.
+  if [[ -e "$SNAPCHAIN_DIR/.rocks.snapshot" ]]; then
+    log "Removing the failed restore's scratch dir $SNAPCHAIN_DIR/.rocks.snapshot ($($SUDO du -sh "$SNAPCHAIN_DIR/.rocks.snapshot" 2>/dev/null | cut -f1))."
+    $SUDO rm -rf "$SNAPCHAIN_DIR/.rocks.snapshot"
+  fi
+  $SUDO mkdir -p "$work/chunks"
+  for (( attempt = 1; attempt <= REPAIR_ATTEMPTS; attempt++ )); do
+    log "shard $shard: attempt $attempt of $REPAIR_ATTEMPTS: reading $SNAPSHOT_URL/$SNAPSHOT_NETWORK/$shard/latest.json"
+    if ! meta="$(curl -fsS --max-time 60 --retry 3 "$SNAPSHOT_URL/$SNAPSHOT_NETWORK/$shard/latest.json")"; then
+      warn "shard $shard: could not read the snapshot metadata."; continue
+    fi
+    key="$(jq -r '.key_base // empty' <<<"$meta")"
+    mapfile -t REPAIR_CHUNKS < <(jq -r '.chunks[]?' <<<"$meta")
+    n="${#REPAIR_CHUNKS[@]}"
+    if [[ ! "$key" =~ ^[A-Za-z0-9_./-]+$ || "$key" == *..* ]] || (( n == 0 )) \
+       || printf '%s\n' "${REPAIR_CHUNKS[@]}" | grep -qvE '^chunk_[0-9]+\.bin$'; then
+      warn "shard $shard: unexpected snapshot metadata; not repairing."; return 1
+    fi
+    if [[ "$($SUDO cat "$work/key_base" 2>/dev/null)" != "$key" ]]; then
+      $SUDO rm -rf "$work/chunks"; $SUDO mkdir -p "$work/chunks"
+      printf '%s\n' "$key" | $SUDO tee "$work/key_base" >/dev/null
+    fi
+    # Worst case per chunk: 100 MiB compressed (upstream: "100MB max each") + 100 MiB unpacked.
+    need_mb=$(( n * 200 ))
+    free_mb="$(df -P -BM "$SNAPCHAIN_DIR" | awk 'NR==2 {gsub("M","",$4); print $4}')"
+    if (( free_mb < need_mb )); then
+      warn "shard $shard: $n chunks need up to ${need_mb} MiB free, only ${free_mb} MiB free; not repairing."; return 1
+    fi
+    log "shard $shard: snapshot $key, $n chunks, downloading with $REPAIR_PARALLEL parallel connections."
+    $SUDO rm -f "$work/failed"
+    # shellcheck disable=SC2016  # the bash -c body gets its values as positional args
+    printf '%s\n' "${REPAIR_CHUNKS[@]}" | xargs -P "$REPAIR_PARALLEL" -I{} $SUDO bash -c '
+      dst="$1/chunks/$2"; [[ -f "$dst" ]] && exit 0
+      code="$(curl -sS --retry 5 --retry-delay 10 --retry-connrefused -C - -o "$dst.part" -w "%{http_code}" "$3/$2")" || true
+      if [[ "$code" == 200 || "$code" == 206 ]]; then mv -f "$dst.part" "$dst"
+      else rm -f "$dst.part"; echo "$code $2" >> "$1/failed"; fi' _ "$work" {} "$SNAPSHOT_URL/$key" || true
+    if [[ -s "$work/failed" ]]; then
+      missing="$(wc -l < "$work/failed")"
+      if grep -q '^404 ' "$work/failed"; then
+        warn "shard $shard: $missing chunks failed, 404 included: the snapshot was replaced during the download. Reading fresh metadata."
+      else
+        warn "shard $shard: $missing chunks failed ($(head -n 1 "$work/failed")). Retrying."
+      fi
+      continue
+    fi
+    if $SUDO test -f "$DISK_GUARD_MARKER"; then
+      warn "disk-guard stopped the node during the download ($DISK_GUARD_MARKER); not repairing. Chunks are kept in $work."
+      return 1
+    fi
+    log "shard $shard: all $n chunks downloaded. Unpacking into $work/unpack"
+    $SUDO rm -rf "$work/unpack"; $SUDO mkdir -p "$work/unpack"
+    rc=0
+    for c in "${REPAIR_CHUNKS[@]}"; do $SUDO gunzip -c "$work/chunks/$c" || exit 1; done \
+      | $SUDO tar --no-same-owner -x -C "$work/unpack" || rc=$?
+    if (( rc != 0 )) || [[ "$(ls -A "$work/unpack")" != "shard-$shard" ]]; then
+      warn "shard $shard: unpack failed or the archive does not hold exactly shard-$shard/. Downloading again."
+      $SUDO rm -rf "$work/chunks" "$work/unpack" "$work/key_base"; $SUDO mkdir -p "$work/chunks"
+      continue
+    fi
+    log "shard $shard: stopping snapchain to swap in the restored shard (other shards untouched)."
+    compose stop snapchain >/dev/null 2>&1 || warn "docker compose stop snapchain failed"
+    $SUDO rm -rf "$db/shard-$shard"
+    $SUDO mv "$work/unpack/shard-$shard" "$db/shard-$shard"
+    printf 'key_base=%s\nfailures=%s\nrestored=%s\n' "$key" "${REPAIR_FAILURES:-0}" "$(date -u +%FT%TZ)" \
+      | $SUDO tee "$(repair_marker "$shard")" >/dev/null
+    $SUDO rm -rf "$work"
+    compose start snapchain >/dev/null 2>&1 || warn "docker compose start snapchain failed"
+    log "shard $shard: restored from $key and snapchain started again."
+    return 0
+  done
+  warn "shard $shard: repair failed after $REPAIR_ATTEMPTS attempts. Downloaded chunks are kept in $work; re-running resumes them."
+  return 1
+}
+
+# Called from wait_for_sync on every poll. Only looks at the logs while the restore's scratch
+# metadata exists (upstream deletes .rocks.snapshot after a full restore). Acts once per node.sh run.
+REPAIR_TRIED=""
+check_snapshot_failure() {
+  local found shard count marker_count
+  [[ -z "$REPAIR_TRIED" ]] || return 0
+  [[ -f "$SNAPCHAIN_DIR/.rocks.snapshot/metadata.json" ]] || $SUDO test -f "$SNAPCHAIN_DIR/.rocks.snapshot/metadata.json" 2>/dev/null || return 0
+  # `./node.sh wait` does not set up sudo; the database is root's on the VM.
+  if [[ -z "$SUDO" && "$(id -u)" -ne 0 && ! -w "$SNAPCHAIN_DIR/.rocks" ]] && sudo -n true 2>/dev/null; then SUDO=sudo; fi
+  found="$(failed_snapshot_shard)" || return 0
+  read -r shard count <<<"$found"
+  marker_count="$($SUDO sed -n 's/^failures=//p' "$(repair_marker "$shard")" 2>/dev/null || true)"
+  [[ -n "$marker_count" ]] && (( count <= marker_count )) && return 0   # already repaired
+  REPAIR_TRIED="$shard"
+  warn "Snapchain could not download the shard $shard snapshot (log: 'Failed to download snapshot chunk'). The snapshot was most likely replaced during the restore, and the node will not retry it by itself."
+  if [[ "$SNAPSHOT_REPAIR" != "auto" ]]; then manual_repair_help "$shard"; return 0; fi
+  REPAIR_FAILURES="$count" repair_shard "$shard" || manual_repair_help "$shard"
+}
+
 main() {
   local cmd="${1:-all}"
   command -v jq >/dev/null 2>&1 || [[ "$cmd" == "all" ]] || die "jq is required"
@@ -682,8 +843,9 @@ main() {
     health) health; return 0 ;;
     wait)   wait_for_sync || true; health; return 0 ;;
     helpers) setup_sudo; install_disk_helpers; return 0 ;;
+    repair-shard) setup_sudo; repair_shard "${2:-}"; return $? ;;
     all)    ;;
-    *) die "usage: $0 [all|wait|health|helpers]" ;;
+    *) die "usage: $0 [all|wait|health|helpers|repair-shard N]" ;;
   esac
   setup_sudo
   check_os

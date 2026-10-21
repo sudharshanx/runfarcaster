@@ -197,6 +197,22 @@ ssh root@$IP systemctl status snapchain-space-saver snapchain-disk-guard.timer
 
 **Where:** Seen on a mainnet run, during the snapshot restore. The helpers were installed by hand before the disk filled, and the disk peaked at 699 GB (75%). The automatic install in `node.sh` has unit tests but has not run during a real sync yet.
 
+### The node crashes on a 404 while it loads the snapshot
+
+**You see:** In the node log, `Failed to download snapshot chunk .rocks.snapshot/shard-0/chunk_0001.bin: HTTP status client error (404 Not Found)`, then a panic. From `node.sh`: `Snapchain could not download the shard 0 snapshot`. The shard number can differ.
+
+**Why:** Snapchain reads the snapshot list of every shard once, at the start. It then loads shard 1, shard 2 and shard 0, one after another. Shard 0's snapshot is replaced once a day and the old files are deleted. If that happens before the node reaches shard 0, every download fails with 404. The node tries each chunk 5 times, 10 seconds apart, then crashes. Docker restarts it, but the database folder is no longer empty, so it skips the snapshot and runs without shard 0.
+
+**Fix:** `node.sh` does this for you while it waits for sync. It restores only the failed shard from the current snapshot and leaves the other shards alone. To run it yourself:
+
+```bash
+ssh root@$IP 'bash -s repair-shard 0' < node.sh
+```
+
+It downloads the chunks 4 at a time, starts over with the new snapshot list if it gets a 404, and gives up after 3 tries. It needs 200 MiB free for each chunk in the list. It stops the node only to swap in the restored shard. `SNAPSHOT_REPAIR=0` turns the automatic repair off.
+
+**Where:** Reported by a tester on a mainnet sync. The repair is tested offline against a fake bucket and a fake Docker. It has not run on a real node yet.
+
 ### The API does not answer for hours
 
 **You see:** `HTTP API not answering yet (snapshot download in progress?).`

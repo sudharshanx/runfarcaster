@@ -260,6 +260,11 @@ writes and relay), and files on the `main` branch fetched the same day. Uncertai
 - https://snapchain.farcaster.xyz/ (source `site/docs/pages/index.mdx`): the logo is `![inbound](/images/logo.png)`, alt text copied from the AWS firewall image. Step 2 links "Run a Snapchain node" to the AWS guide instead of Getting Started.
 - **Verified:** Parallel extract of each page / the raw index.mdx.
 
+## 36. Snapshot restore crashes when a shard's snapshot is replaced mid-restore
+- **Page:** none (undocumented).
+- **True:** `download_snapshots` reads every shard's latest.json once at the start (snapshot.rs l.274-279 @fc87f26) and restores shards in the order 1, 2, 0 (main.rs l.413). Shard 0's old snapshot is deleted after each daily upload (l.196-237). A chunk 404 is tried 5 times, 10 s apart (l.361), then the node panics (main.rs l.422). On the restart `.rocks` is not empty, so the snapshot is skipped (l.367-368) and shard 0 stays without data.
+- **Verified:** code read at fc87f26 and main 410f93a. Live HEAD requests on 21 Oct 2026: shard 0's 18 Oct snapshot returns 404; shard 1's 17 Oct and shard 2's 18 Oct snapshots return 200.
+
 Checked and found consistent with the known truths (no new issue): snapchain.farcaster.xyz node-types,
 getting-started (apart from #3/#12/#17), migrating-to-snapchain, managing-a-node (apart from #14),
 grpcapi message, docs.farcaster.xyz developers index and "Create messages" (both point to Snapchain nodes).

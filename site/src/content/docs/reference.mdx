@@ -49,6 +49,8 @@ import RepoLink from "../../components/RepoLink.astro";
 | `DISK_HELPERS` | node.sh | `auto` | `auto` installs disk-guard and the space saver when the disk is under `DISK_HELPERS_BELOW_GB`; `1` always; `0` never |
 | `DISK_HELPERS_BELOW_GB` | node.sh | `1500` | |
 | `SPACE_SAVER_WAIT_SECS` | node.sh | `7200` | How long the space saver waits for the snapshot folder to appear |
+| `SNAPSHOT_REPAIR` | node.sh | `auto` | If a shard's snapshot download fails with no upstream retry, restore only that shard. `0` only prints the command |
+| `REPAIR_ATTEMPTS` / `REPAIR_PARALLEL` | node.sh | `3` / `4` | Fresh snapshot lists per repair; parallel chunk downloads |
 | `SYNC_MAX_BLOCK_DELAY` / `SYNC_STABLE_CHECKS` / `SYNC_POLL_SECS` | node.sh | `10` / `3` / `60` | Sync criterion |
 | `NODE_UPGRADE` | node.sh | `0` | `1` re-runs the official bootstrap (upgrade) |
 | `SSH_OPTS` | deploy-client | empty | Extra ssh/scp options, e.g. `-i key` |
