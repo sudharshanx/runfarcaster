@@ -38,7 +38,7 @@ const steps = [
   },
 ];
 
-const master = prompts.master;
+const guided = prompts.guided;
 // Lucide "sparkle" (ISC), see THIRD_PARTY_NOTICES.md.
 const sparkle = '<svg aria-hidden="true" focusable="false" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11.017 2.814a1 1 0 0 1 1.966 0l1.051 5.558a2 2 0 0 0 1.594 1.594l5.558 1.051a1 1 0 0 1 0 1.966l-5.558 1.051a2 2 0 0 0-1.594 1.594l-1.051 5.558a1 1 0 0 1-1.966 0l-1.051-5.558a2 2 0 0 0-1.594-1.594l-5.558-1.051a1 1 0 0 1 0-1.966l5.558-1.051a2 2 0 0 0 1.594-1.594z" /></svg>';
 const arrow = `<svg aria-hidden="true" width="12" height="12" viewBox="0 0 12 12"><path d="M2.5 9.5 9.5 2.5M4 2.5h5.5V8" fill="none" stroke="currentColor" stroke-width="1.5"/></svg>`;
@@ -116,7 +116,7 @@ const right = `<svg aria-hidden="true" width="12" height="12" viewBox="0 0 12 12
         <div class="setup-head">
           <p class="eyebrow">Set up with AI</p>
           <h2 id="setup-title" class="h-md">3 commands. Your assistant runs them with you.</h2>
-          <p>Paste this prompt into Claude Code, Codex or Cursor. The assistant installs the RunFarcaster skill, then runs each step after you say yes.</p>
+          <p>Paste this prompt into Claude Code, Codex or Cursor. It walks you through the 3 steps one at a time, and shows you each command and what it costs before it runs anything.</p>
         </div>
         <div class="setup-grid">
           <div class="terminal prompt-box" role="group" aria-label="Set up with AI prompt">
@@ -124,7 +124,7 @@ const right = `<svg aria-hidden="true" width="12" height="12" viewBox="0 0 12 12
               <span class="eyebrow">Prompt</span>
               <button type="button" class="copy copy-dark" data-copy="master-prompt">Copy prompt</button>
             </div>
-            <pre id="master-prompt" tabindex="0" aria-label="Prompt text">{master}</pre>
+            <pre id="master-prompt" tabindex="0" aria-label="Prompt text">{guided}</pre>
             <span class="sr-only" role="status" aria-live="polite" data-copy-status></span>
           </div>
           <ol class="steps">

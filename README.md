@@ -14,6 +14,14 @@ mainnet; likes, recasts and follows have been tested against a mock node only. N
 
 Guide website: `site/`. Vouching: `VOUCHER.md`. Key handling: `SECURITY.md`.
 
+**Set up with AI:** paste this into Claude Code, Codex or Cursor:
+
+```text
+Set up RunFarcaster for me: fetch https://sudharshanx.github.io/runfarcaster/agent.md and walk me through the steps. Show me each command and what it costs before you run it.
+```
+
+It walks you through the 3 steps and shows each command and its cost first. More prompts: https://sudharshanx.github.io/runfarcaster/ai-assistant/
+
 ## Full run (Quickstart)
 
 You need `hcloud`, `jq`, `ssh`, `curl`, Node.js 22.12 or later (22.x, 24.x or 26+) with npm, a Hetzner Cloud

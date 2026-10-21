@@ -79,6 +79,8 @@ Question: <my question>
 
 ${SAFETY}`,
 
+  guided: `Set up RunFarcaster for me: fetch ${SITE}agent.md and walk me through the steps. Show me each command and what it costs before you run it.`,
+
   master: `Set up RunFarcaster with me: a Hetzner server that runs my own Snapchain read node, plus a web app on that server that reads and posts through it.
 Guide: ${SITE}  Repo: ${REPO} (MIT)
 

@@ -22,9 +22,7 @@ read -rsp 'Hetzner token: ' HCLOUD_TOKEN && export HCLOUD_TOKEN && echo
 
 Then paste this:
 
-```text
-Set up RunFarcaster for me: fetch https://sudharshanx.github.io/runfarcaster/agent.md and walk me through the steps. Show me each command and what it costs before you run it.
-```
+<CopyPrompt id="guided" label="Copy the setup prompt" show />
 
 The assistant reads the [guided install](../agent.md): a short page of facts and steps written for it. It checks your tools and shows the price for free, then goes step by step, and skips anything you decline.
 

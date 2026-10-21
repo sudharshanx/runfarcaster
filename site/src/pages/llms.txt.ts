@@ -34,6 +34,7 @@ SERVER_TYPE="" picks the first type for sale from cx43, cax31, cpx42, ccx23. If 
 
 Repo (MIT): ${REPO}
 Full text: ${base}llms-full.txt
+Guided install (step by step, for AI assistants): ${base}agent.md
 Agent skill: npx skills add sudharshanx/runfarcaster --skill runfarcaster (files in skills/runfarcaster)
 
 ## Pages
