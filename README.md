@@ -38,7 +38,7 @@ cd runfarcaster
 Set the token first, on its own (the prompt hides what you type):
 
 ```bash
-read -rsp 'Hetzner token: ' HCLOUD_TOKEN && export HCLOUD_TOKEN && echo
+printf 'Hetzner token: '; stty -echo; read -r HCLOUD_TOKEN; stty echo; echo; export HCLOUD_TOKEN
 ```
 
 Then the 3 steps:
@@ -226,6 +226,7 @@ bash test/space_saver_test.sh
 bash test/watchdog_test.sh       # progress check, SSH loss, money cap, macOS without timeout
 bash test/teardown_test.sh       # fake hcloud; running twice, missing token, wrong confirmation
 bash test/provision_test.sh      # CIDR check, watchdog start (stub), unavailable types and LOCATION hints (fake hcloud)
+BASH32=/path/to/bash-3.2 bash test/deploy_client_test.sh   # stub ssh/scp; empty SSH_OPTS; reruns under bash 3.2 (macOS)
 python3 tools/embed-helpers.py --check
 cd client && npm ci --ignore-scripts && npm run typecheck && npm test && npm run build
 cd e2e && npm ci && CADDY=caddy CHROME=/path/to/chrome ./run.sh   # Caddy, mock node, headless Chrome

@@ -19,7 +19,7 @@ If the repo is not on the user's computer yet, show these commands, then run the
 
 Check the tools: `hcloud version`, `jq --version`, `ssh -V`, `curl --version`, and `node --version` (22.12 or later on 22.x, 24.x, or 26+). Check the token as above. If it is not set, ask the user to set it in their own terminal and start you again from there:
 
-    read -rsp 'Hetzner token: ' HCLOUD_TOKEN && export HCLOUD_TOKEN && echo
+    printf 'Hetzner token: '; stty -echo; read -r HCLOUD_TOKEN; stty echo; echo; export HCLOUD_TOKEN
 
 Run `hcloud ssh-key list` and ask which key to use. Ask the user to use an empty Hetzner project. Then set the name and find their public IP; if it prints nothing, stop:
 

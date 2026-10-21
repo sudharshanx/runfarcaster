@@ -23,10 +23,13 @@ SSH_USER="${SSH_USER:-root}"
 REMOTE_DIR="${REMOTE_DIR:-/opt/snapchain-client}"
 DRY_RUN="${DRY_RUN:-0}"
 TARGET="$SSH_USER@$IP"
-# shellcheck disable=SC2206
-SSH_OPTS_ARR=(${SSH_OPTS:-})
-ssh() { command ssh "${SSH_OPTS_ARR[@]}" "$@"; }
-scp() { command scp "${SSH_OPTS_ARR[@]}" "$@"; }
+# Split SSH_OPTS on spaces without glob expansion. An empty SSH_OPTS gives an empty array, and
+# bash 3.2 (macOS /bin/bash) calls "${arr[@]}" of an empty array unbound under set -u, so expand
+# it as ${arr[@]+"${arr[@]}"}: nothing when empty, each option as its own word otherwise.
+SSH_OPTS_ARR=()
+read -r -a SSH_OPTS_ARR <<<"${SSH_OPTS:-}"
+ssh() { command ssh ${SSH_OPTS_ARR[@]+"${SSH_OPTS_ARR[@]}"} "$@"; }
+scp() { command scp ${SSH_OPTS_ARR[@]+"${SSH_OPTS_ARR[@]}"} "$@"; }
 
 run() { if [[ "$DRY_RUN" == "1" ]]; then printf '[dry-run] %s\n' "$*"; else "$@"; fi; }
 

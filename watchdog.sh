@@ -169,7 +169,7 @@ do_teardown() {
 main() {
   mkdir -p "$STATE_DIR"
   if [[ -z "${HCLOUD_TOKEN:-}" && -z "$API_STUB_DIR" ]]; then
-    local msg="HCLOUD_TOKEN not set. NOT RUNNING: no spending cap is active. Set the token in this terminal (read -rsp 'Hetzner token: ' HCLOUD_TOKEN && export HCLOUD_TOKEN) and start it again."
+    local msg="HCLOUD_TOKEN not set. NOT RUNNING: no spending cap is active. Set the token in this terminal (printf 'Hetzner token: '; stty -echo; read -r HCLOUD_TOKEN; stty echo; echo; export HCLOUD_TOKEN) and start it again."
     echo "watchdog: ERROR: $msg" >&2
     log "ERROR: $msg"
     exit 1

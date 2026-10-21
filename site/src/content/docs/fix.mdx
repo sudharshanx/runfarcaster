@@ -142,7 +142,7 @@ touch .provision-state/watchdog.disarm
 **Fix:** Set the token in this terminal, then run step 1 again.
 
 ```bash
-read -rsp 'Hetzner token: ' HCLOUD_TOKEN && export HCLOUD_TOKEN && echo
+printf 'Hetzner token: '; stty -echo; read -r HCLOUD_TOKEN; stty echo; echo; export HCLOUD_TOKEN
 ```
 
 **Where:** Found in review. The tests now check this message.
@@ -286,6 +286,20 @@ node --version
 ```
 
 **Where:** Reproduced in testing with Node.js 20.19.2. Found in review first, when the site build failed on Node.js 20.
+
+### `SSH_OPTS_ARR[@]: unbound variable` on a Mac
+
+**You see:** `./deploy-client.sh: line 28: SSH_OPTS_ARR[@]: unbound variable`, right after `[deploy-client] uploading to root@<ip>:/opt/snapchain-client`.
+
+**Why:** A Mac runs the script with bash 3.2. If you don't set `SSH_OPTS`, the script has an empty list of SSH options. Bash 3.2 treats an empty list as a missing variable and stops.
+
+**Fix:** Get the fixed script with `git pull`, then run step 3 again. Running it twice is safe. On an older copy, set any SSH option to get past it:
+
+```bash
+SSH_OPTS="-o BatchMode=yes" ./deploy-client.sh "$IP"
+```
+
+**Where:** Reported by a tester on a Mac. Reproduced in testing under bash 3.2.57, built from the GNU source, offline. The fix is tested there too, along with the other scripts that run on your computer.
 
 ### Docker is not on the server yet
 

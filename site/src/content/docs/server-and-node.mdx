@@ -32,7 +32,7 @@ Inside the project, create an API token with Read & Write permission. Hetzner's 
 Read it into your shell with a hidden prompt, so it stays out of your shell history:
 
 ```bash title="your computer"
-read -rsp 'Hetzner token: ' HCLOUD_TOKEN && export HCLOUD_TOKEN && echo
+printf 'Hetzner token: '; stty -echo; read -r HCLOUD_TOKEN; stty echo; echo; export HCLOUD_TOKEN
 ```
 
 :::danger[Keep the token secret]

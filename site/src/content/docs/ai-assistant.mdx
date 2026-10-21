@@ -17,7 +17,7 @@ Your recovery phrase and any private key: the assistant never needs them. Your H
 Set your Hetzner token in a terminal, then start the assistant from that terminal. The commands it runs read the token from there, so it never enters the chat:
 
 ```bash title="your computer"
-read -rsp 'Hetzner token: ' HCLOUD_TOKEN && export HCLOUD_TOKEN && echo
+printf 'Hetzner token: '; stty -echo; read -r HCLOUD_TOKEN; stty echo; echo; export HCLOUD_TOKEN
 ```
 
 Then paste this:

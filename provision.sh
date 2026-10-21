@@ -114,9 +114,9 @@ preflight() {
   [[ "$PORT_PROFILE" == "docs" || "$PORT_PROFILE" == "readme" ]] || die "PORT_PROFILE must be docs or readme"
   [[ "${WATCHDOG_T0:-0}" =~ ^[0-9]+$ ]] || die "WATCHDOG_T0 must be a Unix time in seconds (date +%s), got '$WATCHDOG_T0'"
   (( VOLUME_SIZE_GB >= 10 && VOLUME_SIZE_GB <= 10240 )) || die "VOLUME_SIZE_GB must be 10..10240 (Hetzner volume limits)"
-  local c
-  IFS=',' read -r -a _cidrs <<<"$SSH_SOURCE_CIDRS"
-  for c in "${_cidrs[@]}"; do
+  local c cidrs=()
+  IFS=',' read -r -a cidrs <<<"$SSH_SOURCE_CIDRS"
+  for c in ${cidrs[@]+"${cidrs[@]}"}; do   # bash 3.2 + set -u: an empty "${a[@]}" is unbound
     [[ "$c" =~ ^[0-9a-fA-F.:]+/[0-9]{1,3}$ ]] || die "SSH_SOURCE_CIDRS has an invalid entry '$c' (expected like 203.0.113.7/32). Did 'curl -4 -s https://ifconfig.me' fail?"
   done
   if [[ "$SSH_SOURCE_CIDRS" == "0.0.0.0/0,::/0" && "$ESTIMATE_ONLY" != "1" ]]; then

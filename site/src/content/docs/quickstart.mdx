@@ -23,7 +23,7 @@ Get the code, set the token, then set the server options. The token prompt hides
 ```bash title="your computer"
 git clone {{REPO_URL}}
 cd runfarcaster
-read -rsp 'Hetzner token: ' HCLOUD_TOKEN && export HCLOUD_TOKEN && echo
+printf 'Hetzner token: '; stty -echo; read -r HCLOUD_TOKEN; stty echo; echo; export HCLOUD_TOKEN
 MY_IP=$(curl -4 -s https://ifconfig.me) && echo "$MY_IP"
 export NAME=snapchain-read-node SSH_KEY=my-key SERVER_TYPE="" VOLUME_GB=1000 WATCHDOG=0 SSH_SOURCE_CIDRS="$MY_IP/32"
 ```
