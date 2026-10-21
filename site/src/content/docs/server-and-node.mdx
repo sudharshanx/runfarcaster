@@ -99,14 +99,14 @@ For the tested cax31, from Hetzner's price list on 2026-10-18, in USD:
 | 1000 GB volume | $76.70 a month ($0.0767 per GB). Hetzner bills it by the hour but lists only a monthly price. Our estimate is $0.123 an hour (monthly price ÷ 625 hours, the ratio of the server's own monthly and hourly prices) |
 | Total | $0.164 an hour with the volume estimate. $102.29 a month if you leave it on (each item stops at its monthly price). |
 
-On cax31, expect about 14 hours from renting the server to a synced node: $2.31 at that hourly total, not an invoice.
+Our cax31 run took 14 h 06 m from renting the server to a synced node: $2.31 at that hourly total, not an invoice.
 
 cpx42 (x86, 8 vCPU, 16 GB RAM) lists at $0.1314 an hour, at most $81.99 a month. With it instead of cax31, the total is $0.255 an hour and $159.29 a month. **cpx42 has not been tested**, so its sync time is unknown.
 
 To see the type it would pick and the price, before creating anything:
 
 ```bash title="See the price, create nothing"
-ESTIMATE_ONLY=1 SERVER_TYPE="" VOLUME_GB=1000 EXPECTED_HOURS=16 ./provision.sh
+ESTIMATE_ONLY=1 SERVER_TYPE="" VOLUME_GB=1000 ./provision.sh
 ```
 
 ## What step 1 does
@@ -115,10 +115,10 @@ Read the script first: <RepoLink path="provision.sh" />
 
 - Checks that each entry in `SSH_SOURCE_CIDRS` looks like an address with a prefix, such as `203.0.113.7/32`. An empty `$MY_IP` stops it here.
 - Checks that `LOCATION` exists. With `SERVER_TYPE=""` it picks the first type for sale there with at least 16 GB of RAM; with a type set, it checks that one. If nothing fits, it lists what is available and creates nothing.
-- Reads the hourly price from Hetzner's live price list and prints it. It stops before creating anything if that price × `EXPECTED_HOURS` (default 6) is above `MAX_USD` (default 2, in your account's currency).
+- Reads the hourly price from Hetzner's live price list and prints it. It stops before creating anything if that price × `EXPECTED_HOURS` (default 24) is above `MAX_USD` (default 8, in your account's currency).
 - Creates a firewall, the data volume and the server. The firewall opens SSH (22, only to `SSH_SOURCE_CIDRS`), gossip (3382/udp) and the web ports 80 and 443. The node's own API ports 3381 and 3383 stay closed; the app reaches the node through Caddy.
 - Starts `watchdog.sh` first, unless you set `WATCHDOG=0`.
-- Prints the server's IP. A second run reuses what exists and does not start a second watchdog.
+- Prints the server's IP. If the project already has the server `$NAME`, the volume `$NAME-data` or a firewall `$NAME-fw` applied to a server, it stops before creating or changing anything. With `REUSE=1` it continues with them, and it does not start a second watchdog if one is already running.
 
 From the tested run, with cax31 set by hand:
 

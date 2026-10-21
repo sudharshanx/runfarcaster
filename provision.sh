@@ -18,10 +18,12 @@
 #                              Set SERVER_TYPE="" to auto-pick from SERVER_TYPE_CANDIDATES instead.
 #   SERVER_TYPE_CANDIDATES="cx43 cax31 cpx42 ccx23"   Cheapest first (Hetzner price list, Oct 2026).
 #                              cax31 is ARM64; the snapchain, statsd and grafana images publish arm64.
-#   MAX_USD=2                  Cost guard: refuse to create anything if
+#   MAX_USD=8                  Cost guard: refuse to create anything if
 #                              estimated hourly cost x EXPECTED_HOURS (rounded up) > MAX_USD.
-#   EXPECTED_HOURS=6           Expected lifetime of a test run (sync + testing + teardown). Docs: the
-#                              snapshot "can take up to 2 hours" (README) / "a few hours" (docs site).
+#                              Also passed to the watchdog as its budget.
+#   EXPECTED_HOURS=24          Expected lifetime of a test run (sync + testing + teardown).
+#                              Measured: 14 h 06 m from provision to synced on cax31 (MEASUREMENTS.md);
+#                              24 h matches the watchdog's time cap.
 #   ESTIMATE_ONLY=1            Read-only: pick the type, print the cost estimate, create nothing.
 #   LOCATION=fsn1              Hetzner location (server and volume must share it): fsn1, nbg1, hel1,
 #                              ash, hil or sin (`hcloud location list`). If SERVER_TYPE is not available
@@ -77,8 +79,8 @@ SSH_SOURCE_CIDRS="${SSH_SOURCE_CIDRS:-0.0.0.0/0,::/0}"
 PORT_PROFILE="${PORT_PROFILE:-docs}"
 NODE_API_CIDRS="${NODE_API_CIDRS:-}"
 DRY_RUN="${DRY_RUN:-0}"
-MAX_USD="${MAX_USD:-2}"
-EXPECTED_HOURS="${EXPECTED_HOURS:-6}"
+MAX_USD="${MAX_USD:-8}"
+EXPECTED_HOURS="${EXPECTED_HOURS:-24}"
 ESTIMATE_ONLY="${ESTIMATE_ONLY:-0}"
 WATCHDOG="${WATCHDOG:-1}"
 REUSE="${REUSE:-0}"
@@ -110,6 +112,7 @@ preflight() {
   fi
   [[ "$ESTIMATE_ONLY" == "1" || -n "${SSH_KEY:-}" ]] || die "SSH_KEY (name or ID of a key in your Hetzner project) is required"
   [[ "$PORT_PROFILE" == "docs" || "$PORT_PROFILE" == "readme" ]] || die "PORT_PROFILE must be docs or readme"
+  [[ "${WATCHDOG_T0:-0}" =~ ^[0-9]+$ ]] || die "WATCHDOG_T0 must be a Unix time in seconds (date +%s), got '$WATCHDOG_T0'"
   (( VOLUME_SIZE_GB >= 10 && VOLUME_SIZE_GB <= 10240 )) || die "VOLUME_SIZE_GB must be 10..10240 (Hetzner volume limits)"
   local c
   IFS=',' read -r -a _cidrs <<<"$SSH_SOURCE_CIDRS"
@@ -208,6 +211,9 @@ fetch_pricing() {
     | curl -fsS --max-time 30 -H @- "https://api.hetzner.cloud/v1/pricing"
 }
 
+# Set by cost_guard (empty in DRY_RUN): hourly rate and monthly cap of server + IPv4 + volume.
+COST_RATE_H=""; COST_MONTH=""; COST_CURRENCY=""
+
 # Cost guard. Server + primary IPv4 hourly prices come straight from the API. Volumes are only
 # priced per GB per MONTH by the API, so the volume's hourly cost is an ESTIMATE: monthly price
 # divided by the server type's own monthly/hourly ratio (Hetzner bills hourly up to a monthly cap).
@@ -225,11 +231,16 @@ cost_guard() {
     | ([$p.pricing.primary_ips[]? | select(.type == "ipv4") | .prices[]? | select(.location == $loc) | .price_hourly.gross | tonumber] | first // 0) as $ip_h
     | (($p.pricing.volume.price_per_gb_month.gross | tonumber) * $vol) as $vol_m
     | ($vol_m / $ratio) as $vol_h
+    | ([$p.pricing.primary_ips[]? | select(.type == "ipv4") | .prices[]? | select(.location == $loc) | .price_monthly.gross | tonumber] | first // 0) as $ip_m
     | ($srv_h + $ip_h + $vol_h) as $total_h
+    | (($sp.price_monthly.gross | tonumber) + $ip_m + $vol_m) as $total_m
     | ($hours | ceil) as $billed_h
     | { currency: $p.pricing.currency, server_h: $srv_h, ipv4_h: $ip_h, volume_gb: $vol, volume_month: $vol_m,
-        volume_h_est: $vol_h, total_h: $total_h, billed_hours: $billed_h, projected: ($total_h * $billed_h) }')" \
+        volume_h_est: $vol_h, total_h: $total_h, total_month: $total_m, billed_hours: $billed_h, projected: ($total_h * $billed_h) }')" \
     || die "could not compute a cost estimate (no price for $SERVER_TYPE in $LOCATION?)"
+  COST_RATE_H="$(jq -r '.total_h' <<<"$est")"
+  COST_MONTH="$(jq -r '.total_month' <<<"$est")"
+  COST_CURRENCY="$(jq -r '.currency // ""' <<<"$est")"
   jq -r '
     "COST ESTIMATE (from the live price list, NOT a measurement; currency \(.currency), gross):",
     "  server      \(.server_h) /h",
@@ -361,6 +372,51 @@ ensure_server() {
   fi
 }
 
+# money AMOUNT DECIMALS: amount with the account currency's symbol ($ USD, € EUR, else "XYZ ").
+money() {
+  # External printf: bash 3.2 (macOS /bin/bash) ignores LC_ALL=C on its builtin, so a comma-decimal
+  # locale (LANG=de_DE.UTF-8) would reject "0.21".
+  local n; n="$(env LC_ALL=C printf "%.${2}f" "$1")"
+  case "$COST_CURRENCY" in
+    USD) printf '$%s' "$n" ;;
+    EUR) printf '€%s' "$n" ;;
+    "") printf '%s' "$n" ;;
+    *) printf '%s %s' "$COST_CURRENCY" "$n" ;;
+  esac
+}
+# GNU date -d, else BSD/macOS date -r; never fails (the reminder must not stop the IP being printed).
+fmt_epoch() { date -d "@$1" '+%H:%M %Z on %-d %b' 2>/dev/null || date -r "$1" '+%H:%M %Z on %-d %b' 2>/dev/null || printf 'Unix time %s' "$1"; }
+
+# Epoch at which the watchdog starts its teardown, mirroring watchdog.sh's main loop: it fires at
+# elapsed >= MAX_WALL_SECS (time cap), or once RATE x started hours of (elapsed + POLL_SECS +
+# TEARDOWN_RESERVE_SECS) reaches MAX_USD (budget cap), checked every POLL_SECS. Prints
+# "EPOCH time|budget"; EPOCH includes one POLL_SECS for the poll that notices it.
+watchdog_deadline() {
+  local t0="$1" poll="${POLL_SECS:-60}" reserve="${TEARDOWN_RESERVE_SECS:-900}" at="$WALL_SECS" why=time n b
+  if [[ -n "$COST_RATE_H" ]] && jq -e -n "$COST_RATE_H > 0" >/dev/null; then
+    n="$(jq -n --argjson r "$COST_RATE_H" --argjson m "$MAX_USD" \
+      '($m / $r | ceil) as $n | if $n > 1 and $r * ($n - 1) >= $m then $n - 1 else $n end')"
+    b=$(( n * 3600 - poll - reserve - 3599 )); (( b < 0 )) && b=0
+    (( b < at )) && { at="$b"; why=budget; }
+  fi
+  echo "$(( t0 + at + poll )) $why"
+}
+
+# stderr only: what is billing now, and when the watchdog will delete it.
+cost_reminder() {
+  if [[ -n "$COST_RATE_H" ]]; then
+    log "Billing now: $(money "$COST_RATE_H" 4)/h, at most $(money "$COST_MONTH" 2)/mo. Stop it: CONFIRM=\"$NAME\" ./teardown.sh"
+  else
+    log "dry-run: nothing was created, so nothing is billing. A live run prints the hourly rate here."
+  fi
+  [[ -n "$WATCHDOG_T0_EPOCH" ]] || return 0
+  local at why
+  read -r at why <<<"$(watchdog_deadline "$WATCHDOG_T0_EPOCH")"
+  if [[ "$why" == time ]]; then why="time cap, $(( WALL_SECS / 3600 )) h $(( WALL_SECS % 3600 / 60 )) m after it started at $(fmt_epoch "$WATCHDOG_T0_EPOCH")"
+  else why="budget cap MAX_USD=$MAX_USD at $(money "$COST_RATE_H" 4)/h, every started hour counted; time cap would be $(fmt_epoch "$(( WATCHDOG_T0_EPOCH + WALL_SECS + ${POLL_SECS:-60} ))")"; fi
+  log "Watchdog deletes everything by $(fmt_epoch "$at") ($why) unless you disarm it: touch $STATE_DIR/watchdog.disarm (checked every ${POLL_SECS:-60} s, no teardown)"
+}
+
 print_ip() {
   local ip
   if [[ "$DRY_RUN" == "1" ]]; then ip="203.0.113.10 (dry-run placeholder)"
@@ -370,9 +426,13 @@ print_ip() {
   log "done. Next (in a new terminal, get the IP back with: IP=\$(hcloud server ip \"$NAME\")):"
   log "  ssh root@${ip%% *} \"SNAPCHAIN_AGREE_NO_REWARDS=yes${free_env} bash -s\" < node.sh"
   log "  ./deploy-client.sh ${ip%% *}"
+  # Errors in the reminder must never cost the IP on stdout (resources exist by now).
+  cost_reminder || log "could not work out the watchdog deadline; see $STATE_DIR/watchdog.log"
   # The IP is the only thing on stdout, so `IP=$(./provision.sh)` works.
   printf '%s\n' "${ip%% *}"
 }
+
+WATCHDOG_T0_EPOCH=""   # set by start_watchdog when a watchdog is (already) running
 
 # Starts watchdog.sh in the background unless one is already running. Fails loudly if it does not
 # come up (for example HCLOUD_TOKEN missing), before anything is created.
@@ -383,10 +443,21 @@ start_watchdog() {
   local pidf="$STATE_DIR/watchdog.pid" pid key="${SSH_KEY_FILE:-}"
   if [[ -f "$pidf" ]] && pid="$(cat "$pidf")" && kill -0 "$pid" 2>/dev/null; then
     log "watchdog already running (pid $pid); not starting another."
+    # The watchdog writes its pid file when it starts, so the file's mtime is its start time.
+    WATCHDOG_T0_EPOCH="$(stat -c %Y "$pidf" 2>/dev/null || stat -f %m "$pidf" 2>/dev/null || true)"
     return 0
   fi
   [[ -z "$key" && -f "$HOME/.ssh/id_ed25519" ]] && key="$HOME/.ssh/id_ed25519"
   rm -f "$pidf"
+  WATCHDOG_T0_EPOCH="${WATCHDOG_T0:-$(date +%s)}"   # watchdog.sh counts from WATCHDOG_T0 or its own start
+  # A watchdog that would fire at its first check would tear down while this script creates things.
+  if [[ -n "$COST_RATE_H" ]]; then
+    local at
+    read -r at _ <<<"$(watchdog_deadline "$WATCHDOG_T0_EPOCH")"
+    (( at - ${POLL_SECS:-60} > $(date +%s) )) || die "the watchdog would delete everything at its first check (WATCHDOG_T0=$WATCHDOG_T0_EPOCH is too far back for MAX_WALL_SECS=$WALL_SECS / MAX_USD=$MAX_USD). Nothing was created. Unset WATCHDOG_T0 or raise the caps."
+    jq -e -n --argjson m "$MAX_USD" --argjson f "${FALLBACK_RATE:-0.35}" '$m > $f' >/dev/null \
+      || die "MAX_USD=$MAX_USD must be above the watchdog's FALLBACK_RATE (${FALLBACK_RATE:-0.35}/h, used until the server exists), or it deletes everything at its first check. Nothing was created."
+  fi
   MAX_USD="$MAX_USD" MAX_WALL_SECS="$WALL_SECS" SSH_KEY_FILE="$key" NAME="$NAME" STATE_DIR="$STATE_DIR" \
     nohup "$WATCHDOG_CMD" >>"$STATE_DIR/watchdog.out" 2>&1 </dev/null &
   local wpid=$!

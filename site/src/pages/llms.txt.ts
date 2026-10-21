@@ -8,7 +8,7 @@ export const GET: APIRoute = async ({ site }) => {
   const list = home + "\n" + (await pages()).map((e) => `- [${e.data.title}](${base}${e.id === "index" ? "" : `${e.id}/`}): ${e.data.description ?? ""}`).join("\n");
   const body = `# RunFarcaster: read and post on Farcaster from your own server
 
-> RunFarcaster sets up a Farcaster node and app of your own, with no gatekeepers in between. Rent a Hetzner server. Start a Snapchain read node on it with the official bootstrap. Open a small web app served from the same server over HTTPS. You need no API keys. On a Hetzner cax31 with a 1000 GB volume, expect about 14 hours from renting the server to synced, $2.31 at an estimated $0.164 an hour, and a database of about 560 GB. With SERVER_TYPE="" the script rents the first 16 GB type for sale in LOCATION; if a type isn't available to rent there, it lists what is, cheapest first. cpx42 has not been tested; with IPv4 and the volume it costs $159.29 a month at list prices. A gasless KEY_ADD and a cast have been tested on mainnet (2026-10-18); likes, recasts and follows only against a mock node.
+> RunFarcaster sets up a Farcaster node and app of your own, with no gatekeepers in between. Rent a Hetzner server. Start a Snapchain read node on it with the official bootstrap. Open a small web app served from the same server over HTTPS. You need no API keys. On a Hetzner cax31 with a 1000 GB volume, our run took 14 h 06 m from renting the server to synced, cost $2.31 at an estimated $0.164 an hour, and ended with a 558 GB database. With SERVER_TYPE="" the script rents the first 16 GB type for sale in LOCATION; if a type isn't available to rent there, it lists what is, cheapest first. cpx42 has not been tested; with IPv4 and the volume it costs $159.29 a month at list prices. A gasless KEY_ADD and a cast have been tested on mainnet (2026-10-18); likes, recasts and follows only against a mock node.
 
 Full run (${base}quickstart/): the 3 commands below, on your own server. Vouchers do this one.
 
@@ -29,7 +29,7 @@ ssh root@$IP "SNAPCHAIN_AGREE_NO_REWARDS=yes MIN_FREE_GB=900 bash -s" < node.sh
 CONFIRM="$NAME" ./teardown.sh
 \`\`\`
 Use an empty Hetzner project. In a new terminal: export NAME=snapchain-read-node, then IP=$(hcloud server ip "$NAME")
-WATCHDOG=0 keeps the server until you delete it. For a trial run, leave it out and add MAX_USD=5 EXPECTED_HOURS=16: watchdog.sh then deletes everything after 24 h.
+WATCHDOG=0 keeps the server until you delete it. For a trial run, leave it out and add MAX_USD=8 EXPECTED_HOURS=24: watchdog.sh then deletes everything after 24 h.
 SERVER_TYPE="" picks the first type for sale from cx43, cax31, cpx42, ccx23. If none is for sale, provision.sh lists the types available in LOCATION; set SERVER_TYPE and/or LOCATION.
 
 Repo (MIT): ${REPO}

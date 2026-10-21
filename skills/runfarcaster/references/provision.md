@@ -27,7 +27,7 @@ It prints the type it would pick. With IPv4 and the 1000 GB volume, cax31 costs 
 
 ## Rent the server
 
-Ask first. Then run (add `LOCATION=<location>` if the user picked one):
+Show the user this command and what it costs, then the user chooses: you run it once they say yes, or they paste it into their own terminal and share the output (add `LOCATION=<location>` if the user picked one):
 
 ```bash
 IP=$(SSH_KEY=<key-name> SERVER_TYPE="" VOLUME_GB=1000 WATCHDOG=0 SSH_SOURCE_CIDRS="$MY_IP/32" ./provision.sh)
@@ -49,14 +49,14 @@ Tell the user: the server keeps running, and Hetzner bills it by the hour, until
 
 `WATCHDOG=0` is the default in the guide: no watchdog runs, and the server stays until the user deletes it.
 
-If the user only wants a trial run, leave out `WATCHDOG=0` and add `MAX_USD=5 EXPECTED_HOURS=16`. Then `provision.sh` starts `watchdog.sh`, which deletes everything after 24 h, when the bill would pass `MAX_USD`, or after 2 h without progress.
+If the user only wants a trial run, leave out `WATCHDOG=0` and add `MAX_USD=8 EXPECTED_HOURS=24`. Then `provision.sh` starts `watchdog.sh`, which deletes everything after 24 h, when the bill would pass `MAX_USD`, or after 2 h without progress.
 
 - To keep the node after all: `touch .provision-state/watchdog.disarm`
 - Its log: `.provision-state/watchdog.log`
 
 ## Delete everything
 
-Ask first. Then:
+Only when the user asks. Show this command and say it deletes the node's database with the volume, then the user chooses: you run it once they say yes, or they paste it into their own terminal and share the output:
 
 ```bash
 CONFIRM="$NAME" ./teardown.sh

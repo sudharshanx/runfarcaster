@@ -10,7 +10,7 @@
 # .provision-state/watchdog.out, before it creates anything. To start it by hand instead, in a
 # terminal where HCLOUD_TOKEN is set:
 #
-#   SSH_KEY_FILE=~/.ssh/id_ed25519 MAX_USD=5 nohup ./watchdog.sh >>.provision-state/watchdog.out 2>&1 &
+#   SSH_KEY_FILE=~/.ssh/id_ed25519 MAX_USD=8 nohup ./watchdog.sh >>.provision-state/watchdog.out 2>&1 &
 #   sleep 2; cat .provision-state/watchdog.out    # must say "started"; an ERROR means it is not running
 #
 # By design it deletes everything after MAX_WALL_SECS (24 h) even if the node is healthy. To keep
@@ -27,7 +27,7 @@
 #   * SSH unreachable (e.g. your IP changed and SSH_SOURCE_CIDRS no longer matches): logged as a
 #     warning, no teardown. Set UNREACHABLE_IS_HANG=1 to count it as a hang anyway.
 #
-# Env: HCLOUD_TOKEN (required, never printed), NAME=snapchain-read-node, MAX_USD=5, WATCHDOG_T0=<epoch>,
+# Env: HCLOUD_TOKEN (required, never printed), NAME=snapchain-read-node, MAX_USD=8, WATCHDOG_T0=<epoch>,
 #      POLL_SECS=60, HANG_SECS=7200, PROGRESS_MIN_BYTES=1048576, MAX_WALL_SECS=86400,
 #      TEARDOWN_RESERVE_SECS=900, SSH_KEY_FILE (private key for the progress probe),
 #      SSH_KEY_NAME (Hetzner ssh-key to ALSO delete after teardown; default: keep it),
@@ -42,7 +42,7 @@ set -euo pipefail
 set +x
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 NAME="${NAME:-snapchain-read-node}"
-MAX_USD="${MAX_USD:-5}"
+MAX_USD="${MAX_USD:-8}"
 POLL_SECS="${POLL_SECS:-60}"
 HANG_SECS="${HANG_SECS:-7200}"
 PROGRESS_MIN_BYTES="${PROGRESS_MIN_BYTES:-1048576}"

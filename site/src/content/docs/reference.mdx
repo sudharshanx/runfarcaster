@@ -29,8 +29,8 @@ import RepoLink from "../../components/RepoLink.astro";
 | `SERVER_TYPE_CANDIDATES` | provision | `cx43 cax31 cpx42 ccx23` | Cheapest first |
 | `VOLUME_GB` | provision | `2000` (`REQUIRED_DISK_GB`) | `1000` fits a new account's quota |
 | `LOCATION` | provision | `fsn1` | `fsn1`, `nbg1`, `hel1`, `ash`, `hil` or `sin`. Server and volume share it |
-| `MAX_USD` | provision, watchdog | `2` / `5` | Price limit for the check before creating anything; the watchdog deletes everything at it. In your Hetzner account's currency |
-| `EXPECTED_HOURS` | provision | `6` | Hours the price check multiplies by. Use `16` with the watchdog for a full sync on cax31 |
+| `MAX_USD` | provision, watchdog | `8` | Price limit for the check before creating anything; the watchdog deletes everything at it. In your Hetzner account's currency |
+| `EXPECTED_HOURS` | provision | `24` | Hours the price check multiplies by. Our cax31 sync took 14 h 06 m |
 | `WATCHDOG` | provision | `1` | `0` = no watchdog; the server runs until you delete it. The Full run uses `0` |
 | `ESTIMATE_ONLY` | provision | `0` | `1` = price check only, creates nothing |
 | `SSH_SOURCE_CIDRS` | provision | `0.0.0.0/0,::/0` | Set to `"$MY_IP/32"` (from `curl -4 -s https://ifconfig.me`) |
@@ -45,7 +45,7 @@ import RepoLink from "../../components/RepoLink.astro";
 | `SNAPCHAIN_AGREE_NO_REWARDS` | node.sh | (prompt) | `yes` records the no-rewards agreement |
 | `OPERATOR_FID` | node.sh | unset | Enables the weekly auto-upgrade cron; unset = `SKIP_CRONTAB=true` |
 | `MIN_FREE_GB` | node.sh | `1500` | `900` for a 1000 GB volume |
-| `SYNC_TIMEOUT_SECS` | node.sh | `86400` | 24 hours; a sync on cax31 takes about 14 |
+| `SYNC_TIMEOUT_SECS` | node.sh | `86400` | 24 hours; our cax31 sync took 14 h 06 m |
 | `DISK_HELPERS` | node.sh | `auto` | `auto` installs disk-guard and the space saver when the disk is under `DISK_HELPERS_BELOW_GB`; `1` always; `0` never |
 | `DISK_HELPERS_BELOW_GB` | node.sh | `1500` | |
 | `SPACE_SAVER_WAIT_SECS` | node.sh | `7200` | How long the space saver waits for the snapshot folder to appear |

@@ -45,6 +45,8 @@ IP=$(./provision.sh) && echo "$IP"
 
 Hetzner bills the server by the hour until you delete it. The tested type is cax31: with IPv4 and the 1000 GB volume, $0.164 an hour (our estimate, since the volume is listed by the month) and at most $102.29 a month. If a type isn't available to rent in `LOCATION`, step 1 stops and lists the types that are, cheapest first. cpx42 (x86, 16 GB RAM) comes to $0.255 an hour, at most $159.29 a month. **cpx42 has not been tested.** What step 1 does: [Server and node](../server-and-node/#what-step-1-does).
 
+Our cax31 run cost $2.31 up to sync (14 h 06 m). After that it keeps costing $0.164 an hour, $3.93 a day, until you run `CONFIRM="$NAME" ./teardown.sh` ([When you are done](#when-you-are-done)).
+
 :::tip[Lost `$IP`?]
 `$IP` only lives in the terminal where you set it. In a new terminal, run the `export NAME=…` line from **Set up first** again, then `IP=$(hcloud server ip "$NAME")`.
 :::
@@ -64,7 +66,7 @@ To see the pick and the price first, without creating anything: `ESTIMATE_ONLY=1
 Turn the watchdog on and set a price limit and the hours you expect to use:
 
 ```bash title="your computer"
-IP=$(WATCHDOG=1 MAX_USD=5 EXPECTED_HOURS=16 ./provision.sh) && echo "$IP"
+IP=$(WATCHDOG=1 MAX_USD=8 EXPECTED_HOURS=24 ./provision.sh) && echo "$IP"
 ```
 
 provision.sh then starts `watchdog.sh` in the background on your computer, before it creates anything. It deletes the server, the volume and the firewall at the first of these:
@@ -72,7 +74,7 @@ provision.sh then starts `watchdog.sh` in the background on your computer, befor
 - when the bill would reach `MAX_USD`,
 - when the node has made no progress for 2 hours.
 
-A sync on cax31 takes about 14 hours, so the 24-hour default leaves about 10 hours with a synced node.
+Our cax31 sync took 14 h 06 m, so the 24-hour default leaves just under 10 hours with a synced node.
 
 If the watchdog cannot start (for example `HCLOUD_TOKEN` is missing), step 1 stops with an error and creates nothing. Its output is in `.provision-state/watchdog.out` and its log in `.provision-state/watchdog.log`.
 
@@ -101,7 +103,7 @@ ssh root@$IP \
   < node.sh
 ```
 
-**You will see** `[node.sh] Node is in sync.`, then a health check with `sync: SYNCED`. **Time:** on a server with 8 cores and 16 GB of RAM (Hetzner cax31), expect loading the snapshot to take about 8 to 9 hours and catching up about 5 more. A faster disk or network shortens both. Times on cpx42 and other types have not been measured. What step 2 does: [Server and node](../server-and-node/#what-step-2-does).
+**You will see** `[node.sh] Node is in sync.`, then a health check with `sync: SYNCED`. **Time:** on a server with 8 cores and 16 GB of RAM (Hetzner cax31), loading the snapshot took 8 h 34 m in our run and catching up 5 h 15 m more. A faster disk or network shortens both. Times on cpx42 and other types have not been measured. What step 2 does: [Server and node](../server-and-node/#what-step-2-does).
 
 Right after step 1, SSH can refuse the connection for a minute while the server boots. Wait and run it again. On the first connection SSH asks you to confirm the server's fingerprint; type `yes`.
 
@@ -150,10 +152,14 @@ Point the domain at `$IP` and pass it as a second argument: `./deploy-client.sh 
 
 <CopyPrompt id="client" />
 
+<div id="when-you-are-done">
+
 :::caution[When you are done: delete everything]
 ```bash title="your computer"
 CONFIRM="$NAME" ./teardown.sh
 ```
 
-This deletes the server, the volume and the firewall, with the node's database. It keeps the SSH key you uploaded, and running it twice is safe. If `provision.sh` in this folder recorded a different ID for the server named `$NAME`, that server is not the one you created, so `teardown.sh` stops and deletes nothing. `OTHER_SERVER_OK=1` overrides this. Read the script first: <RepoLink path="teardown.sh" />. `teardown.sh` has been tested only with `DRY_RUN=1` and a fake `hcloud`, not against real servers yet, so check the [Hetzner console](https://console.hetzner.cloud/) afterwards.
+This deletes the server, the volume and the firewall, with the node's database. It keeps the SSH key you uploaded, and running it twice is safe. If `provision.sh` in this folder recorded a different ID for the server named `$NAME`, that server is not the one you created, so `teardown.sh` stops and deletes nothing. `OTHER_SERVER_OK=1` overrides this. Read the script first: <RepoLink path="teardown.sh" />. `teardown.sh` ran against real servers on 20 Oct 2026 and left the project empty. Check the [Hetzner console](https://console.hetzner.cloud/) afterwards anyway.
 :::
+
+</div>

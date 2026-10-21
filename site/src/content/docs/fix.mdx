@@ -66,12 +66,16 @@ A typo in `LOCATION` gives `unknown LOCATION=…`, followed by the list of valid
 
 **Why:** The firewall lets SSH in only from the address in `SSH_SOURCE_CIDRS`, and your public address changed. Home connections and some cloud machines do this.
 
-**Fix:** Run step 1 again with your new address and every other setting. It updates the firewall and keeps the server.
+**Fix:** Point the SSH rule of the firewall `$NAME-fw` at your new address. This changes only that rule; the server keeps running.
 
 ```bash
-SSH_KEY=my-key SERVER_TYPE="" VOLUME_GB=1000 WATCHDOG=0 \
-  SSH_SOURCE_CIDRS="$(curl -4 -s https://ifconfig.me)/32" ./provision.sh
+MY_IP=$(curl -4 -s https://ifconfig.me) && echo "$MY_IP"
+hcloud firewall describe "$NAME-fw" -o json \
+  | jq --arg ip "$MY_IP/32" '[.rules[] | if .protocol == "tcp" and .port == "22" then .source_ips = [$ip] else . end]' \
+  | hcloud firewall replace-rules --rules-file - "$NAME-fw"
 ```
+
+It prints `Firewall Rules for Firewall <id> updated`. Then connect again. If a watchdog runs, its progress check also uses SSH: until the rule is fixed it logs a warning and deletes nothing.
 
 **Where:** Seen on a mainnet run: the machine running the steps kept getting new public IPs. Opening SSH to every address, with key-only login, is the other way out.
 
@@ -96,7 +100,7 @@ This only applies if you left out `WATCHDOG=0` in step 1.
 
 **You see:** The server is gone. `.provision-state/watchdog.log` gives the reason, for example `wall-clock cap 86400s reached`.
 
-**Why:** The watchdog deletes everything 24 hours after step 1, even if the node is healthy. A sync on cax31 takes about 14 hours. An earlier version would also have deleted it 2 hours into the sync when it had no SSH key file, because it could not see any progress.
+**Why:** The watchdog deletes everything 24 hours after step 1, even if the node is healthy. Our cax31 sync took 14 h 06 m. An earlier version would also have deleted it 2 hours into the sync when it had no SSH key file, because it could not see any progress.
 
 **Fix:** Stop the watchdog to keep the node. Nothing is deleted.
 
@@ -107,6 +111,27 @@ touch .provision-state/watchdog.disarm
 The current watchdog turns its progress check off when it has no SSH key file.
 
 **Where:** Found in review, by reading the code.
+
+### The watchdog deletes the node to stay under `MAX_USD`
+
+This only applies if you left out `WATCHDOG=0` in step 1.
+
+**You see:** The server is gone. `.provision-state/watchdog.log` has a line `TEARDOWN triggered: budget: projected <amount> >= MAX_USD <limit> after <seconds>s at <rate>/h`.
+
+**Why:** Every minute the watchdog multiplies the live hourly price of the server, its IPv4 address and the volume by the hours that have started, each counted in full, plus the next check and 15 minutes for the teardown. When that total reaches `MAX_USD`, in your Hetzner account's currency, it runs `teardown.sh`. That deletes the server, the volume and the firewall. The node's database was on the volume, so it is gone too, and a new node loads the snapshot from the start.
+
+The watchdog runs on your computer, not on the server. While your computer sleeps, it checks nothing, and Hetzner keeps billing. It measures time by the clock, so after you wake the computer it counts the hours you slept, and it can delete everything at its next check, within 60 seconds. The 24-hour limit works the same way.
+
+**Fix:** Run the 3 steps again. To avoid it next time:
+- Set `MAX_USD` and `EXPECTED_HOURS` for the whole time you want the node. `provision.sh` refuses to start if the price for `EXPECTED_HOURS` would pass `MAX_USD`, so raise both together.
+- The watchdog also deletes everything 24 hours after step 1. For longer, set `WATCHDOG_MAX_WALL_SECS` in step 1 (`172800` is 48 hours) and raise `MAX_USD` to match.
+- To keep the node with no limit, use `WATCHDOG=0` in step 1. To stop a running watchdog without deleting anything, create its disarm file. It reads the file at its next check, deletes it and exits:
+
+```bash
+touch .provision-state/watchdog.disarm
+```
+
+**Where:** Found in review, by reading `watchdog.sh`.
 
 ### The watchdog never started
 
@@ -122,13 +147,47 @@ read -rsp 'Hetzner token: ' HCLOUD_TOKEN && export HCLOUD_TOKEN && echo
 
 **Where:** Found in review. The tests now check this message.
 
+### The watchdog would delete everything at its first check
+
+This only applies if you left out `WATCHDOG=0` in step 1.
+
+**You see:** `WATCHDOG_T0 must be a Unix time in seconds (date +%s), got '<value>'`, or `the watchdog would delete everything at its first check (WATCHDOG_T0=<epoch> is too far back for MAX_WALL_SECS=86400 / MAX_USD=8). Nothing was created. Unset WATCHDOG_T0 or raise the caps.`
+
+**Why:** `WATCHDOG_T0` tells the watchdog when the run started, in seconds since 1970, as `date +%s` prints it. It is only for restarting a watchdog partway through a run. If it is not a whole number, `provision.sh` stops. If it is so far back that the 24-hour cap (`MAX_WALL_SECS`, 86400 seconds) or the `MAX_USD` budget is already reached, the watchdog would run `teardown.sh` at its first check while step 1 is still creating the server, so `provision.sh` stops first.
+
+**Fix:** Unset it, then run step 1 again:
+
+```bash
+unset WATCHDOG_T0
+```
+
+To restart a watchdog for a run that is still going, set `WATCHDOG_T0` to the `date +%s` value from when step 1 ran. If that run is close to a limit, raise `WATCHDOG_MAX_WALL_SECS` or `MAX_USD`.
+
+**Where:** Found in testing with a fake `hcloud`; the check was added to `provision.sh` afterwards. Covered by unit tests, not yet hit on a live run.
+
+### `MAX_USD` is below the watchdog's fallback rate
+
+This only applies if you left out `WATCHDOG=0` in step 1.
+
+**You see:** `MAX_USD=<amount> must be above the watchdog's FALLBACK_RATE (0.35/h, used until the server exists), or it deletes everything at its first check. Nothing was created.`
+
+**Why:** Until the server exists, the watchdog cannot read its live price, so it uses `FALLBACK_RATE`: 0.35 an hour by default, in your Hetzner account's currency. It counts the first started hour in full, so with `MAX_USD` at or below that rate it would delete everything at its first check. `provision.sh` stops before it creates anything.
+
+**Fix:** Raise `MAX_USD` together with `EXPECTED_HOURS`, then run step 1 again. The defaults, `MAX_USD=8 EXPECTED_HOURS=24`, pass for cax31 with the 1000 GB volume:
+
+```bash
+IP=$(SSH_KEY=<key-name> SERVER_TYPE="" VOLUME_GB=1000 MAX_USD=8 EXPECTED_HOURS=24 SSH_SOURCE_CIDRS="$MY_IP/32" ./provision.sh)
+```
+
+**Where:** Found in testing: the real `watchdog.sh` with `MAX_USD=0.3` and no server yet deleted everything after 0 seconds. The check was added to `provision.sh` afterwards. Covered by unit tests, not yet hit on a live run.
+
 ## Step 2: start the node
 
 ### The disk fills while the snapshot loads
 
 **You see:** The data disk fills up hours into step 2. If `/root/snapchain-DISK-FULL` exists, `disk-guard.sh` stopped the node at 90% full.
 
-**Why:** The official restore keeps every downloaded chunk, an unpacked copy of each shard and the database until the end. For about 500 GB of snapshot, that does not fit on a 1000 GB volume.
+**Why:** The official restore keeps every downloaded chunk, an unpacked copy of each shard and the database until the end. The snapshot our run downloaded measured 485 to 505 GB, and that does not fit on a 1000 GB volume.
 
 **Fix:** On disks under 1500 GB, `node.sh` installs two helpers. `snapshot-space-saver.sh` deletes chunks the node has already read. `disk-guard.sh` stops the node before the disk is full. Check that they run:
 
@@ -142,7 +201,7 @@ ssh root@$IP systemctl status snapchain-space-saver snapchain-disk-guard.timer
 
 **You see:** `HTTP API not answering yet (snapshot download in progress?).`
 
-**Why:** The node serves no API while it loads the snapshot. On cax31 that takes about 8 to 9 hours.
+**Why:** The node serves no API while it loads the snapshot. On our cax31 run that took 8 h 34 m.
 
 **Fix:** Wait. The used space on the server should keep growing:
 
@@ -156,7 +215,7 @@ ssh root@$IP df -h /root/snapchain
 
 **You see:** `not in sync after 43200s. Re-run './node.sh wait' later; it is safe to re-run.`
 
-**Why:** `node.sh` waits for a set time. It used to be 12 hours, shorter than a sync on cax31 (about 14 hours). It is 24 hours now, so the message says `86400s`.
+**Why:** `node.sh` waits for a set time. It used to be 12 hours, shorter than our cax31 sync (14 h 06 m). It is 24 hours now, so the message says `86400s`.
 
 **Fix:** Wait again. The node kept syncing the whole time.
 
@@ -184,7 +243,7 @@ ssh root@$IP 'bash -s wait' < node.sh
 
 ### Warnings about peers in the node log
 
-**You see:** About 18 `InsufficientPeers ("read-node-peers")` warnings a minute. `HandshakeTimedOut` to two bootstrap peers every 30 seconds.
+**You see:** `InsufficientPeers ("read-node-peers")` warnings, 540 in 30 minutes on our run. `HandshakeTimedOut` to two bootstrap peers every 30 seconds.
 
 **Why:** None of the connected peers listen on the `read-node-peers` topic. The two bootstrap peers do not answer.
 
@@ -211,6 +270,22 @@ node --version
 ```
 
 **Where:** Reproduced in testing with Node.js 20.19.2. Found in review first, when the site build failed on Node.js 20.
+
+### Docker is not on the server yet
+
+**You see:** `bash: line 1: docker: command not found` after `[deploy-client] uploading to root@<ip>:/opt/snapchain-client`, or another error from `docker compose`.
+
+**Why:** `deploy-client.sh` starts Caddy on the server with `docker compose`. A new server has no Docker until step 2 installs it, so step 3 fails if it runs before step 2 gets that far.
+
+**Fix:** Wait for step 2 to install Docker. Its output shows `[node.sh] Installing Docker Engine from download.docker.com ...`, and Docker is ready once `[node.sh] Downloading official bootstrap:` follows. To check from another terminal:
+
+```bash
+ssh root@$IP docker compose version
+```
+
+When that prints a version, run step 3 again. Running it twice is safe.
+
+**Where:** Found in review.
 
 ### Port 5317 is already in use
 
@@ -242,6 +317,27 @@ curl -s 127.0.0.1:3381/v1/info
 ```
 
 **Where:** Found in review. The first review reached port 3381 from outside. The second confirmed it now times out.
+
+## Adding an app key
+
+### No FID for your recovery phrase
+
+**You see:** In the app: `This recovery phrase doesn't own a Farcaster account that your node knows.` The underlying error is `no FID is registered to custody address 0x…`.
+
+**Why:** The app turns your recovery phrase into one Ethereum address, the first account at the path `m/44'/60'/0'/0/0`, and asks your node which FID that address owns. Your node knows of none. The usual causes:
+- A word is wrong. A different phrase gives a different address.
+- The address that owns your FID is not that first account, for example a second account your wallet made from the same phrase, or an address the FID was moved to later. The app does not try other accounts.
+- Your node has not synced. It finds FIDs in its own copy of the chain, so it cannot see an FID registered after the last block it has.
+
+**Fix:** Check the words, then check that every shard shows a `blockDelay` in single digits, and try again:
+
+```bash
+ssh root@$IP 'curl -s 127.0.0.1:3381/v1/info' | jq '.shardInfos[] | {shardId, blockDelay}'
+```
+
+If your FID belongs to another account, the app has no way to use it today. Never paste the phrase into an AI assistant or a chat to debug this.
+
+**Where:** Found in review, by reading <RepoLink path="client/src/signer.ts" />.
 
 ## Reading from the node
 

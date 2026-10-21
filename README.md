@@ -7,7 +7,7 @@ This repo holds the scripts for those 3 steps, the web app, the tests and the gu
 a full copy of Farcaster.
 
 Status: the 3 steps have been tested end to end once on mainnet (2026-10-18), on a Hetzner cax31 with a 1000 GB
-volume. On that hardware, expect about 14 hours from renting the server to a synced node, and an estimated $2.31 at
+volume. On that hardware, our run took 14 h 06 m from renting the server to a synced node, an estimated $2.31 at
 list prices. The app was served over HTTPS from the node. Adding an app key and posting a cast have been tested on
 mainnet; likes, recasts and follows have been tested against a mock node only. Numbers: `MEASUREMENTS.md`. Log:
 `run-log.md` (server details replaced with placeholders).
@@ -58,7 +58,7 @@ Step 3 can run while the node is still loading its snapshot; the app then shows 
 In a new terminal, set `NAME` again and get the IP back with `IP=$(hcloud server ip "$NAME")`.
 
 `WATCHDOG=0` keeps the server until you delete it. For a trial run, leave it out and add
-`MAX_USD=5 EXPECTED_HOURS=16`: `provision.sh` then starts `watchdog.sh`, which deletes everything
+`MAX_USD=8 EXPECTED_HOURS=24`: `provision.sh` then starts `watchdog.sh`, which deletes everything
 after 24 hours. `SERVER_TYPE=""` makes `provision.sh` rent the first type for sale in `LOCATION` from cx43, cax31,
 cpx42 and ccx23 (16 GB RAM or more). If none is for sale, it lists what is and creates nothing. Set `SERVER_TYPE`
 and/or `LOCATION` (fsn1, nbg1, hel1, ash, hil, sin) and run it again.

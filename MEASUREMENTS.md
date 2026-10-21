@@ -98,6 +98,8 @@ These are `provision.sh` outputs with `ESTIMATE_ONLY=1`, which creates nothing, 
 
 **The budget depends on sync time, which is not known.** At ≈$0.29/h, $2 buys about 7 hours. The README says the snapshot "can take up to 2 hours", and the docs site says "a few hours" and "several hundred gigabytes". A 200-300 MB/s volume may well be slower than that. `EXPECTED_HOURS=6` is an assumption. Run `teardown.sh` as soon as the measurements are taken.
 
+_Update 2026-10-21: after the measured 14 h 06 m sync, the defaults changed to `MAX_USD=8` and `EXPECTED_HOURS=24` (provision.sh; watchdog.sh `MAX_USD=8`). The text above is the 2026-10-18 reasoning._
+
 ## Server availability check (2026-10-18 18:48 IST, read-only)
 
 `hcloud server-type list -o json` and `hcloud server-type describe cax31 -o json`, no resources created. Saved as `test/fixtures/server-types-2026-10-18.json`. Types with at least 16 GB RAM, gross prices in the account currency (USD):

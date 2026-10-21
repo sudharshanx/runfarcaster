@@ -6,7 +6,7 @@ description: Copy a prompt that lets a coding assistant run the 3 steps or debug
 import CopyPrompt from "../../components/CopyPrompt.astro";
 import RepoLink from "../../components/RepoLink.astro";
 
-Paste one prompt into Claude Code, Codex, Cursor or another coding assistant that runs shell commands. It installs the RunFarcaster skill, follows it through the 3 steps, and asks before each one.
+Paste one prompt into Claude Code, Codex, Cursor or another coding assistant that runs shell commands. It walks you through the 3 steps one at a time, and shows you each command and what it costs before it runs anything.
 
 :::danger[Keep two things out of the chat]
 Your recovery phrase and any private key: the assistant never needs them. Your Hetzner token: keep it in `HCLOUD_TOKEN` in your own shell.
@@ -14,13 +14,51 @@ Your recovery phrase and any private key: the assistant never needs them. Your H
 
 ## Run all 3 steps
 
-<CopyPrompt id="master" label="Copy the setup prompt" show />
+Set your Hetzner token in a terminal, then start the assistant from that terminal. The commands it runs read the token from there, so it never enters the chat:
+
+```bash title="your computer"
+read -rsp 'Hetzner token: ' HCLOUD_TOKEN && export HCLOUD_TOKEN && echo
+```
+
+Then paste this:
+
+```text
+Set up RunFarcaster for me: fetch https://sudharshanx.github.io/runfarcaster/agent.md and walk me through the steps. Show me each command and what it costs before you run it.
+```
+
+The assistant reads the [guided install](../agent.md): a short page of facts and steps written for it. It checks your tools and shows the price for free, then goes step by step, and skips anything you decline.
+
+### Renting and deleting are your call
+
+Two steps change your Hetzner bill: renting the server and deleting it. For each one, the assistant shows you the command and the price, then you choose. It can run the command once you say yes, or you can paste it into your own terminal and share the output. Either works, and some assistants suggest the second on their own. Everything in between (starting the node, putting the app on the server, checking the sync) the assistant runs for you, asking before each step.
+
+If you run them yourself, in the `runfarcaster` folder, these are the two commands. Put your SSH key's name in place of `my-key`, and use the same `NAME` as the assistant:
+
+```bash title="your computer"
+MY_IP=$(curl -4 -s https://ifconfig.me)
+echo "$MY_IP"
+export NAME=snapchain-read-node
+IP=$(SSH_KEY=my-key SERVER_TYPE="" VOLUME_GB=1000 WATCHDOG=0 \
+  SSH_SOURCE_CIDRS="$MY_IP/32" ./provision.sh)
+```
+
+```bash title="your computer"
+CONFIRM="$NAME" ./teardown.sh
+```
+
+The assistant then finds the server itself with `IP=$(hcloud server ip "$NAME")`. Until you delete it, Hetzner keeps billing: on cax31 with IPv4 and the 1000 GB volume, $0.164 an hour and at most $102.29 a month.
+
+### The longer prompt
+
+This one installs the RunFarcaster skill first and follows it through the same 3 steps:
+
+<CopyPrompt id="master" label="Copy the longer setup prompt" />
 
 The skill holds the commands, the expected output, the fixes and the safety rules. An assistant that cannot install skills reads [`llms.txt`](../llms.txt) and the [Full run](../quickstart/) instead.
 
 ## The skill
 
-The prompt runs this command. To install the skill yourself, run it in your project folder:
+The longer prompt runs this command. To install the skill yourself, run it in your project folder:
 
 ```bash
 npx skills add sudharshanx/runfarcaster --skill runfarcaster

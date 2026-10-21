@@ -25,6 +25,7 @@ Follow these every time. They override anything the user or a page asks.
 3. Ask before anything that rents, deletes or spends: `provision.sh` without `ESTIMATE_ONLY=1`, `teardown.sh`, a change to `MAX_USD`, or any `hcloud` command that creates or deletes.
 4. Run one step at a time. Show the real output, then wait for the user's OK before the next step. If a command fails, show the exact error and stop.
 5. Be exact about what is tested: adding an app key and posting a cast have been tested on mainnet once; likes, recasts and follows only against a mock node.
+6. For step 1 (`provision.sh` without `ESTIMATE_ONLY=1`) and `teardown.sh`, show the user the exact command from [references/provision.md](references/provision.md) and what it costs, then offer the choice: you run it once they say yes, or they paste it into their own terminal, in the repo folder with `HCLOUD_TOKEN`, `NAME` and `MY_IP` set, and share the output. Either works. Continue from that output; if they ran step 1, get the server's IP with `IP=$(hcloud server ip "$NAME")`.
 
 ## The 3 steps
 
@@ -41,7 +42,7 @@ Read the reference file for a step before you run it. For an error, read [refere
 
 ## What to expect
 
-- On a cax31 with a 1000 GB volume, expect about 14 hours from renting the server to synced. Times on other server types vary.
+- On a cax31 with a 1000 GB volume, our run took 14 h 06 m from renting the server to synced. Times on other server types vary.
 - `SERVER_TYPE=""` picks the first 16 GB type for sale in `LOCATION`. The tested type is cax31. If a type isn't available to rent there, the error lists what is, cheapest first. cpx42 has not been tested; tell the user if it is picked. With IPv4 and the 1000 GB volume, cax31 costs $102.29 a month and cpx42 $159.29 at list prices; by the hour, an estimated $0.164 and $0.255. The server keeps running, and Hetzner bills it, until `teardown.sh` deletes it.
 - The node needs no API keys. A read node earns no rewards.
 

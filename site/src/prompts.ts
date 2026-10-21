@@ -22,14 +22,14 @@ Task: step 1, rent the server on Hetzner Cloud.
 2. Find my public IP: MY_IP=$(curl -4 -s https://ifconfig.me) and show it with echo "$MY_IP". If it is empty, stop.
 3. Show the price, creating nothing:
    ESTIMATE_ONLY=1 SERVER_TYPE="" VOLUME_GB=1000 ./provision.sh
-   Tell me which server type it picked and the price. If it says "none of [...] is usable", show me the types it lists and ask me which SERVER_TYPE (and LOCATION, if I want another place) to use. The guide has been tested on cax31 only; cpx42, the likely pick, has not been tested.
+   Tell me which server type it picked and the price. If it says "none of [...] is usable", show me the types it lists and ask me which SERVER_TYPE (and LOCATION, if I want another place) to use. The guide has been tested on cax31 only. If it picked another type, tell me so, because other types have not been tested.
 4. Use an empty Hetzner project. Set the name: export NAME=snapchain-read-node.
 5. When I say yes, run (add LOCATION=<location> if I picked one):
    IP=$(SSH_KEY=<key-name> SERVER_TYPE="" VOLUME_GB=1000 WATCHDOG=0 SSH_SOURCE_CIDRS="$MY_IP/32" ./provision.sh)
 Expected: "[provision] cost guard OK", then "[provision] WATCHDOG=0: no watchdog started", then a "[provision] done. Next" line on stderr, and the IPv4 address on stdout. It takes under a minute.
 Known errors: "this project already has: ..." means a server, volume or firewall with that name exists and may be someone else's; nothing was changed. Ask me: another NAME for a new node, or REUSE=1 only if it is my own earlier run. "would pass the 1024 GB account quota" means the volume quota is full. "volumes size limit exceeded (resource_limit_exceeded)" means the account's volume limit (1024 GB for new accounts); keep VOLUME_GB=1000. "not available in <location> right now" or "none of [...] is usable" means those types aren't available to rent there; the error lists what is, cheapest first. "unknown LOCATION" lists the valid names.
 Tell me: the server keeps running, and Hetzner bills it by the hour, until I delete it with teardown.sh.
-If I say I only want a trial run: run step 1 without WATCHDOG=0 and with MAX_USD=5 EXPECTED_HOURS=16. Then provision.sh starts watchdog.sh, which deletes everything after 24 h, when the bill would pass MAX_USD, or after 2 h without progress. To keep the node after all: touch .provision-state/watchdog.disarm. Its log: .provision-state/watchdog.log.
+If I say I only want a trial run: run step 1 without WATCHDOG=0 and with MAX_USD=8 EXPECTED_HOURS=24. Then provision.sh starts watchdog.sh, which deletes everything after 24 h, when the bill would pass MAX_USD, or after 2 h without progress. To keep the node after all: touch .provision-state/watchdog.disarm. Its log: .provision-state/watchdog.log.
 
 ${SAFETY}`,
 
@@ -40,7 +40,7 @@ Task: step 2, start the Snapchain read node on the server (1000 GB volume).
 2. ssh root@$IP "SNAPCHAIN_AGREE_NO_REWARDS=yes MIN_FREE_GB=900 bash -s" < node.sh
    If SSH says "Connection refused" right after step 1, the server is still booting: wait a minute and run it again.
 node.sh installs Docker, installs two disk helpers because the disk is under 1500 GB, runs the official bootstrap and waits up to 24 h for sync.
-Expected: "[node.sh] Data disk ... arming disk-guard and snapshot-space-saver.", then "[node.sh] ... SYNCING shard 0: height=... blockDelay=..." lines, then "[node.sh] Node is in sync." and a health check with "sync: SYNCED". The HTTP API does not answer while the snapshot loads; that is normal. On cax31, expect about 14 h from renting the server to synced.
+Expected: "[node.sh] Data disk ... arming disk-guard and snapshot-space-saver.", then "[node.sh] ... SYNCING shard 0: height=... blockDelay=..." lines, then "[node.sh] Node is in sync." and a health check with "sync: SYNCED". The HTTP API does not answer while the snapshot loads; that is normal. On cax31, our run took 14 h 06 m from renting the server to synced.
 If SSH drops, the node keeps going. Continue waiting with: ssh root@$IP 'bash -s wait' < node.sh
 Check: ssh root@$IP 'curl -s 127.0.0.1:3381/v1/info' | jq '.shardInfos[] | {shardId, blockDelay}'   (synced = every blockDelay in single digits). Port 3381 is closed to the internet, so check over SSH.
 Repeated "InsufficientPeers" warnings that mention "read-node-peers" are fine while blockDelay stays in single digits. If blockDelay keeps growing, tell me: the validators may have stopped making blocks.
@@ -88,6 +88,7 @@ Guide: ${SITE}  Repo: ${REPO} (MIT)
 2. Take me from an empty Hetzner project to a synced node with the app in front of it: step 1 provision.sh, step 2 node.sh, step 3 deploy-client.sh. Run one step at a time, show me the real output, and wait for my OK before the next.
 3. After each step, tell me what you got: the server type and hourly price, the server IP, sync progress (blockDelay per shard), then the https address of the app.
 4. Run teardown.sh only when I ask for it.
+5. For provision.sh and teardown.sh, show me the exact command and what it costs, then let me choose: you run it once I say yes, or I paste it into my own terminal and share the output. Either works. If I ran step 1, get the IP with IP=$(hcloud server ip "$NAME").
 
 ${SAFETY}`,
 

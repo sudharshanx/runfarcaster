@@ -34,7 +34,7 @@ const shared = [
   './deploy-client.sh "$IP"',
   'CONFIRM="$NAME" ./teardown.sh',
   'IP=$(hcloud server ip "$NAME")',
-  "MAX_USD=5 EXPECTED_HOURS=16",
+  "MAX_USD=8 EXPECTED_HOURS=24",
   "touch .provision-state/watchdog.disarm",
   "[provision] WATCHDOG=0: no watchdog started",
   "[deploy-client] OK: https://<name> (client) and https://<name>/v1/info (node, proxied)",
@@ -50,6 +50,17 @@ const fixPage = readFileSync(join(root, "site/src/content/docs/fix.mdx"), "utf8"
 for (const line of read("references/fix.md").split("\n").filter((l) => l.startsWith("| `"))) {
   const first = line.split(" | ")[0];
   for (const m of first.matchAll(/`([^`]+)`/g)) if (!fixPage.includes(m[1])) fail.push(`fix.md text not on the Fix page: ${m[1]}`);
+}
+
+// Command blocks in references/fix.md are copied word for word from the Fix page.
+for (const m of read("references/fix.md").matchAll(/```bash\n([\s\S]*?)```/g)) {
+  if (!fixPage.includes(m[1])) fail.push(`fix.md command block not on the Fix page: ${m[1].split("\n")[0]}`);
+}
+// No command inside a markdown table cell uses an escaped pipe: `\|` breaks when copied raw.
+for (const f of ["SKILL.md", ...refs.map((r) => `references/${r}`)]) {
+  for (const line of read(f).split("\n")) {
+    if (line.startsWith("|") && /`[^`]*\\\|[^`]*`/.test(line)) fail.push(`escaped pipe in a table command (move it to a code block): ${f}: ${line.slice(0, 60)}`);
+  }
 }
 
 if (fail.length) { console.error("check-skill: FAIL\n- " + fail.join("\n- ")); process.exit(1); }
