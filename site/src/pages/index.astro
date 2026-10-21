@@ -24,7 +24,7 @@ const steps = [
   {
     n: "01", title: "Rent a server", cmd: "./provision.sh",
     text: "Checks the price, then rents a Hetzner server with a 1000 GB disk.",
-    example: "Picked cax31, about $0.164 an hour with the volume. The server is up at <your-ip>.",
+    example: "Picked cax31, $0.164 an hour with the volume. The server is up at <your-ip>.",
   },
   {
     n: "02", title: "Start the node", cmd: "node.sh",
@@ -141,7 +141,7 @@ const right = `<svg aria-hidden="true" width="12" height="12" viewBox="0 0 12 12
             ))}
           </ol>
         </div>
-        <p class="setup-foot">Keep your recovery phrase and your Hetzner token out of the chat. Exact commands, to run by hand: <a href={u("quickstart/")}>Full run</a>. More prompts: <a href={u("ai-assistant/")}>Set up with AI</a>.</p>
+        <p class="setup-foot">Keep your recovery phrase and your Hetzner token out of the chat. See the steps the prompt follows: <a href={u("agent.md")}>agent.md</a>. Exact commands, to run by hand: <a href={u("quickstart/")}>Full run</a>. Prompts for when you're stuck: <a href={u("ai-assistant/")}>Debug and question prompts</a>.</p>
       </section>
 
       <section class="wrap trio" aria-label="What you get">
