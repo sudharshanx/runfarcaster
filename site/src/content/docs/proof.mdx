@@ -169,6 +169,10 @@ SITE=https://<name> CHROME=/path/to/chrome node e2e/real-node.mjs
 
 `e2e/real-node.mjs` never pastes a phrase, never creates a key, and never presses Cast, Like, Recast or Follow.
 
+## Independent test
+
+Tester Nick ran RunFarcaster on his own Hetzner cax31. Shard 0's snapshot was replaced mid-download, and the node crashed on a 404. He fixed it by hand with the steps `./node.sh repair-shard 0` automates, and the node synced fully about 3 h later. [His report on the Snapchain repo](https://github.com/farcasterxyz/snapchain/issues/1044#issuecomment-6326673811).
+
 ## Vouches
 
 We are asking at least one other person to run the guide on their own account and post the result on Farcaster.
